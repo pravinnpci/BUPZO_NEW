@@ -92,12 +92,13 @@ The AI Agent must generate the initial SQL migration script including:
 ---
 
 ## 7. SYSTEM ARCHITECTURE & DOCKER COMPOSE
-The AI must create a `docker-compose.yml` that runs:
-1.  **db**: `postgres:13` container.
-2.  **redis**: `redis:7` container.
-3.  **backend-api**: FastAPI container (Port 8003) connected to `db` and `redis`.
-4.  **frontend-client**: Next.js container for Customer/Seller App (Port 3003).
-5.  **mcp-server**: Node.js container for the AI context tools.
+The AI must create a `docker-compose.yml` with specific port mappings to avoid any local port conflicts:
+1.  **db**: `postgres:13` container (Mapped to host port 5434 to avoid 5432 conflicts).
+2.  **redis**: `redis:7` container (Mapped to host port 6380 to avoid 6379 conflicts).
+3.  **backend-api**: FastAPI container (Mapped to host port 8003) connected to `db` and `redis`.
+4.  **frontend-client**: Next.js container for Customer/Seller App (Mapped to host port 3003 to avoid 3000 conflicts).
+5.  **mcp-server**: Node.js container for the AI context tools (Mapped to host port 3004).
+*Strictly use these alternate ports across package.json, Dockerfiles, and docker-compose.yml to prevent "port already allocated" issues during local development.*
 
 ---
 

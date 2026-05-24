@@ -4,10 +4,10 @@
  * BUPZO - Landing Page
  */
 import { cn } from '@/lib/utils';
-import { useEffect, useState } from 'react';
 import { useCartStore } from '@/store/cartStore';
 import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useState, useEffect, CSSProperties } from 'react';
 
 interface Category {
   id: string;
@@ -51,13 +51,13 @@ const stats = [
   { id: 4, label: 'Customers', value: 5000, target: 10000 },
 ];
 
-const AnimatedCounter = ({ value, target }: { value: number, target: number }) => {
+const AnimatedCounter = ({ value, target }: { value: number; target: number }) => {
   const [count, setCount] = useState<number>(value);
 
   useEffect(() => {
     if (count < target) {
       const interval = setInterval(() => {
-        setCount(prevCount => {
+        setCount((prevCount: number) => {
           const newCount = prevCount + 1;
           return newCount >= target ? target : newCount;
         });
@@ -69,7 +69,7 @@ const AnimatedCounter = ({ value, target }: { value: number, target: number }) =
   return (
     <div className="text-center">
       <div className="text-4xl font-bold mb-2">
-        <span className="counter" style={{ '--target': target } as React.CSSProperties}>
+        <span className="counter" style={{ '--target': target } as CSSProperties}>
           {count}
         </span>
       </div>
@@ -83,7 +83,7 @@ const HeroCarousel = () => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentSlide(prevSlide => (prevSlide + 1) % heroSlides.length);
+      setCurrentSlide((prevSlide: number) => (prevSlide + 1) % heroSlides.length);
     }, 5000);
     return () => clearInterval(interval);
   }, []);

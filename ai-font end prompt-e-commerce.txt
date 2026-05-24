@@ -51,6 +51,7 @@ TECHNICAL REQUIREMENTS:
 - Use Font Awesome or Lucide icons
 - Ensure WCAG accessibility standards
 - Keep all code in a single HTML file
+- Configure the development server to strictly run on Port 3003 (to avoid default Port 3000 conflicts) and connect to the FastAPI backend on Port 8003.
 
 IMPORTANT GUIDELINES:
 - Make the website fully responsive across desktop, tablet, and mobile

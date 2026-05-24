@@ -2,90 +2,102 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/store/authStore';
-import { authApi } from '@/utils/api';
+import type { ReactNode } from 'react';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState('');
+  const [step, setStep] = useState<'phone' | 'otp'>('phone');
   const [error, setError] = useState('');
   const router = useRouter();
-  const { login } = useAuthStore();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleRequestOTP = async () => {
+    if (!phone) {
+      setError('Please enter a valid phone number');
+      return;
+    }
     try {
-      const response = await authApi.login(email, password);
-      login(response.data.user);
+      console.log('Requesting OTP for phone:', phone);
+      setStep('otp');
+    } catch (err) {
+      setError('Failed to request OTP. Please try again.');
+    }
+  };
+
+  const handleVerifyOTP = async () => {
+    if (!otp) {
+      setError('Please enter the OTP');
+      return;
+    }
+    try {
+      console.log('Verifying OTP:', otp);
       router.push('/');
     } catch (err) {
-      setError('Invalid email or password');
+      setError('Invalid OTP. Please try again.');
     }
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-primary">
-          Sign in to your account
-        </h2>
-      </div>
-
-      {error && (
-        <div className="mt-3 text-center sm:mt-5 sm:text-left">
-          <p className="text-red-500">{error}</p>
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="w-full max-w-md p-6 space-y-8 bg-white dark:bg-card rounded-lg shadow-lg">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-dusty-mauve">Welcome Back</h1>
+          <p className="text-dim-grey dark:text-dust-grey">Login to your BUPZO account</p>
         </div>
-      )}
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white dark:bg-charcoal py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-dim-grey dark:text-dust-grey">
-                Email address
+        {step === 'phone' ? (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="phone" className="block text-sm font-medium text-dim-grey dark:text-dust-grey">
+                Phone Number
               </label>
-              <div className="mt-1">
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-dim-grey dark:border-dust-grey rounded-md shadow-sm placeholder-dim-grey dark:placeholder-dust-grey focus:outline-none focus:ring-accent focus:border-accent sm:text-sm"
-                />
-              </div>
+              <input
+                id="phone"
+                type="tel"
+                value={phone}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPhone(e.target.value)}
+                placeholder="+91 12345 67890"
+                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-dusty-mauve"
+              />
             </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-dim-grey dark:text-dust-grey">
-                Password
+            {error && <p className="text-red-500 text-sm">{error}</p>}
+            <button
+              onClick={handleRequestOTP}
+              className="w-full bg-dusty-mauve hover:bg-opacity-90 text-white py-2 px-4 rounded-lg font-medium transition-opacity"
+            >
+              Request OTP
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="otp" className="block text-sm font-medium text-dim-grey dark:text-dust-grey">
+                OTP
               </label>
-              <div className="mt-1">
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 border border-dim-grey dark:border-dust-grey rounded-md shadow-sm placeholder-dim-grey dark:placeholder-dust-grey focus:outline-none focus:ring-accent focus:border-accent sm:text-sm"
-                />
-              </div>
+              <input
+                id="otp"
+                type="text"
+                value={otp}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOtp(e.target.value)}
+                placeholder="123456"
+                className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-dusty-mauve"
+              />
             </div>
-
-            <div>
-              <button
-                type="submit"
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-accent hover:bg-dusty-mauve focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent"
-              >
-                Sign in
-              </button>
-            </div>
-          </form>
-        </div>
+            {error && <p className="text-red-500 text-sm">{error}</p>}
+            <button
+              onClick={handleVerifyOTP}
+              className="w-full bg-dusty-mauve hover:bg-opacity-90 text-white py-2 px-4 rounded-lg font-medium transition-opacity"
+            >
+              Verify OTP
+            </button>
+            <button
+              onClick={() => setStep('phone')}
+              className="w-full border border-dusty-mauve text-dusty-mauve py-2 px-4 rounded-lg font-medium hover:bg-dusty-mauve hover:text-white transition-colors"
+            >
+              Resend OTP
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
