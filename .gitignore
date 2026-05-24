@@ -16,3 +16,7 @@ env/
 
 # OS generated files
 .DS_Store
+# Local config and secrets
+config.json
+config.*.secret
+.env.local
