@@ -1,0 +1,7 @@
+﻿{
+  "SUPABASE_URL": "https://your-project.supabase.co",
+  "SUPABASE_KEY": "REDACTED",
+  "SENDINBLUE_KEY": "REDACTED",
+  "MISTRAL_API_KEY": "REDACTED",
+  "DB_URL": "postgresql://user:pass@localhost:5433/dbname"
+}
