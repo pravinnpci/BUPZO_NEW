@@ -1,0 +1,61 @@
+Build a complete, production-ready Multi-page (5-10 pages) E-Commerce / Online Store from scratch.
+The website is for "BUPZO" — tagline: "The Next-Gen AI-Powered Multi-Vendor E-Commerce Platform".
+About: A highly premium, modern multi-vendor e-commerce marketplace inspired by the Phoenix Dashboard layout. It features a universal product catalog, advanced vendor profiles, dynamic admin controls, real-time live chat communication, and seamless multi-key Mistral AI integration for pricing, fraud tracking, and automated marketing copy.
+
+TECHNOLOGY:
+Use React (JSX) with CSS modules or styled-components. Write clean, well-structured, production-quality code.
+
+DESIGN DIRECTION:
+Style: Skeuomorphic with realistic textures and shadows mimicking physical objects
+Colors: Mauve serenity palette with charcoal (#565264), dim grey (#706677), dusty mauve (#A6808C), almond silk (#CCB7AE), and dust grey (#D6CFCB)
+Tone & Voice: Techy and innovative
+Typography: Inter for body text, Plus Jakarta Sans for headings
+
+LAYOUT STRUCTURE:
+Navigation: Left sidebar navigation
+Hero Section: Image slider or carousel hero rotating multiple slides
+Content Layout: Single column with alternating left-right sections
+Footer: Multi-column footer with links, about, contact, and social sections
+Section Spacing: Compact section spacing with minimal padding between sections
+Scroll Animation: Fade-in animations on scroll for sections and elements
+
+SECTIONS TO INCLUDE:
+Dynamic Product Catalog Grid, Analytics Sales Charts, Advanced Live Chat Workspace, Refund Invoice Tracker, and AI Recommendation Widgets.
+
+INTERACTIVE FEATURES:
+Include the following:
+- Responsive hamburger mobile menu
+- Dark / Light mode toggle
+- Smooth scroll navigation
+- Scroll-triggered fade-in animations
+- Contact form with validation
+- Image or testimonial carousel/slider
+- Pricing table section
+- FAQ accordion section
+- Back to top button
+- Animated statistics counter section
+- Image lightbox gallery
+- Newsletter subscription form
+- Social media icon links
+- Google Maps embed
+- Preloader / loading animation
+- Sticky call-to-action button
+- Custom cursor effect
+
+TECHNICAL REQUIREMENTS:
+- Include detailed code comments
+- Use semantic HTML5 elements
+- Use CSS custom properties (variables)
+- Optimize for SEO with proper meta tags
+- Include Google Fonts
+- Use Font Awesome or Lucide icons
+- Ensure WCAG accessibility standards
+- Keep all code in a single HTML file
+
+IMPORTANT GUIDELINES:
+- Make the website fully responsive across desktop, tablet, and mobile
+- Use smooth transitions and micro-interactions for a polished feel
+- Use placeholder images (via picsum.photos or placehold.co) where needed
+- Write realistic placeholder text instead of generic lorem ipsum
+- Ensure consistent spacing, alignment, and visual hierarchy throughout
+- Provide the complete, ready-to-use code
