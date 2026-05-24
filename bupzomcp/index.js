@@ -3,6 +3,12 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { Pool } from 'pg';
 
+// Initialize MCP Server
+const server = new McpServer({
+  name: "bupzo-mcp",
+  version: "1.0.0",
+});
+
 // Initialize PostgreSQL connection pool
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -13,32 +19,25 @@ const pool = new Pool({
 let dbConnected = false;
 pool.on('connect', () => {
   dbConnected = true;
-  console.log('PostgreSQL connection established');
+  console.error('PostgreSQL connection established');
 });
 
 pool.on('error', (err) => {
   console.error('Unexpected error on idle PostgreSQL client', err);
-  process.exit(-1);
 });
 
 // Define tools using plain Zod types
 server.tool(
   "get_bupzo_orders",
   "Fetches the latest orders from the BUPZO PostgreSQL database",
-  z.object({}),
+  {},
   async () => {
-    if (!dbConnected) {
-      return {
-        content: [{ type: "text", text: "Database connection not established. Check DATABASE_URL." }]
-      };
-    }
-
     try {
       const client = await pool.connect();
       const query = `
         SELECT id, user_id, total_amount, status, tracking_id, order_source, shipping_partner, payment_gateway
         FROM orders
-        ORDER BY id DESC
+        ORDER BY created_at DESC
         LIMIT 10;
       `;
       const result = await client.query(query);
@@ -50,19 +49,8 @@ server.tool(
         };
       }
 
-      const orders = result.rows.map((row) => ({
-        id: row.id,
-        user_id: row.user_id,
-        total_amount: row.total_amount,
-        status: row.status,
-        tracking_id: row.tracking_id,
-        order_source: row.order_source,
-        shipping_partner: row.shipping_partner,
-        payment_gateway: row.payment_gateway,
-      }));
-
       return {
-        content: [{ type: "text", text: JSON.stringify(orders, null, 2) }]
+        content: [{ type: "text", text: JSON.stringify(result.rows, null, 2) }]
       };
     } catch (err) {
       console.error('Error fetching orders:', err);
@@ -100,7 +88,7 @@ server.tool(
     message: z.string()
   },
   async ({ phone, message }) => {
-    console.log(`Sending WhatsApp to ${phone}: ${message}`);
+    console.error(`Sending WhatsApp to ${phone}: ${message}`);
     return {
       content: [{ type: "text", text: `WhatsApp message sent to ${phone}` }]
     };

@@ -3,31 +3,32 @@ version: '3.8'
 services:
   db:
     image: postgres:15-alpine
-    container_name: bupzo_db
+    container_name: bupzo-db
+    restart: always
     environment:
-      POSTGRES_DB: bupzo_db
-      POSTGRES_USER: bupzo_user
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-bupzo_password}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-bupzo}
     ports:
       - "5434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./setup_db.sql:/docker-entrypoint-initdb.d/setup_db.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U bupzo_user -d bupzo_db"]
-      interval: 5s
+      test: ["CMD-SHELL", "pg_isready -U postgres -d bupzo"]
+      interval: 10s
       timeout: 5s
       retries: 5
 
   redis:
     image: redis:7-alpine
-    container_name: bupzo_redis
+    container_name: bupzo-redis
+    restart: always
     ports:
       - "6380:6379"
-    volumes:
-      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
+      interval: 10s
       timeout: 5s
       retries: 5
 
@@ -35,7 +36,11 @@ services:
     build:
       context: ./bupzobackend
       dockerfile: Dockerfile
-    container_name: bupzo_backend
+    container_name: bupzo-backend
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-bupzo}
+      REDIS_URL: redis://redis:6379/0
     ports:
       - "8003:8000"
     depends_on:
@@ -43,45 +48,33 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    environment:
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_NAME=bupzo_db
-      - DB_USER=bupzo_user
-      - DB_PASSWORD=${DB_PASSWORD:-bupzo_password}
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
 
   frontend:
     build:
       context: ./bupzofrontend
       dockerfile: Dockerfile
-    container_name: bupzo_frontend
+    container_name: bupzo-frontend
+    restart: always
     ports:
       - "3003:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8003/api
-      - NEXT_PUBLIC_REDIS_URL=redis://redis:6379
+      NEXT_PUBLIC_API_URL: http://localhost:8003
     depends_on:
-      backend:
-        condition: service_healthy
+      - backend
 
   mcp-server:
     build:
       context: ./bupzomcp
       dockerfile: Dockerfile
-    container_name: bupzo_mcp_server
+    container_name: bupzo-mcp
+    restart: always
     ports:
       - "3004:3000"
     environment:
-      - NODE_ENV=production
-      - PORT=3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-bupzo}
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
   postgres_data:
-  redis_data:
