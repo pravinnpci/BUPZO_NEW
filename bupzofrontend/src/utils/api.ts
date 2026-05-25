@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8003';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://backend-api:8003/api';
 
 const api = {
   get: async (endpoint: string) => {
@@ -27,18 +27,18 @@ const api = {
 };
 
 export const authApi = {
-  requestOTP: (email: string) => api.post('/api/auth/request-otp', { email }),
-  verifyOTP: (email: string, otp: string) => api.post('/api/auth/verify-otp', { email, otp }),
+  requestOTP: (phone: string) => api.post('/auth/request-otp', { phone }),
+  verifyOTP: (phone: string, otp: string) => api.post('/auth/verify-otp', { phone, otp }),
 };
 
 export const walletApi = {
-  getBalance: () => api.get('/api/wallet/balance'),
+  getBalance: (userId: string) => api.get(`/wallet/balance?user_id=${encodeURIComponent(userId)}`),
 };
 
 export const productApi = {
-  getProducts: () => api.get('/api/products'),
-  getProduct: (id: string) => api.get(`/api/products/${id}`),
-  getCategories: () => api.get('/api/categories'),
+  getProducts: () => api.get('/products'),
+  getProduct: (id: string) => api.get(`/products/${id}`),
+  getCategories: () => api.get('/categories'),
 };
 
 export default api;

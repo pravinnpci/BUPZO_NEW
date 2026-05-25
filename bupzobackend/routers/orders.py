@@ -10,7 +10,7 @@ import os
 router = APIRouter(prefix="/api/orders", tags=["orders"])
 
 # Database setup for local PostgreSQL
-DATABASE_URL = "postgresql://postgres:postgres@bupzo-db-1:5432/postgres"
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://bupzo_user:bupzo_password@db:5432/bupzo_db")
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()

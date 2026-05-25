@@ -106,9 +106,12 @@ class PaymentLog(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"), nullable=False)
+    gateway = Column(String(50), nullable=False)
+    transaction_id = Column(String(100))
     amount = Column(DECIMAL(10, 2), nullable=False)
-    gateway_response = Column(Text)
     status = Column(String(20), nullable=False)
+    response_code = Column(String(20))
+    response_message = Column(Text)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     order = relationship("Order", back_populates="payment_logs")
@@ -119,8 +122,11 @@ class ShippingLog(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     order_id = Column(UUID(as_uuid=True), ForeignKey("orders.id"), nullable=False)
     partner = Column(String(50), nullable=False)
-    tracking_number = Column(String(100))
+    tracking_id = Column(String(100))
     status = Column(String(20), nullable=False)
+    estimated_delivery = Column(DateTime(timezone=True))
+    actual_delivery = Column(DateTime(timezone=True))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     order = relationship("Order", back_populates="shipping_logs")

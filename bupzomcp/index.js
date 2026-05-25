@@ -15,6 +15,9 @@ const pool = new Pool({
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
 });
 
+// In-memory cache for dashboard data (used instead of Redis for local MCP)
+const memoryCache = {};
+
 // Test database connection
 pool.query('SELECT NOW()', (err, res) => {
   if (err) {
@@ -34,6 +37,52 @@ pool.on('connect', () => {
 pool.on('error', (err) => {
   console.error('Unexpected error on idle PostgreSQL client', err);
 });
+
+function initializeMemoryCache() {
+  memoryCache['bupzo:dashboard:popular_categories'] = JSON.stringify([
+    { name: 'Dry Fruits', items: 42 },
+    { name: 'Halwa', items: 28 },
+    { name: 'Spices', items: 55 },
+  ]);
+  memoryCache['bupzo:cache:featured_products'] = JSON.stringify([
+    { id: '1', name: 'Premium Mixed Dry Fruits Gift Box' },
+    { id: '2', name: 'Traditional Gajar Halwa' },
+    { id: '3', name: 'Saffron-Infused Spice Kit' },
+  ]);
+}
+
+// Test database connection
+pool.query('SELECT NOW()', (err, res) => {
+  if (err) {
+    console.error('Database connection test failed:', err);
+  } else {
+    console.error('Database connection test successful:', res.rows[0].now);
+  }
+});
+
+// Graceful error handling for database connection
+let dbConnected = false;
+pool.on('connect', () => {
+  dbConnected = true;
+  console.error('PostgreSQL connection established');
+});
+
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle PostgreSQL client', err);
+});
+
+function initializeMemoryCache() {
+  memoryCache['bupzo:dashboard:popular_categories'] = JSON.stringify([
+    { name: 'Dry Fruits', items: 42 },
+    { name: 'Halwa', items: 28 },
+    { name: 'Spices', items: 55 },
+  ]);
+  memoryCache['bupzo:cache:featured_products'] = JSON.stringify([
+    { id: '1', name: 'Premium Mixed Dry Fruits Gift Box' },
+    { id: '2', name: 'Traditional Gajar Halwa' },
+    { id: '3', name: 'Saffron-Infused Spice Kit' },
+  ]);
+}
 
 // Define tools using plain Zod types
 mcpServer.tool(
@@ -65,6 +114,27 @@ mcpServer.tool(
       console.error('Error fetching orders:', err);
       return {
         content: [{ type: "text", text: `Error fetching orders: ${err.message}` }]
+      };
+    }
+  }
+);
+
+mcpServer.tool(
+  "get_cached_value",
+  "Fetches a cached value from BUPZO memory cache by key",
+  {
+    key: z.string(),
+  },
+  async ({ key }) => {
+    try {
+      const value = memoryCache[key];
+      return {
+        content: [{ type: "text", text: value ? value : `Key ${key} not found in memory cache.` }]
+      };
+    } catch (err) {
+      console.error('Error fetching cached value:', err);
+      return {
+        content: [{ type: "text", text: `Cache error: ${err.message}` }]
       };
     }
   }
@@ -107,7 +177,11 @@ mcpServer.tool(
 async function run() {
   const transport = new StdioServerTransport();
   await mcpServer.connect(transport);
+  initializeMemoryCache();
   console.error("BUPZO MCP Server is running!");
+
+  // Prevent Node.js from exiting so the MCP server remains available.
+  setInterval(() => {}, 1_000_000);
 }
 
 run().catch(console.error);

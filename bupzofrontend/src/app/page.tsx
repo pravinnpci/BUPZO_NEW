@@ -180,6 +180,33 @@ export default function Home() {
   useEffect(() => {
     const loadData = async () => {
       try {
+        const [categoriesRes, productsRes] = await Promise.all([
+          fetch('http://backend-api:8003/api/products/categories'),
+          fetch('http://backend-api:8003/api/products'),
+        ]);
+
+        if (categoriesRes.ok) {
+          const cats = await categoriesRes.json();
+          setCategories(cats.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            description: c.description || 'Shop now',
+          })));
+        }
+
+        if (productsRes.ok) {
+          const prods = await productsRes.json();
+          setProducts(prods.map((p: any) => ({
+            id: p.id,
+            name: p.name,
+            price: parseFloat(p.price),
+            category: p.category_id,
+            image: p.image_url,
+          })));
+        }
+      } catch (error) {
+        console.error('Failed to fetch from backend:', error);
+
         setCategories([
           { id: '1', name: 'Dry Fruits', description: 'Organic and fresh' },
           { id: '2', name: 'Halwa', description: 'Traditional Indian sweets' },
@@ -191,8 +218,6 @@ export default function Home() {
           { id: '2', name: 'Gajar ka Halwa', price: 199, category: 'Halwa', image: 'https://images.unsplash.com/photo-1604328108342-234b40f09003?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=300&q=80' },
           { id: '3', name: 'Turmeric Powder', price: 149, category: 'Spices', image: 'https://images.unsplash.com/photo-1581092580960-959e007056c9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=300&q=80' },
         ]);
-      } catch (error) {
-        console.error('Failed to fetch data:', error);
       } finally {
         setLoading(false);
       }

@@ -133,3 +133,44 @@ FOR EACH ROW EXECUTE FUNCTION update_timestamp();
 CREATE TRIGGER update_shipping_logs_timestamp
 BEFORE UPDATE ON shipping_logs
 FOR EACH ROW EXECUTE FUNCTION update_timestamp();
+
+-- Seed sample data for local development
+INSERT INTO users (id, phone, email, is_premium, signup_platform, wallet_balance, privacy_accepted)
+VALUES
+    ('11111111-1111-1111-1111-111111111111', '+919876543210', 'customer@bupzo.com', FALSE, 'WEB', 150.00, TRUE),
+    ('22222222-2222-2222-2222-222222222222', '+919812345678', 'seller@bupzo.com', TRUE, 'WEB', 0.00, TRUE);
+
+INSERT INTO categories (id, name, description)
+VALUES
+    ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Dry Fruits', 'Premium imported dry fruits and packed nuts.'),
+    ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'Halwa', 'Artisanal halwa made with traditional recipes.'),
+    ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'Spices', 'Freshly ground herbs and spice blends for every recipe.'),
+    ('dddddddd-dddd-dddd-dddd-dddddddddddd', 'Gift Sets', 'Curated gourmet gift packages for every celebration.');
+
+INSERT INTO products (id, name, category_id, price, weight_grams, image_url, is_combo, stock_quantity, seller_id)
+VALUES
+    ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Premium Mixed Dry Fruits Gift Box', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 349.00, 500, 'https://images.unsplash.com/photo-1598214886806-c2896e899622?auto=format&fit=crop&w=600&q=80', FALSE, 120, '22222222-2222-2222-2222-222222222222'),
+    ('ffffffff-ffff-ffff-ffff-ffffffffffff', 'Traditional Gajar Halwa', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 199.00, 400, 'https://images.unsplash.com/photo-1604328108342-234b40f09003?auto=format&fit=crop&w=600&q=80', FALSE, 80, '22222222-2222-2222-2222-222222222222'),
+    ('11111111-2222-3333-4444-555555555555', 'Saffron-Infused Spice Kit', 'cccccccc-cccc-cccc-cccc-cccccccccccc', 179.00, 250, 'https://images.unsplash.com/photo-1581092580960-959e007056c9?auto=format&fit=crop&w=600&q=80', FALSE, 150, '22222222-2222-2222-2222-222222222222'),
+    ('66666666-7777-8888-9999-000000000000', 'Festive Gourmet Gift Hamper', 'dddddddd-dddd-dddd-dddd-dddddddddddd', 699.00, 1200, 'https://images.unsplash.com/photo-1517685352821-92cf88aee5a5?auto=format&fit=crop&w=600&q=80', FALSE, 40, '22222222-2222-2222-2222-222222222222');
+
+INSERT INTO orders (id, user_id, total_amount, status, tracking_id, order_source, shipping_partner, payment_gateway)
+VALUES
+    ('77777777-7777-7777-7777-777777777777', '11111111-1111-1111-1111-111111111111', 548.00, 'DELIVERED', 'BUPZO2345', 'WEB', 'Shiprocket', 'Razorpay');
+
+INSERT INTO order_items (id, order_id, product_id, quantity, price_at_purchase)
+VALUES
+    ('88888888-8888-8888-8888-888888888888', '77777777-7777-7777-7777-777777777777', 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 1, 349.00),
+    ('99999999-9999-9999-9999-999999999999', '77777777-7777-7777-7777-777777777777', 'ffffffff-ffff-ffff-ffff-ffffffffffff', 1, 199.00);
+
+INSERT INTO payment_logs (id, order_id, gateway, transaction_id, amount, status, response_code, response_message)
+VALUES
+    ('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', '77777777-7777-7777-7777-777777777777', 'Razorpay', 'TRX-784321', 548.00, 'SUCCESS', '00', 'Payment processed successfully.');
+
+INSERT INTO shipping_logs (id, order_id, partner, tracking_id, status, estimated_delivery, actual_delivery)
+VALUES
+    ('ffffeeee-dddd-cccc-bbbb-aaaaaaaaaaaa', '77777777-7777-7777-7777-777777777777', 'Shiprocket', 'SR123456789', 'DELIVERED', CURRENT_DATE + INTERVAL '2 days', CURRENT_DATE + INTERVAL '2 days');
+
+INSERT INTO wallet_transactions (id, user_id, amount, type, description)
+VALUES
+    ('bbbbbbbb-cccc-dddd-eeee-ffffffffffff', '11111111-1111-1111-1111-111111111111', 150.00, 'CASHBACK', 'Festival cashback bonus.');

@@ -59,7 +59,7 @@ class ProductCreate(ProductBase):
 
 class ProductResponse(ProductBase):
     id: UUID
-    seller_id: UUID
+    seller_id: Optional[UUID] = None
     created_at: datetime
     updated_at: datetime
 

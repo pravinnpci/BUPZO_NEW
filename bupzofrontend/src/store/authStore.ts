@@ -9,6 +9,8 @@ interface AuthStore {
   login: (user: any) => void;
   logout: () => void;
   fetchWalletBalance: () => Promise<void>;
+  requestOTP: (phoneNumber: string) => Promise<any>;
+  verifyOTP: (phoneNumber: string, otp: string) => Promise<any>;
 }
 
 export const useAuthStore = create<AuthStore>((set) => ({
@@ -20,4 +22,10 @@ export const useAuthStore = create<AuthStore>((set) => ({
   login: (user) => set({ user, isLoggedIn: true }),
   logout: () => set({ user: null, isLoggedIn: false }),
   fetchWalletBalance: async () => {},
+  requestOTP: async (phoneNumber: string) => {
+    return { success: true };
+  },
+  verifyOTP: async (phoneNumber: string, otp: string) => {
+    return { success: true };
+  },
 }));
