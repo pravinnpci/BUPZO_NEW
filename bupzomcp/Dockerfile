@@ -13,8 +13,8 @@ RUN npm install
 # Copy source files
 COPY . .
 
-# Expose port 3000 (default for Node.js)
-EXPOSE 3000
+# Expose port 3004 (as configured in docker-compose.yml)
+EXPOSE 3004
 
 # Start the application
 CMD ["node", "index.js"]

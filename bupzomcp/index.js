@@ -4,7 +4,7 @@ import { z } from "zod";
 import { Pool } from 'pg';
 
 // Initialize MCP Server
-const server = new McpServer({
+const mcpServer = new McpServer({
   name: "bupzo-mcp",
   version: "1.0.0",
 });
@@ -13,6 +13,15 @@ const server = new McpServer({
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+});
+
+// Test database connection
+pool.query('SELECT NOW()', (err, res) => {
+  if (err) {
+    console.error('Database connection test failed:', err);
+  } else {
+    console.error('Database connection test successful:', res.rows[0].now);
+  }
 });
 
 // Graceful error handling for database connection
@@ -27,7 +36,7 @@ pool.on('error', (err) => {
 });
 
 // Define tools using plain Zod types
-server.tool(
+mcpServer.tool(
   "get_bupzo_orders",
   "Fetches the latest orders from the BUPZO PostgreSQL database",
   {},
@@ -61,7 +70,7 @@ server.tool(
   }
 );
 
-server.tool(
+mcpServer.tool(
   "get_shipping_rates",
   "Get shipping rates for different courier partners",
   {
@@ -80,7 +89,7 @@ server.tool(
   }
 );
 
-server.tool(
+mcpServer.tool(
   "send_whatsapp_update",
   "Send an order update via WhatsApp",
   {
@@ -97,7 +106,7 @@ server.tool(
 
 async function run() {
   const transport = new StdioServerTransport();
-  await server.connect(transport);
+  await mcpServer.connect(transport);
   console.error("BUPZO MCP Server is running!");
 }
 

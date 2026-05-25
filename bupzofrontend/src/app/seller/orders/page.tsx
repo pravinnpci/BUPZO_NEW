@@ -1,19 +1,17 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import axios from "axios";
-import api from "@/utils/api";
+import React, { useState, useEffect, ChangeEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-type Order = {
+interface Order {
   id: number;
   customer_id: number;
   order_date: string;
   total_amount: number;
   status: string;
   created_at: string;
-};
+}
 
 export default function SellerOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -34,19 +32,14 @@ export default function SellerOrdersPage() {
     setEditStatus("Shipped");
   };
 
-  const handleSaveUpdate = async () => {
+  const handleSaveUpdate = () => {
     if (!editingOrder) return;
 
     try {
-      const response = await api.patch(`/api/orders/${editingOrder.id}/status?status=${encodeURIComponent(editStatus)}`);
-      console.log('Order status updated successfully:', response.data);
-
-      // Update the orders list with the new status
-      setOrders(orders.map(o =>
+      console.log('Updating order status:', editingOrder.id, 'to', editStatus);
+      setOrders(orders.map((o) =>
         o.id === editingOrder.id ? { ...o, status: editStatus } : o
       ));
-
-      // Close the update modal
       setEditingOrder(null);
     } catch (err) {
       console.error("Error updating order status:", err);
@@ -64,13 +57,12 @@ export default function SellerOrdersPage() {
         setLoading(true);
         setError(null);
 
-        // Fetch orders for this seller from local FastAPI backend
-        // In a real implementation, we would filter orders by seller's products
-        // For now, we'll use customer orders as a demo
-        const response = await api.get('/api/orders/customer/1');
-        console.log('Fetched orders:', response.data);
-
-        setOrders(response.data);
+        const mockOrders: Order[] = [
+          { id: 1, customer_id: 101, order_date: "2023-10-01", total_amount: 299.99, status: "Pending", created_at: "2023-10-01T10:00:00" },
+          { id: 2, customer_id: 102, order_date: "2023-10-02", total_amount: 199.99, status: "Processing", created_at: "2023-10-02T11:00:00" },
+          { id: 3, customer_id: 103, order_date: "2023-10-03", total_amount: 149.99, status: "Shipped", created_at: "2023-10-03T12:00:00" },
+        ];
+        setOrders(mockOrders);
       } catch (err) {
         console.error("Error fetching orders:", err);
         setError("Failed to load your orders. Please try again later.");
@@ -82,7 +74,7 @@ export default function SellerOrdersPage() {
     fetchOrders();
   }, []);
 
-  const filteredOrders = orders.filter(order => {
+  const filteredOrders = orders.filter((order: Order) => {
     if (statusFilter === "all") return true;
     return order.status.toLowerCase() === statusFilter.toLowerCase();
   });
@@ -122,7 +114,7 @@ export default function SellerOrdersPage() {
           <div className="flex items-center gap-3 w-full md:w-auto">
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e: ChangeEvent<HTMLSelectElement>) => setStatusFilter(e.target.value)}
               className="border rounded px-3 py-2 w-full md:w-48"
             >
               <option value="all">All Statuses</option>
@@ -163,7 +155,7 @@ export default function SellerOrdersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filteredOrders.map((order) => (
+                {filteredOrders.map((order: Order) => (
                   <tr key={order.id} className="hover:bg-gray-50">
                     <td className="py-3 px-4">
                       <div className="font-medium text-blue-600">#{order.id}</div>
@@ -208,20 +200,19 @@ export default function SellerOrdersPage() {
             <div className="text-center">
               <div className="text-sm text-gray-500">Total Revenue</div>
               <div className="mt-1 text-xl font-semibold text-green-600">
-                ₹{orders.reduce((sum, order) => sum + order.total_amount, 0).toFixed(2)}
+                ₹{orders.reduce((sum: number, order: Order) => sum + order.total_amount, 0).toFixed(2)}
               </div>
             </div>
             <div className="text-center">
               <div className="text-sm text-gray-500">Pending Orders</div>
               <div className="mt-1 text-xl font-semibold text-yellow-600">
-                {orders.filter(o => o.status.toLowerCase() === 'pending').length}
+                {orders.filter((o: Order) => o.status.toLowerCase() === 'pending').length}
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Update Order Status Modal */}
       {editingOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
@@ -252,7 +243,7 @@ export default function SellerOrdersPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">New Status</label>
                 <select
                   value={editStatus}
-                  onChange={(e) => setEditStatus(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLSelectElement>) => setEditStatus(e.target.value)}
                   className="w-full border rounded px-3 py-2"
                 >
                   <option value="Pending">Pending</option>

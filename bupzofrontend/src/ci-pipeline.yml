@@ -1,0 +1,44 @@
+name: BUPZO CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Create .env file for Docker Compose
+      run: |
+        touch .env
+        echo "DATABASE_URL=postgresql://bupzo_user:bupzo_password@db:5432/bupzo_db" >> .env
+        echo "REDIS_URL=redis://redis:6379/0" >> .env
+        echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY || 'dummy_gemini_key' }}" >> .env
+        echo "NEXT_PUBLIC_API_URL=http://localhost:8003/api" >> .env
+
+    - name: Build and Start all Docker Containers
+      run: docker compose up --build -d
+
+    - name: Wait for services to initialize
+      run: |
+        echo "Waiting for 20 seconds to allow services to fully start..."
+        sleep 20
+        docker ps
+
+    - name: Health Check - Backend API (FastAPI)
+      run: |
+        curl --retry 5 --retry-delay 5 --retry-all-errors -f http://localhost:8003/docs || (docker compose logs backend-api && exit 1)
+
+    - name: Health Check - Frontend App (Next.js)
+      run: |
+        curl --retry 5 --retry-delay 5 --retry-all-errors -f http://localhost:3003 || (docker compose logs frontend-client && exit 1)
+
+    - name: Show Container Logs on Failure
+      if: failure()
+      run: docker compose logs

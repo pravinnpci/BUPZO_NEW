@@ -1,29 +1,25 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:15-alpine
-    container_name: bupzo-db
-    restart: always
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-bupzo}
+    container_name: bupzo_db
     ports:
       - "5434:5432"
+    environment:
+      POSTGRES_USER: bupzo_user
+      POSTGRES_PASSWORD: bupzo_password
+      POSTGRES_DB: bupzo_db
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
       - ./setup_db.sql:/docker-entrypoint-initdb.d/setup_db.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d bupzo"]
+      test: ["CMD-SHELL", "pg_isready -U bupzo_user -d bupzo_db"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   redis:
     image: redis:7-alpine
-    container_name: bupzo-redis
-    restart: always
+    container_name: bupzo_redis
     ports:
       - "6380:6379"
     healthcheck:
@@ -32,49 +28,36 @@ services:
       timeout: 5s
       retries: 5
 
-  backend:
-    build:
-      context: ./bupzobackend
-      dockerfile: Dockerfile
-    container_name: bupzo-backend
-    restart: always
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-bupzo}
-      REDIS_URL: redis://redis:6379/0
+  backend-api:
+    build: ./bupzobackend
+    container_name: bupzo_backend
     ports:
-      - "8003:8000"
+      - "8003:8003"
+    env_file: .env
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
 
-  frontend:
-    build:
-      context: ./bupzofrontend
-      dockerfile: Dockerfile
-    container_name: bupzo-frontend
-    restart: always
+  frontend-client:
+    build: ./bupzofrontend
+    container_name: bupzo_frontend
     ports:
-      - "3003:3000"
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8003
+      - "3003:3003"
+    env_file: .env
     depends_on:
-      - backend
+      - backend-api
 
   mcp-server:
-    build:
-      context: ./bupzomcp
-      dockerfile: Dockerfile
-    container_name: bupzo-mcp
-    restart: always
+    build: ./bupzomcp
+    container_name: bupzo_mcp
     ports:
-      - "3004:3000"
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-bupzo}
+      - "3004:3004"
+    env_file: .env
     depends_on:
       db:
         condition: service_healthy
 
 volumes:
-  postgres_data:
+  pgdata:

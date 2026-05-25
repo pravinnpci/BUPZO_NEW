@@ -2,10 +2,7 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@/utils/api": ["src/utils/api.ts"],
-      "@/store/authStore": ["src/store/authStore.ts"],
-      "@/lib/utils": ["src/lib/utils.ts"]
+      "@/*": ["./src/*"]
     }
   },
   "exclude": ["node_modules"]
