@@ -1,36 +1,41 @@
-"use client";
+'use client'
 
-import { useState, useEffect } from 'react';
-import { ThemeProvider as NextThemesProvider } from 'next-themes';
+import { useState, useEffect, createContext, useContext } from 'react'
 
-export default function ThemeProvider({
-  children,
-  attribute = 'class',
-  defaultTheme = 'system',
-  enableSystem = true,
-}: {
-  children: React.ReactNode;
-  attribute?: 'class' | 'data-theme';
-  defaultTheme?: string;
-  enableSystem?: boolean;
-}) {
-  const [mounted, setMounted] = useState(false);
+type ThemeContextType = {
+  theme: string
+  toggleTheme: () => void
+}
+
+const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
+
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [theme, setTheme] = useState<string>('light')
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    const savedTheme = localStorage.getItem('theme') || 'light'
+    setTheme(savedTheme)
+  }, [])
 
-  if (!mounted) {
-    return <>{children}</>;
+  const toggleTheme = () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light'
+    setTheme(newTheme)
+    localStorage.setItem('theme', newTheme)
   }
 
   return (
-    <NextThemesProvider
-      attribute={attribute}
-      defaultTheme={defaultTheme}
-      enableSystem={enableSystem}
-    >
-      {children}
-    </NextThemesProvider>
-  );
+    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+      <div className={`min-h-screen bg-${theme} text-${theme === 'dark' ? 'slate-100' : 'slate-900'}`}>
+        {children}
+      </div>
+    </ThemeContext.Provider>
+  )
+}
+
+export function useTheme() {
+  const context = useContext(ThemeContext)
+  if (context === undefined) {
+    throw new Error('useTheme must be used within a ThemeProvider')
+  }
+  return context
 }

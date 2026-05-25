@@ -1,59 +1,54 @@
-import Image from 'next/image';
-import { Button } from './ui/button';
-import { Star } from 'lucide-react';
-import { cn } from '../lib/utils';
+'use client'
 
-interface ProductCardProps {
-  id: string;
-  name: string;
-  price: number;
-  imageUrl: string;
-  rating?: number;
-  onAddToCart: () => void;
+import { useState } from 'react'
+
+interface Product {
+  id: string
+  name: string
+  description: string
+  price: number
+  image_url: string
+  is_combo: boolean
 }
 
-export function ProductCard({
-  id,
-  name,
-  price,
-  imageUrl,
-  rating = 5,
-  onAddToCart,
-}: ProductCardProps) {
+interface ProductCardProps {
+  product: Product
+}
+
+export default function ProductCard({ product }: ProductCardProps) {
+  const [isHovered, setIsHovered] = useState(false)
+
   return (
-    <div className="bg-white dark:bg-dustGrey rounded-lg shadow-sm p-4 hover:shadow-md transition-shadow duration-200 border border-dustGrey/30">
-      <div className="relative h-64 w-full overflow-hidden rounded-md">
-        <Image
-          src={imageUrl}
-          alt={name}
-          fill
-          className="object-cover"
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+    <div
+      className="bg-card rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div className="relative h-48 w-full overflow-hidden">
+        <img
+          src={product.image_url}
+          alt={product.name}
+          className="w-full h-full object-cover transition-transform duration-300"
+          style={{ transform: isHovered ? 'scale(1.05)' : 'scale(1)' }}
         />
+        {product.is_combo && (
+          <span className="absolute top-2 right-2 bg-primary-500 text-white text-xs px-2 py-1 rounded-full">
+            Combo
+          </span>
+        )}
       </div>
-      <div className="mt-3">
-        <h3 className="text-lg font-medium text-charcoal dark:text-white truncate">{name}</h3>
-        <div className="flex items-center mt-1">
-          {[...Array(5)].map((_, i) => (
-            <Star
-              key={i}
-              className={cn(
-                "h-4 w-4 text-yellow-400",
-                i < Math.floor(rating) ? "fill-current" : "opacity-30"
-              )}
-            />
-          ))}
+      <div className="p-4">
+        <h3 className="font-heading font-medium text-lg mb-1">{product.name}</h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{product.description}</p>
+        <div className="flex justify-between items-center">
+          <span className="font-medium text-primary-600 dark:text-primary-400">
+            ₹{product.price.toFixed(2)}
+          </span>
+          <button className="bg-primary-500 hover:bg-primary-600 text-white px-3 py-1 rounded-md text-sm transition-colors">
+            Add to Cart
+          </button>
         </div>
-        <div className="mt-2">
-          <span className="text-charcoal dark:text-white font-semibold">${price.toFixed(2)}</span>
-        </div>
-        <Button
-          onClick={onAddToCart}
-          className="mt-4 w-full bg-charcoal hover:bg-dimGrey text-white transition-colors"
-        >
-          Add to Cart
-        </Button>
       </div>
     </div>
-  );
+  )
 }

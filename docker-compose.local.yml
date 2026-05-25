@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   db:
     image: postgres:15-alpine
@@ -7,10 +9,11 @@ services:
       POSTGRES_PASSWORD: bupzo_password
       POSTGRES_DB: bupzo_db
     volumes:
-      - ./setup_db.sql:/docker-entrypoint-initdb.d/setup_db.sql
+      # Mount your setup_db.sql from the root of the monorepo
+      - ../database/setup_db.sql:/docker-entrypoint-initdb.d/setup_db.sql
       - pgdata:/var/lib/postgresql/data
     ports:
-      - "5434:5432"
+      - "5434:5432" # Expose PostgreSQL on host port 5434
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U bupzo_user -d bupzo_db"]
       interval: 5s
@@ -21,7 +24,7 @@ services:
     image: redis:7-alpine
     container_name: bupzo_redis
     ports:
-      - "6380:6379"
+      - "6380:6379" # Expose Redis on host port 6380
     volumes:
       - redisdata:/data
     healthcheck:
@@ -32,61 +35,62 @@ services:
 
   backend-api:
     build:
-      context: ./bupzobackend
+      context: ../bupzo-backend
       dockerfile: Dockerfile
     container_name: bupzo_backend
     environment:
       DATABASE_URL: postgresql://bupzo_user:bupzo_password@db:5432/bupzo_db
       REDIS_URL: redis://redis:6379
+      # Other API keys will be loaded from .env.local in the monorepo root
     ports:
-      - "8003:8000"
+      - "8003:8000" # Expose FastAPI on host port 8003
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
     volumes:
-      - ./bupzobackend:/app
-    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+      - ../bupzo-backend:/app # Mount for live code changes
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
   mcp-server:
     build:
-      context: ./bupzomcp
+      context: ../bupzo-mcp
       dockerfile: Dockerfile
     container_name: bupzo_mcp
     environment:
       REDIS_URL: redis://redis:6379
       DATABASE_URL: postgresql://bupzo_user:bupzo_password@db:5432/bupzo_db
-      GOOGLE_API_KEY: ""
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY} # Loaded from .env.local
     ports:
-      - "3004:3004"
+      - "3004:3004" # Expose MCP Server on host port 3004
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
     volumes:
-      - ./bupzomcp:/app
-    restart: unless-stopped
+      - ../bupzo-mcp:/app # Mount for live code changes
+    command: ["node", "index.js"]
 
   frontend:
     build:
-      context: ./bupzofrontend
+      context: ../bupzo-frontend
       dockerfile: Dockerfile
     container_name: bupzo_frontend
     ports:
-      - "3003:3000"
+      - "3003:3000" # Expose Next.js on host port 3003
     environment:
-      NEXT_PUBLIC_API_URL: http://backend-api:8000
-      NEXT_PUBLIC_MCP_URL: http://mcp-server:3004
+      NEXT_PUBLIC_API_URL: http://bupzo_backend:8000
+      NEXT_PUBLIC_MCP_URL: http://bupzo_mcp:3004
     depends_on:
-      - backend-api
-      - mcp-server
+      backend-api:
+        condition: service_started # Use service_started for frontend to allow it to build even if backend is not fully healthy yet
+      mcp-server:
+        condition: service_started
     volumes:
-      - ./bupzofrontend:/app # Mount for live code changes
-      # The anonymous volume /app/node_modules is removed to allow npm install to work on the mounted volume
-    command: ["sh", "-c", "npm install --legacy-peer-deps && npm run dev"] # Install dependencies and then run dev server
-    restart: unless-stopped
+      - ../bupzo-frontend:/app # Mount for live code changes
+      - /app/node_modules # Exclude node_modules from host mount to prevent issues
 
 volumes:
   pgdata:

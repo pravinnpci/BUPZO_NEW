@@ -1,219 +1,72 @@
-﻿"""
-BUPZO FastAPI Backend
-Production-ready FastAPI application with CORS and database integration
-"""
-import os
-import json
-from datetime import date
-from decimal import Decimal
-from fastapi import FastAPI
+﻿from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from dotenv import load_dotenv
-import redis
-from database import engine, Base, SessionLocal
-from routers import auth, products, wallet
-from models import Category, Product, User, Order, OrderItem, WalletTransaction, PaymentLog, ShippingLog
+from sqlalchemy.orm import Session
+from typing import List
+from datetime import datetime
+from decimal import Decimal
+from uuid import UUID
 
-# Load environment variables
-load_dotenv()
+from . import models
+from .database import engine, SessionLocal
+from .schemas import User, UserCreate, Product, ProductCreate, Token
+from .crud import create_user, get_user_by_phone_number, get_products, get_product, create_product, get_wallet_balance, get_wallet_transactions
+from .routers import auth, products, wallet
 
-# Initialize FastAPI app
-app = FastAPI(
-    title="BUPZO API",
-    description="Enterprise-grade multi-vendor e-commerce platform API",
-    version="1.0.0",
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
-)
+# Create tables
+models.Base.metadata.create_all(bind=engine)
 
-# Configure CORS
+app = FastAPI()
+
+# CORS Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3003"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-def seed_database():
+# Include routers
+app.include_router(auth.router)
+app.include_router(products.router)
+app.include_router(wallet.router)
+
+# Dependency
+def get_db():
     db = SessionLocal()
     try:
-        if db.query(Category).count() > 0:
-            return
-
-        seller = User(
-            phone="+919812345678",
-            email="seller@bupzo.com",
-            is_premium=True,
-            signup_platform="WEB",
-            wallet_balance=Decimal("0.00"),
-            privacy_accepted=True,
-        )
-        customer = User(
-            phone="+919876543210",
-            email="customer@bupzo.com",
-            is_premium=False,
-            signup_platform="WEB",
-            wallet_balance=Decimal("150.00"),
-            privacy_accepted=True,
-        )
-
-        categories = [
-            Category(name="Dry Fruits", description="Premium imported dry fruits and packed nuts."),
-            Category(name="Halwa", description="Artisanal halwa made with traditional recipes."),
-            Category(name="Spices", description="Freshly ground herbs and spice blends for every recipe."),
-            Category(name="Gift Sets", description="Curated gourmet gift packages for every celebration."),
-        ]
-
-        db.add_all([seller, customer])
-        db.add_all(categories)
-        db.flush()
-
-        products = [
-            Product(
-                name="Premium Mixed Dry Fruits Gift Box",
-                category_id=categories[0].id,
-                price=Decimal("349.00"),
-                weight_grams=500,
-                image_url="https://images.unsplash.com/photo-1598214886806-c2896e899622?auto=format&fit=crop&w=600&q=80",
-                stock_quantity=120,
-                seller_id=seller.id,
-            ),
-            Product(
-                name="Traditional Gajar Halwa",
-                category_id=categories[1].id,
-                price=Decimal("199.00"),
-                weight_grams=400,
-                image_url="https://images.unsplash.com/photo-1604328108342-234b40f09003?auto=format&fit=crop&w=600&q=80",
-                stock_quantity=80,
-                seller_id=seller.id,
-            ),
-            Product(
-                name="Saffron-Infused Spice Kit",
-                category_id=categories[2].id,
-                price=Decimal("179.00"),
-                weight_grams=250,
-                image_url="https://images.unsplash.com/photo-1581092580960-959e007056c9?auto=format&fit=crop&w=600&q=80",
-                stock_quantity=150,
-                seller_id=seller.id,
-            ),
-            Product(
-                name="Festive Gourmet Gift Hamper",
-                category_id=categories[3].id,
-                price=Decimal("699.00"),
-                weight_grams=1200,
-                image_url="https://images.unsplash.com/photo-1517685352821-92cf88aee5a5?auto=format&fit=crop&w=600&q=80",
-                stock_quantity=40,
-                seller_id=seller.id,
-            ),
-        ]
-
-        db.add_all(products)
-        db.flush()
-
-        order = Order(
-            user_id=customer.id,
-            total_amount=Decimal("548.00"),
-            status="DELIVERED",
-            tracking_id="BUPZO2345",
-            order_source="WEB",
-            shipping_partner="Shiprocket",
-            payment_gateway="Razorpay",
-        )
-        db.add(order)
-        db.flush()
-
-        order_items = [
-            OrderItem(
-                order_id=order.id,
-                product_id=products[0].id,
-                quantity=1,
-                price_at_purchase=Decimal("349.00"),
-            ),
-            OrderItem(
-                order_id=order.id,
-                product_id=products[1].id,
-                quantity=1,
-                price_at_purchase=Decimal("199.00"),
-            ),
-        ]
-        db.add_all(order_items)
-
-        payment_log = PaymentLog(
-            order_id=order.id,
-            amount=Decimal("548.00"),
-            gateway="Razorpay",
-            transaction_id="TRX-784321",
-            status="SUCCESS",
-            response_code="00",
-            response_message="Payment processed successfully.",
-        )
-        shipping_log = ShippingLog(
-            order_id=order.id,
-            partner="Shiprocket",
-            tracking_id="SR123456789",
-            status="DELIVERED",
-            estimated_delivery=date.today(),
-            actual_delivery=date.today(),
-        )
-        wallet_transaction = WalletTransaction(
-            user_id=customer.id,
-            amount=Decimal("150.00"),
-            type="CASHBACK",
-            description="Festival cashback bonus.",
-        )
-
-        db.add_all([payment_log, shipping_log, wallet_transaction])
-        db.commit()
-    except Exception as exc:
-        print("Database seed failed:", exc)
-        db.rollback()
+        yield db
     finally:
         db.close()
 
+@app.get("/")
+def read_root():
+    return {"message": "Welcome to BUPZO API"}
 
-def seed_redis():
-    redis_url = os.getenv("REDIS_URL")
-    if not redis_url:
-        return
+@app.get("/products/")
+def read_products(skip: int = 0, limit: int = 100, category_id: UUID = None, seller_id: UUID = None,
+                  is_combo: bool = None, price_min: Decimal = None, price_max: Decimal = None,
+                  sort_by: str = None, db: Session = Depends(get_db)):
+    filters = {}
+    if category_id:
+        filters['category_id'] = category_id
+    if seller_id:
+        filters['seller_id'] = seller_id
+    if is_combo is not None:
+        filters['is_combo'] = is_combo
+    if price_min:
+        filters['price_min'] = price_min
+    if price_max:
+        filters['price_max'] = price_max
+    if sort_by:
+        filters['sort_by'] = sort_by
 
-    try:
-        redis_client = redis.from_url(redis_url)
-        redis_client.ping()
-        redis_client.set("bupzo:dashboard:popular_categories", json.dumps([
-            {"name": "Dry Fruits", "items": 42},
-            {"name": "Halwa", "items": 28},
-            {"name": "Spices", "items": 55},
-        ]))
-        redis_client.set("bupzo:cache:featured_products", json.dumps([
-            {"id": "1", "name": "Premium Mixed Dry Fruits Gift Box"},
-            {"id": "2", "name": "Traditional Gajar Halwa"},
-            {"id": "3", "name": "Saffron-Infused Spice Kit"},
-        ]))
-        redis_client.close()
-    except Exception as exc:
-        print("Redis seed failed:", exc)
+    products = get_products(db, skip=skip, limit=limit, **filters)
+    return products
 
-
-# Create database tables and seed initial data on startup
-@app.on_event("startup")
-async def startup_db_client():
-    Base.metadata.create_all(bind=engine)
-    seed_database()
-    seed_redis()
-
-# Include routers
-app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
-app.include_router(products.router, prefix="/api/products", tags=["products"])
-app.include_router(wallet.router, prefix="/api/wallet", tags=["wallet"])
-try:
-    from routers import agents as agents_router
-    app.include_router(agents_router.router, prefix="/api/agents", tags=["agents"])
-except Exception:
-    # agents router is optional; if missing, continue without it
-    pass
-
-# Health check endpoint
-@app.get("/api/health")
-async def health_check():
-    return {"status": "healthy", "message": "BUPZO API is running"}
+@app.get("/products/{product_id}")
+def read_product(product_id: UUID, db: Session = Depends(get_db)):
+    product = get_product(db, product_id=product_id)
+    if product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return product

@@ -1,7 +1,7 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const getGenerativeModel = () => {
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
 
   const model = genAI.getGenerativeModel({
     model: 'gemini-1.5-flash',
@@ -26,21 +26,14 @@ const getGenerativeModel = () => {
 
       BUPZO Unique Features:
       - Wallet system with referral bonuses (₹5 for normal, ₹10 for premium users)
-      - Premium membership benefits
+      - Premium membership benefits (50% shipping discount, ad-free)
       - Combo offers for better value
       - Trust Fund option for customers
       - WhatsApp and push notifications for order updates
 
-      When responding, always:
-      1. Be helpful and professional
-      2. Use a friendly and approachable tone
-      3. Provide accurate information based on the tools available
-      4. Mention BUPZO's unique features when relevant
-      5. Encourage users to explore BUPZO's diverse product catalog
+      When responding, always: be helpful, professional, use a friendly tone, provide accurate information based on available tools, mention BUPZO's unique features when relevant, and encourage users to explore BUPZO's diverse product catalog.
 
-      Contact Information:
-      - Email: hello@bupzo.com
-      - Support Phone: +919876543210
+      Contact Information: Email: hello@bupzo.com, Support Phone: +919876543210
     `,
   });
 

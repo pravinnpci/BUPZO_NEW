@@ -1,20 +1,13 @@
-# Use official Node.js image
 FROM node:18-alpine
 
-# Set working directory
-WORKDIR /app/bupzomcp
+WORKDIR /app
 
-# Copy package files
+# Install dependencies first for better caching
 COPY package*.json ./
-
-# Install dependencies
 RUN npm install
 
 # Copy source files
 COPY . .
 
-# Expose port 3004 (as configured in docker-compose.yml)
-EXPOSE 3004
-
-# Start the application
+# Run the application
 CMD ["node", "index.js"]

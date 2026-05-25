@@ -11,9 +11,13 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "@modelcontextprotocol/server": "^2.0.0-alpha.2",
     "@modelcontextprotocol/server-postgres": "^0.6.2",
     "axios": "^1.16.1",
     "clsx": "^2.1.1",
+    "ioredis": "^5.10.1",
+    "pg": "^8.21.0",
     "zustand": "^5.0.13"
   },
   "devDependencies": {

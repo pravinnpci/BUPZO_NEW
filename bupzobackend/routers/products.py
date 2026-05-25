@@ -1,121 +1,62 @@
-"""
-BUPZO Products Router
-Handles product CRUD operations and category management
-"""
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from typing import List, Optional
-from database import get_db
-from models import Product, Category
-from schemas import ProductCreate, ProductResponse, CategoryCreate, CategoryResponse
+from typing import List
+from uuid import UUID
+from decimal import Decimal
 
-router = APIRouter()
+from .. import schemas, crud
+from ..database import get_db
 
-@router.post("/categories", status_code=status.HTTP_201_CREATED, response_model=CategoryResponse)
-async def create_category(category: CategoryCreate, db: Session = Depends(get_db)):
-    """
-    Create a new product category
-    """
-    db_category = Category(**category.model_dump())
-    db.add(db_category)
-    db.commit()
-    db.refresh(db_category)
-    return db_category
+router = APIRouter(
+    prefix="/products",
+    tags=["products"]
+)
 
-@router.get("/categories", status_code=status.HTTP_200_OK, response_model=List[CategoryResponse])
-async def get_categories(db: Session = Depends(get_db)):
-    """
-    Get all product categories
-    """
-    categories = db.query(Category).all()
-    return categories
-
-@router.get("/categories/{category_id}", status_code=status.HTTP_200_OK, response_model=CategoryResponse)
-async def get_category(category_id: str, db: Session = Depends(get_db)):
-    """
-    Get a specific product category
-    """
-    category = db.query(Category).filter(Category.id == category_id).first()
-    if not category:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Category not found"
-        )
-    return category
-
-@router.post("/products", status_code=status.HTTP_201_CREATED, response_model=ProductResponse)
-async def create_product(product: ProductCreate, db: Session = Depends(get_db)):
-    """
-    Create a new product
-    """
-    db_product = Product(**product.model_dump())
-    db.add(db_product)
-    db.commit()
-    db.refresh(db_product)
-    return db_product
-
-@router.get("/products", status_code=status.HTTP_200_OK, response_model=List[ProductResponse])
-async def get_products(
-    category_id: Optional[str] = None,
+@router.get("/", response_model=List[schemas.Product])
+def read_products(
+    skip: int = 0,
+    limit: int = 100,
+    category_id: UUID = None,
+    seller_id: UUID = None,
+    is_combo: bool = None,
+    price_min: Decimal = None,
+    price_max: Decimal = None,
+    sort_by: str = None,
     db: Session = Depends(get_db)
 ):
-    """
-    Get all products (optionally filtered by category)
-    """
-    query = db.query(Product)
+    filters = {}
     if category_id:
-        query = query.filter(Product.category_id == category_id)
-    products = query.all()
+        filters['category_id'] = category_id
+    if seller_id:
+        filters['seller_id'] = seller_id
+    if is_combo is not None:
+        filters['is_combo'] = is_combo
+    if price_min:
+        filters['price_min'] = price_min
+    if price_max:
+        filters['price_max'] = price_max
+    if sort_by:
+        filters['sort_by'] = sort_by
+
+    products = crud.get_products(db, skip=skip, limit=limit, **filters)
     return products
 
-@router.get("/products/{product_id}", status_code=status.HTTP_200_OK, response_model=ProductResponse)
-async def get_product(product_id: str, db: Session = Depends(get_db)):
-    """
-    Get a specific product
-    """
-    product = db.query(Product).filter(Product.id == product_id).first()
-    if not product:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Product not found"
-        )
+@router.get("/{product_id}", response_model=schemas.Product)
+def read_product(product_id: UUID, db: Session = Depends(get_db)):
+    product = crud.get_product(db, product_id=product_id)
+    if product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
     return product
 
-@router.put("/products/{product_id}", status_code=status.HTTP_200_OK, response_model=ProductResponse)
-async def update_product(
-    product_id: str,
-    product: ProductCreate,
+@router.post("/", response_model=schemas.Product)
+def create_product(
+    product: schemas.ProductCreate,
     db: Session = Depends(get_db)
 ):
-    """
-    Update a product
-    """
-    db_product = db.query(Product).filter(Product.id == product_id).first()
-    if not db_product:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Product not found"
-        )
-
-    for key, value in product.model_dump().items():
-        setattr(db_product, key, value)
-
-    db.commit()
-    db.refresh(db_product)
+    # In a real implementation, we would get the user_id from the JWT token
+    # For now, we'll use a placeholder
+    user_id = UUID("b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a02")  # Halwa Seller
+    db_product = crud.create_product(db, product=product, user_id=user_id)
+    if db_product is None:
+        raise HTTPException(status_code=400, detail="Seller not found")
     return db_product
-
-@router.delete("/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_product(product_id: str, db: Session = Depends(get_db)):
-    """
-    Delete a product
-    """
-    db_product = db.query(Product).filter(Product.id == product_id).first()
-    if not db_product:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Product not found"
-        )
-
-    db.delete(db_product)
-    db.commit()
-    return None
