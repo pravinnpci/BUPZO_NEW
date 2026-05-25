@@ -2,7 +2,7 @@
  * BUPZO - Header Component
  * Phoenix Dashboard Layout with Dark/Light Mode Toggle
  */
-import { cn } from '@/lib/utils';
+import { cn } from '../lib/utils';
 import { Sun, Moon, Search, Bell, User } from 'lucide-react';
 import { useTheme } from 'next-themes';
 

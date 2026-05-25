@@ -2,7 +2,7 @@
  * BUPZO - Multi-column Footer
  * Phoenix Dashboard Layout with Skeuomorphic Touches
  */
-import { cn } from '@/lib/utils';
+import { cn } from '../lib/utils';
 import { Facebook, X as LucideTwitter, Phone, Mail } from 'lucide-react';
 
 export function Footer() {

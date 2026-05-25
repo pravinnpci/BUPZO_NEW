@@ -2,8 +2,8 @@
  * BUPZO - Auth Modal (Phone OTP Login)
  * Sleek UI for Phone OTP Authentication
  */
-import { cn } from '@/lib/utils';
-import { useAuthStore } from '@/store/authStore';
+import { cn } from '../lib/utils';
+import { useAuthStore } from '../store/authStore';
 import { useState } from 'react';
 import { Phone, Lock, CheckCircle, XCircle, ArrowLeft } from 'lucide-react';
 

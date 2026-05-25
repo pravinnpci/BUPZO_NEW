@@ -14,6 +14,15 @@ const api = {
     });
     if (!response.ok) throw new Error('API Error');
     return response.json();
+  },
+  put: async (endpoint: string, data: any) => {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('API Error');
+    return response.json();
   }
 };
 
@@ -28,6 +37,8 @@ export const walletApi = {
 
 export const productApi = {
   getProducts: () => api.get('/api/products'),
+  getProduct: (id: string) => api.get(`/api/products/${id}`),
+  getCategories: () => api.get('/api/categories'),
 };
 
 export default api;

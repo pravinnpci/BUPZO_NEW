@@ -1,7 +1,7 @@
 import Image from 'next/image';
-import { Button } from '@/components/ui/button';
+import { Button } from './ui/button';
 import { Star } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '../lib/utils';
 
 interface ProductCardProps {
   id: string;

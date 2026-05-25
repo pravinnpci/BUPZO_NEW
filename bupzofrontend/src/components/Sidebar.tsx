@@ -2,7 +2,7 @@
  * BUPZO - Left Sidebar Navigation
  * Phoenix Dashboard Layout with Responsive Design
  */
-import { cn } from '@/lib/utils';
+import { cn } from '../lib/utils';
 import { Home, Package, Users, ShoppingCart, Settings, LogOut } from 'lucide-react';
 
 export function Sidebar() {
