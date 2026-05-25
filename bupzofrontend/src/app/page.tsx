@@ -1,92 +1,119 @@
-"use client";
+'use client'
 
 import { useState, useEffect } from 'react'
-import { useTheme } from '@/context/ThemeProvider'
 import ProductCard from '@/components/ProductCard'
+import HeroCarousel from '@/components/HeroCarousel'
+
+interface Product {
+  id: string
+  name: string
+  description: string
+  price: number
+  image_url: string
+  is_combo: boolean
+}
 
 export default function Home() {
-  const { theme } = useTheme()
-  const [products, setProducts] = useState([])
+  const [products, setProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Fetch products from the API
-    fetch('http://localhost:8003/products')
-      .then(response => response.json())
-      .then(data => {
+    const fetchProducts = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/products`)
+        if (!response.ok) {
+          throw new Error('Failed to fetch products')
+        }
+        const data = await response.json()
         setProducts(data)
-      })
-      .catch(error => {
-        console.error('Error fetching products:', error)
-        // Use mock data if API fails
-        setProducts([
-          {
-            id: '1',
-            name: 'Nagore Special Ghee Halwa 500g',
-            description: 'Rich and authentic ghee halwa from Nagore',
-            price: 450.00,
-            image_url: 'https://picsum.photos/id/101/200/300',
-            is_combo: false
-          },
-          {
-            id: '2',
-            name: 'Premium Mixed Dry Fruits 1kg',
-            description: 'Assorted dry fruits for a healthy snack',
-            price: 999.00,
-            image_url: 'https://picsum.photos/id/102/200/300',
-            is_combo: false
-          },
-          {
-            id: '3',
-            name: 'Educational Building Blocks Set',
-            description: 'Colorful blocks for creative learning',
-            price: 750.00,
-            image_url: 'https://picsum.photos/id/103/200/300',
-            is_combo: false
-          },
-          {
-            id: '4',
-            name: 'Wireless Bluetooth Earbuds',
-            description: 'High-quality sound with long battery life',
-            price: 1299.00,
-            image_url: 'https://picsum.photos/id/104/200/300',
-            is_combo: false
-          },
-          {
-            id: '5',
-            name: 'Halwa & Dry Fruits Combo',
-            description: 'Special combo pack of Nagore Halwa and Dry Fruits',
-            price: 1300.00,
-            image_url: 'https://picsum.photos/id/105/200/300',
-            is_combo: true
-          }
-        ])
-      })
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An unknown error occurred')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchProducts()
   }, [])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading products...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center p-8 bg-red-50 dark:bg-red-900/20 rounded-lg">
+          <h2 className="text-2xl font-bold text-red-600 dark:text-red-300 mb-4">Error</h2>
+          <p className="text-gray-600 dark:text-gray-300">{error}</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Hero Section */}
-      <div className="relative h-96 bg-gradient-to-r from-primary-500 to-mauve-600 flex items-center justify-center">
-        <div className="text-center px-4">
-          <h1 className="text-4xl md:text-5xl font-heading font-bold text-white mb-4">
-            Welcome to BUPZO
-          </h1>
-          <p className="text-xl md:text-2xl text-white mb-6 max-w-2xl mx-auto">
-            Your Trusted Multi-Vendor Marketplace for Nagore Specialties, Toys, Electronics, and More
-          </p>
-          <button className="bg-white text-primary-600 px-6 py-3 rounded-lg font-medium hover:bg-primary-100 transition-colors">
-            Shop Now
-          </button>
-        </div>
-      </div>
+      <div className="container mx-auto px-4 py-8">
+        <HeroCarousel />
 
-      {/* New Arrivals Section */}
-      <div className="py-12 px-4">
-        <h2 className="text-3xl font-heading font-bold mb-8 text-center">New Arrivals</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
+        <div className="mb-12">
+          <h2 className="text-3xl font-heading font-bold mb-8">New Arrivals</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {products.map((product) => (
+              <ProductCard
+                key={product.id}
+                id={product.id}
+                name={product.name}
+                description={product.description}
+                price={product.price}
+                imageUrl={product.image_url}
+                isCombo={product.is_combo}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-12">
+          <h2 className="text-3xl font-heading font-bold mb-8">Categories</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            {[
+              { name: 'Halwa', image: 'https://picsum.photos/id/10/200/300' },
+              { name: 'Dry Fruits', image: 'https://picsum.photos/id/11/200/300' },
+              { name: 'Toys', image: 'https://picsum.photos/id/12/200/300' },
+              { name: 'Electronics', image: 'https://picsum.photos/id/13/200/300' },
+              { name: 'Ceramics', image: 'https://picsum.photos/id/14/200/300' },
+              { name: 'Home Appliances', image: 'https://picsum.photos/id/15/200/300' }
+            ].map((category, index) => (
+              <div
+                key={index}
+                className="relative group rounded-lg overflow-hidden aspect-square bg-gray-100 dark:bg-gray-800"
+              >
+                <div className="absolute inset-0">
+                  <img
+                    src={category.image}
+                    alt={category.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <a
+                    href={`/category/${category.name.toLowerCase().replace(' ', '-')}`}
+                    className="text-white text-center px-4 py-2 rounded-lg hover:bg-white/20 transition-colors"
+                  >
+                    <span className="font-medium">{category.name}</span>
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

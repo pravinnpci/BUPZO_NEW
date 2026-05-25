@@ -1,25 +1,38 @@
-FROM node:20-alpine AS builder
+# Use the official Next.js image
+FROM node:18-alpine as builder
 
+# Create app directory
 WORKDIR /app
 
-COPY package*.json ./
+# Copy package files first for better caching
+COPY package.json package-lock.json ./
 
-RUN npm install --legacy-peer-deps
+# Install dependencies
+RUN npm install
 
+# Copy all source files
 COPY . .
 
-RUN npm run build # This is for the production build, but for dev we'll use npm run dev
+# Build the application
+RUN npm run build
 
-FROM node:20-alpine
+# Use the official Node.js image for production
+FROM node:18-alpine
 
+# Create app directory
 WORKDIR /app
 
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/node_modules ./node_modules
+# Copy built files from builder
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/node_modules ./node_modules
 
-EXPOSE 3003
-ENV PORT=3003
+# Install production dependencies
+RUN npm install --production
 
-CMD ["npm", "run", "start"]
+# Expose the port the app runs on
+EXPOSE 3000
+
+# Command to run the application
+CMD ["npm", "start"]

@@ -103,3 +103,37 @@ def get_wallet_transactions(db: Session, user_id: UUID, skip: int = 0, limit: in
     return db.query(models.WalletTransaction).filter(
         models.WalletTransaction.user_id == user_id
     ).order_by(models.WalletTransaction.created_at.desc()).offset(skip).limit(limit).all()
+
+def create_order(db: Session, order: schemas.Order, order_items: List[dict]):
+    # Create order
+    db_order = models.Order(
+        id=order.id,
+        user_id=order.user_id,
+        seller_id=order.seller_id,
+        total_amount=order.total_amount,
+        status=order.status,
+        tracking_id=order.tracking_id,
+        order_source=order.order_source,
+        shipping_partner=order.shipping_partner,
+        payment_gateway=order.payment_gateway,
+        created_at=order.created_at,
+        updated_at=order.updated_at
+    )
+    db.add(db_order)
+    db.commit()
+    db.refresh(db_order)
+
+    # Create order items
+    for item in order_items:
+        db_order_item = models.OrderItem(
+            id=UUID(),
+            order_id=db_order.id,
+            product_id=item["product_id"],
+            quantity=item["quantity"],
+            price=item["price"],
+            created_at=datetime.now()
+        )
+        db.add(db_order_item)
+
+    db.commit()
+    return db_order

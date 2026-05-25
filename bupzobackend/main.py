@@ -5,14 +5,17 @@ from typing import List
 from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
+import os
 
-from . import models
+# Fix the import path
 from .database import engine, SessionLocal
-from .schemas import User, UserCreate, Product, ProductCreate, Token
-from .crud import create_user, get_user_by_phone_number, get_products, get_product, create_product, get_wallet_balance, get_wallet_transactions
+from .schemas import User, UserCreate, Product, ProductCreate, Token, OrderCreate, Order
+from .crud import create_user, get_user_by_phone_number, get_products, get_product, create_product, get_wallet_balance, get_wallet_transactions, create_order
 from .routers import auth, products, wallet
+from .app.api import orders, payments
 
 # Create tables
+from . import models
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
@@ -30,6 +33,8 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(products.router)
 app.include_router(wallet.router)
+app.include_router(orders.router)
+app.include_router(payments.router)
 
 # Dependency
 def get_db():

@@ -1,6 +1,8 @@
 const { Pool } = require('pg');
 const Redis = require('ioredis');
 const axios = require('axios');
+const { v4: uuidv4 } = require('uuid');
+const FormData = require('form-data');
 
 // Database connection pool
 const pool = new Pool({
@@ -34,6 +36,11 @@ redis.on('error', (err) => {
 // Initialize MCP server
 const mcp = require('@modelcontextprotocol/server');
 const { getGenerativeModel } = require('./agent');
+
+// WhatsApp API configuration
+const WHATSAPP_API_TOKEN = process.env.WHATSAPP_API_TOKEN || 'mock_whatsapp_token';
+const PHONE_NUMBER_ID = process.env.PHONE_NUMBER_ID || 'mock_phone_number_id';
+const WHATSAPP_API_URL = 'https://graph.facebook.com/v18.0';
 
 const server = mcp.createServer({
   model: getGenerativeModel(),
@@ -328,26 +335,49 @@ const server = mcp.createServer({
       execute: async ({ phone_number, message }) => {
         try {
           // In a real implementation, this would make an HTTP request to Meta Cloud API
-          // For now, we'll simulate the API call
-          console.log(`[WhatsApp] Sending to ${phone_number}: ${message}`);
+          // For now, we'll simulate the API call with actual HTTP request structure
+
+          // Format the phone number for WhatsApp API (e.g., +919876543210)
+          const formattedPhoneNumber = phone_number.startsWith('+') ? phone_number : `+91${phone_number}`;
+
+          // Prepare the request data
+          const formData = new FormData();
+          formData.append('messaging_product', 'whatsapp');
+          formData.append('to', formattedPhoneNumber);
+          formData.append('type', 'text');
+          formData.append('text', { body: message });
+
+          // In a real implementation, you would use:
+          // const response = await axios.post(
+          //   `${WHATSAPP_API_URL}/${PHONE_NUMBER_ID}/messages`,
+          //   formData,
+          //   {
+          //     headers: {
+          //       'Authorization': `Bearer ${WHATSAPP_API_TOKEN}`,
+          //       ...formData.getHeaders()
+          //     }
+          //   }
+          // );
 
           // Mock API response
+          console.log(`[WhatsApp] Sending to ${formattedPhoneNumber}: ${message}`);
+
           const mockResponse = {
             messaging_product: "whatsapp",
             contacts: [{
-              input: phone_number,
-              wa_id: phone_number
+              input: formattedPhoneNumber,
+              wa_id: formattedPhoneNumber
             }],
             statuses: [{
-              recipient_id: phone_number,
-              id: "wamid.IN." + phone_number.replace(/\D/g, ''),
+              recipient_id: formattedPhoneNumber,
+              id: "wamid.IN." + formattedPhoneNumber.replace(/\D/g, ''),
               status: "sent"
             }]
           };
 
           return {
             success: true,
-            message: `Message sent to ${phone_number} via WhatsApp`,
+            message: `Message sent to ${formattedPhoneNumber} via WhatsApp`,
             response: mockResponse
           };
         } catch (error) {
@@ -510,6 +540,184 @@ const server = mcp.createServer({
           };
         } catch (error) {
           console.error('Error finding products:', error);
+          return {
+            success: false,
+            error: error.message
+          };
+        }
+      }
+    },
+    {
+      name: 'create_order',
+      description: 'Create a new order in the BUPZO database',
+      parameters: {
+        type: 'object',
+        properties: {
+          user_id: { type: 'string', description: 'User ID' },
+          seller_id: { type: 'string', description: 'Seller ID' },
+          order_items: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                product_id: { type: 'string', description: 'Product ID' },
+                quantity: { type: 'number', description: 'Quantity' },
+                price: { type: 'number', description: 'Price per unit' }
+              },
+              required: ['product_id', 'quantity', 'price']
+            }
+          },
+          total_amount: { type: 'number', description: 'Total order amount' },
+          order_source: { type: 'string', description: 'Order source (WEB/APP)' },
+          payment_gateway: { type: 'string', description: 'Payment gateway used' },
+          tracking_id: { type: 'string', description: 'Tracking ID (optional)' },
+          shipping_partner: { type: 'string', description: 'Shipping partner (optional)' }
+        },
+        required: ['user_id', 'seller_id', 'order_items', 'total_amount', 'order_source', 'payment_gateway']
+      },
+      execute: async ({ user_id, seller_id, order_items, total_amount, order_source, payment_gateway, tracking_id, shipping_partner }) => {
+        try {
+          // Start transaction
+          await pool.query('BEGIN');
+
+          // Create order
+          const orderId = uuidv4();
+          const orderQuery = `
+            INSERT INTO orders (id, user_id, seller_id, total_amount, status, tracking_id, order_source, shipping_partner, payment_gateway, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, 'PENDING', $5, $6, $7, $8, NOW(), NOW())
+            RETURNING id
+          `;
+
+          const { rows: orderRows } = await pool.query(orderQuery, [
+            orderId,
+            user_id,
+            seller_id,
+            total_amount,
+            tracking_id,
+            order_source,
+            shipping_partner,
+            payment_gateway
+          ]);
+
+          if (orderRows.length === 0) {
+            await pool.query('ROLLBACK');
+            return {
+              success: false,
+              error: 'Failed to create order'
+            };
+          }
+
+          const createdOrderId = orderRows[0].id;
+
+          // Create order items
+          const orderItemQuery = `
+            INSERT INTO order_items (id, order_id, product_id, quantity, price, created_at)
+            VALUES ($1, $2, $3, $4, $5, NOW())
+          `;
+
+          for (const item of order_items) {
+            const itemId = uuidv4();
+            await pool.query(orderItemQuery, [
+              itemId,
+              createdOrderId,
+              item.product_id,
+              item.quantity,
+              item.price
+            ]);
+
+            // Update product stock
+            const updateStockQuery = `
+              UPDATE products
+              SET stock_quantity = stock_quantity - $1
+              WHERE id = $2
+            `;
+            await pool.query(updateStockQuery, [item.quantity, item.product_id]);
+          }
+
+          // Commit transaction
+          await pool.query('COMMIT');
+
+          return {
+            success: true,
+            order_id: createdOrderId,
+            message: 'Order created successfully'
+          };
+        } catch (error) {
+          console.error('Error creating order:', error);
+          await pool.query('ROLLBACK');
+          return {
+            success: false,
+            error: error.message
+          };
+        }
+      }
+    },
+    {
+      name: 'get_order_tracking',
+      description: 'Get tracking information for an order',
+      parameters: {
+        type: 'object',
+        properties: {
+          order_id: { type: 'string', description: 'Order ID' },
+        },
+        required: ['order_id'],
+      },
+      execute: async ({ order_id }) => {
+        try {
+          // Get order details
+          const orderQuery = `
+            SELECT o.id, o.status, o.tracking_id, o.shipping_partner, o.created_at,
+                   sl.delivery_status, sl.tracking_url, sl.created_at as shipping_created_at
+            FROM orders o
+            LEFT JOIN shipping_logs sl ON o.id = sl.order_id
+            WHERE o.id = $1
+          `;
+
+          const { rows: orderRows } = await pool.query(orderQuery, [order_id]);
+
+          if (orderRows.length === 0) {
+            return {
+              success: false,
+              error: 'Order not found'
+            };
+          }
+
+          const order = orderRows[0];
+
+          // Mock tracking status based on order status
+          let trackingStatus = 'PENDING';
+          let estimatedDelivery = 'N/A';
+          let trackingUrl = '';
+
+          if (order.status === 'SHIPPED' || order.status === 'DELIVERED') {
+            trackingStatus = order.delivery_status || 'IN_TRANSIT';
+            estimatedDelivery = '5-7 days';
+
+            // Generate a mock tracking URL
+            trackingUrl = `https://track.bupzo.com/order/${order_id}`;
+
+            // If order is delivered, provide a more specific status
+            if (order.status === 'DELIVERED') {
+              trackingStatus = 'DELIVERED';
+              estimatedDelivery = 'Delivered on ' + new Date().toLocaleDateString();
+            }
+          } else if (order.status === 'PROCESSING') {
+            trackingStatus = 'PROCESSING';
+            estimatedDelivery = '1-2 days';
+          }
+
+          return {
+            success: true,
+            order_id: order.id,
+            status: trackingStatus,
+            estimated_delivery: estimatedDelivery,
+            tracking_url: trackingUrl,
+            shipping_partner: order.shipping_partner,
+            created_at: order.created_at,
+            shipping_created_at: order.shipping_created_at
+          };
+        } catch (error) {
+          console.error('Error getting order tracking:', error);
           return {
             success: false,
             error: error.message
