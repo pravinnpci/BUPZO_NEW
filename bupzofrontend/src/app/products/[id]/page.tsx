@@ -1,14 +1,16 @@
+"use client";
+
 /**
  * BUPZO - Product Detail Page (PDP)
  * Production-ready implementation with real API integration
  */
-import { cn } from '@/lib/utils';
-import { useCartStore } from '@/store/cartStore';
-import { useAuthStore } from '@/store/authStore';
+import { cn } from '../../../lib/utils';
+import { useCartStore } from '../../../store/cartStore';
+import { useAuthStore } from '../../../store/authStore';
 import { Star, ShoppingCart, Heart, ArrowLeft, Loader2 } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { productApi } from '@/utils/api';
+import { productApi } from '../../../utils/api';
 
 // Define types for product and category
 interface Product {

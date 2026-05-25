@@ -3,10 +3,10 @@
 /**
  * BUPZO - Landing Page
  */
-import { cn } from "../utils/index.js";
-import { useCartStore } from "../cartStore.ts";
+import { cn } from "../utils/index";
+import { useCartStore } from "../store/cartStore";
 import Image from 'next/image';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from '../components/ui/skeleton';
 import { useState, useEffect, CSSProperties } from 'react';
 
 interface Category {

@@ -127,3 +127,11 @@ As an AI Assistant reading this file, please execute the following steps increme
 3.  **Step 3:** Generate the boilerplate FastAPI application (`main.py`, database connection, and basic endpoints for Auth, Products, and Wallet).
 4.  **Step 4:** Build the Next.js `bupzofrontend` using Tailwind CSS and the *Mauve Serenity* color palette. Implement the Phoenix Dashboard layout with Left Sidebar, Dark Mode, and scroll animations. Connect it to the FastAPI backend.
 5.  **Step 5:** Update the existing MCP Server (`bupzomcp/index.js`) to connect to the PostgreSQL database using `pg` (node-postgres) and replace all dummy data with actual database queries.
+
+
+
+- PostgreSQL: `psql -h localhost -p 5434 -U bupzo_user -d bupzo_db`
+- Redis: `redis-cli -h localhost -p 6380 PING`
+- Backend: `http://localhost:8003`
+- Frontend: `http://localhost:3003`
+- MCP Server: `http://localhost:3004`

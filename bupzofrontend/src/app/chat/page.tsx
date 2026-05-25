@@ -151,7 +151,7 @@ const ChatWorkspace = ({ chat, messages, onSendMessage, isGenerating, smartRepli
               type="text"
               placeholder="Type a message..."
               className="flex-1 border border-slate-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-              onKeyPress={(e) => e.key === 'Enter' && onSendMessage(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && onSendMessage((e.target as HTMLInputElement).value)}
             />
             <button
               onClick={() => onSendMessage("")}

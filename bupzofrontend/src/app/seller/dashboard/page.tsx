@@ -1,12 +1,14 @@
+"use client";
+
 /**
  * BUPZO - Seller Dashboard
  * Production-ready implementation with real API integration
  */
-import { cn } from '@/lib/utils';
-import { useAuthStore } from '@/store/authStore';
+import { cn } from '../../../lib/utils';
+import { useAuthStore } from '../../../store/authStore';
 import { ShoppingCart, Package, DollarSign, BarChart, Clock, ArrowLeft, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import api from '@/utils/api';
+import api from '../../../utils/api';
 
 // Define types for inventory and sales data
 interface InventoryItem {

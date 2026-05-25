@@ -6,14 +6,19 @@ interface CartItem {
   price: number;
   category: string;
   image: string;
+  quantity?: number;
 }
 
 interface CartStore {
-  cartItems: CartItem[];
+  items: CartItem[];
+  total: number;
+  trustFund: number;
   addToCart: (item: CartItem) => void;
 }
 
 export const useCartStore = create<CartStore>((set) => ({
-  cartItems: [],
-  addToCart: (item) => set((state) => ({ cartItems: [...state.cartItems, item] })),
+  items: [],
+  total: 0,
+  trustFund: 0,
+  addToCart: (item) => set((state) => ({ items: [...state.items, { ...item, quantity: item.quantity || 1 }], total: state.total + item.price })),
 }));

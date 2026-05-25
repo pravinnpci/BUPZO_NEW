@@ -1,14 +1,16 @@
+"use client";
+
 /**
  * BUPZO - Customer Dashboard
  * Production-ready implementation with real API integration
  */
-import { cn } from '@/lib/utils';
-import { useAuthStore } from '@/store/authStore';
-import { useCartStore } from '@/store/cartStore';
+import { cn } from '../../../lib/utils';
+import { useAuthStore } from '../../../store/authStore';
+import { useCartStore } from '../../../store/cartStore';
 import { ShoppingCart, Package, CreditCard, DollarSign, Clock, ArrowLeft, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { walletApi } from '@/utils/api';
-import api from '@/utils/api';
+import { walletApi } from '../../../utils/api';
+import api from '../../../utils/api';
 
 const customerApi = {
   getOrders: (userId: string) => api.get(`/customer/orders?user_id=${userId}`),

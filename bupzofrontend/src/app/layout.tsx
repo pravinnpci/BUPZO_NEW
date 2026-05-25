@@ -1,7 +1,7 @@
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
-import ThemeProvider from "../ThemeProvider.tsx";
+import ThemeProvider from "../ThemeProvider";
 import "./globals.css";
-import { cn } from "../utils/index.js";
+import { cn } from "../lib/utils";
 
 const inter = Inter({ subsets: ["latin"], display: "swap", variable: "--font-inter" });
 const plusJakarta = Plus_Jakarta_Sans({ subsets: ["latin"], display: "swap", variable: "--font-plus-jakarta" });

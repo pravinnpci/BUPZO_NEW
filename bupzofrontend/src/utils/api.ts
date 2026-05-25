@@ -17,6 +17,11 @@ const api = {
   }
 };
 
+export const authApi = {
+  requestOTP: (email: string) => api.post('/api/auth/request-otp', { email }),
+  verifyOTP: (email: string, otp: string) => api.post('/api/auth/verify-otp', { email, otp }),
+};
+
 export const walletApi = {
   getBalance: () => api.get('/api/wallet/balance'),
 };

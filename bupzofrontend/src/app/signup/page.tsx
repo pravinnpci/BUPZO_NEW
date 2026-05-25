@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { authApi } from '@/utils/api';
+import { authApi } from '../../utils/api';
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
