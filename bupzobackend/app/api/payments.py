@@ -1,86 +1,121 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from typing import Optional
-from uuid import UUID
+from databases import Database
+import os
+from dotenv import load_dotenv
 from datetime import datetime
-from decimal import Decimal
 
-from .. import schemas, crud
-from ..database import get_db
+# Load environment variables
+load_dotenv()
 
-router = APIRouter(
-    prefix="/payments",
-    tags=["payments"]
-)
+# Router
+router = APIRouter()
 
-@router.post("/initiate", response_model=dict)
-def initiate_payment(
-    order_id: UUID,
-    amount: Decimal,
-    gateway_name: str,
-    db: Session = Depends(get_db)
+# Models
+class PaymentLogBase(BaseModel):
+    order_id: str
+    gateway_name: str
+    amount: float
+    status: str
+    gateway_transaction_id: Optional[str] = None
+
+class PaymentLogCreate(PaymentLogBase):
+    pass
+
+class PaymentLog(PaymentLogBase):
+    id: str
+    transaction_date: datetime
+
+    class Config:
+        orm_mode = True
+
+# Utility functions
+def get_db():
+    return Database(os.getenv("DATABASE_URL"))
+
+async def get_payment_log(db: Database, payment_id: str):
+    query = """
+    SELECT id, order_id, gateway_name, amount, status, transaction_date, gateway_transaction_id
+    FROM payment_logs
+    WHERE id = :payment_id
+    """
+    return await db.fetch_one(query=query, values={"payment_id": payment_id})
+
+async def create_payment_log(db: Database, payment: PaymentLogCreate):
+    query = """
+    INSERT INTO payment_logs
+    (id, order_id, gateway_name, amount, status, transaction_date, gateway_transaction_id)
+    VALUES
+    (uuid_generate_v4(), :order_id, :gateway_name, :amount, :status, NOW(), :gateway_transaction_id)
+    RETURNING id
+    """
+    values = payment.dict()
+    payment_id = await db.fetch_val(query=query, values=values)
+    return payment_id
+
+# Routes
+@router.post("/", response_model=PaymentLog)
+async def create_payment(
+    payment: PaymentLogCreate,
+    db: Database = Depends(get_db)
 ):
-    """
-    Initiate a payment for an order.
-    In a real implementation, this would create a payment request with the selected gateway.
-    """
-    # Check if order exists
-    order = db.query(models.Order).filter(models.Order.id == order_id).first()
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
+    payment_id = await create_payment_log(db, payment)
+    return await get_payment_log(db, payment_id)
 
-    # Check if order is already paid
-    payment_log = db.query(models.PaymentLog).filter(
-        models.PaymentLog.order_id == order_id
-    ).first()
-    if payment_log and payment_log.status == "SUCCESS":
-        raise HTTPException(status_code=400, detail="Order already paid")
+@router.get("/{payment_id}", response_model=PaymentLog)
+async def read_payment(
+    payment_id: str,
+    db: Database = Depends(get_db)
+):
+    payment = await get_payment_log(db, payment_id)
+    if payment is None:
+        raise HTTPException(status_code=404, detail="Payment log not found")
+    return payment
 
-    # In a real implementation, this would create a payment request with the selected gateway
-    # For now, we'll just simulate a successful payment
-
-    # Create payment log
-    payment_log = models.PaymentLog(
-        id=UUID(),
+@router.post("/webhook")
+async def payment_webhook(
+    gateway_name: str,
+    order_id: str,
+    status: str,
+    amount: float,
+    transaction_id: Optional[str] = None,
+    db: Database = Depends(get_db)
+):
+    # Create or update payment log
+    payment = PaymentLogCreate(
         order_id=order_id,
         gateway_name=gateway_name,
         amount=amount,
-        status="SUCCESS",  # Simulating success
-        transaction_date=datetime.now(),
-        gateway_transaction_id=f"TXN-{order_id}-{datetime.now().timestamp()}"
+        status=status,
+        gateway_transaction_id=transaction_id
     )
-    db.add(payment_log)
 
-    # Update order status
-    order.status = "PROCESSING"
-    db.add(order)
-
-    db.commit()
-
-    return {
-        "success": True,
-        "message": f"Payment initiated successfully with {gateway_name}",
-        "gateway_transaction_id": payment_log.gateway_transaction_id,
-        "order_id": order_id
-    }
-
-@router.post("/webhook/{gateway_name}", response_model=dict)
-def payment_webhook(
-    gateway_name: str,
-    db: Session = Depends(get_db)
-):
+    # Check if payment log already exists
+    query = """
+    SELECT id FROM payment_logs
+    WHERE order_id = :order_id AND gateway_name = :gateway_name
     """
-    Handle payment webhook from a payment gateway.
-    In a real implementation, this would receive payment status updates.
-    """
-    # In a real implementation, this would:
-    # 1. Verify the webhook signature
-    # 2. Parse the payment status
-    # 3. Update the order and payment log accordingly
+    existing_payment = await db.fetch_one(query=query, values={
+        "order_id": order_id,
+        "gateway_name": gateway_name
+    })
 
-    # For now, we'll simulate a successful payment update
-    return {
-        "success": True,
-        "message": f"Payment webhook received from {gateway_name}",
-        "status": "SUCCESS"
-    }
+    if existing_payment:
+        # Update existing payment log
+        update_query = """
+        UPDATE payment_logs
+        SET status = :status, gateway_transaction_id = :gateway_transaction_id
+        WHERE id = :payment_id
+        RETURNING id
+        """
+        await db.execute(update_query, values={
+            "status": status,
+            "gateway_transaction_id": transaction_id,
+            "payment_id": existing_payment["id"]
+        })
+    else:
+        # Create new payment log
+        await create_payment_log(db, payment)
+
+    return {"message": f"Payment {status} processed successfully"}

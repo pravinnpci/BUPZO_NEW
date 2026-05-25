@@ -1,39 +1,37 @@
-"use client";
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import '../globals.css';
+import { ThemeProvider } from '@/context/ThemeProvider';
+import Sidebar from '@/components/Sidebar';
+import AdminHeader from '@/components/AdminHeader';
 
-import React from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+const inter = Inter({ subsets: ['latin'] });
 
-export default function AdminDashboardLayout({
+export const metadata: Metadata = {
+  title: 'BUPZO Admin Dashboard',
+  description: 'Admin dashboard for BUPZO platform',
+};
+
+export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white shadow-sm border-b border-slate-100">
-        <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-          <div className="flex items-center space-x-8">
-            <h1 className="text-xl font-bold text-slate-900">Bupzo Admin</h1>
-            <nav>
-              <ul className="flex space-x-6">
-                <li><Link href="/admin/dashboard" className="text-slate-600 hover:text-indigo-600 transition-colors">Dashboard</Link></li>
-                <li><Link href="/admin/users" className="text-slate-600 hover:text-indigo-600 transition-colors">Users</Link></li>
-                <li><Link href="/admin/orders" className="text-slate-600 hover:text-indigo-600 transition-colors">Orders</Link></li>
-                <li><Link href="/admin/settings" className="text-slate-600 hover:text-indigo-600 transition-colors">Settings</Link></li>
-              </ul>
-            </nav>
-          </div>
-          <div className="flex items-center space-x-4">
-            <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center">
-              <span className="text-white text-sm">👤</span>
+    <html lang="en" suppressHydrationWarning>
+      <body className={inter.className}>
+        <ThemeProvider>
+          <div className="flex flex-col min-h-screen">
+            <AdminHeader />
+            <div className="flex flex-1">
+              <Sidebar />
+              <main className="flex-1 ml-64 p-6 overflow-y-auto">
+                {children}
+              </main>
             </div>
           </div>
-        </div>
-      </header>
-      <main className="container mx-auto px-6 py-6">
-        {children}
-      </main>
-    </div>
+        </ThemeProvider>
+      </body>
+    </html>
   );
 }

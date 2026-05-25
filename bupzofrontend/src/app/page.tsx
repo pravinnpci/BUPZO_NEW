@@ -1,121 +1,59 @@
-'use client'
-
-import { useState, useEffect } from 'react'
-import ProductCard from '@/components/ProductCard'
-import HeroCarousel from '@/components/HeroCarousel'
-
-interface Product {
-  id: string
-  name: string
-  description: string
-  price: number
-  image_url: string
-  is_combo: boolean
-}
+import { useTheme } from '@/context/ThemeProvider';
+import { Moon, Sun } from 'lucide-react';
 
 export default function Home() {
-  const [products, setProducts] = useState<Product[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/products`)
-        if (!response.ok) {
-          throw new Error('Failed to fetch products')
-        }
-        const data = await response.json()
-        setProducts(data)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An unknown error occurred')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchProducts()
-  }, [])
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading products...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center p-8 bg-red-50 dark:bg-red-900/20 rounded-lg">
-          <h2 className="text-2xl font-bold text-red-600 dark:text-red-300 mb-4">Error</h2>
-          <p className="text-gray-600 dark:text-gray-300">{error}</p>
-        </div>
-      </div>
-    )
-  }
+  const { theme, toggleTheme } = useTheme();
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="container mx-auto px-4 py-8">
-        <HeroCarousel />
+    <div className="min-h-screen p-6">
+      <div className="max-w-6xl mx-auto">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-primary-500">Welcome to BUPZO</h1>
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-full hover:bg-neutral-800 transition-colors"
+          >
+            {theme === 'dark' ? (
+              <Sun className="h-6 w-6 text-yellow-400" />
+            ) : (
+              <Moon className="h-6 w-6 text-neutral-800" />
+            )}
+          </button>
+        </div>
 
-        <div className="mb-12">
-          <h2 className="text-3xl font-heading font-bold mb-8">New Arrivals</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {products.map((product) => (
-              <ProductCard
-                key={product.id}
-                id={product.id}
-                name={product.name}
-                description={product.description}
-                price={product.price}
-                imageUrl={product.image_url}
-                isCombo={product.is_combo}
-              />
-            ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+          <div className="card card-hover">
+            <h2 className="text-xl font-semibold mb-2">Explore Products</h2>
+            <p className="text-neutral-600 dark:text-neutral-400">
+              Discover amazing products from local sellers with AI-powered recommendations.
+            </p>
+          </div>
+          <div className="card card-hover">
+            <h2 className="text-xl font-semibold mb-2">Become a Seller</h2>
+            <p className="text-neutral-600 dark:text-neutral-400">
+              Start selling your products and reach a wider audience with our multi-vendor marketplace.
+            </p>
+          </div>
+          <div className="card card-hover">
+            <h2 className="text-xl font-semibold mb-2">AI-Powered Features</h2>
+            <p className="text-neutral-600 dark:text-neutral-400">
+              Experience the future of e-commerce with AI-driven product recommendations and personalized shopping.
+            </p>
           </div>
         </div>
 
-        <div className="mb-12">
-          <h2 className="text-3xl font-heading font-bold mb-8">Categories</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {[
-              { name: 'Halwa', image: 'https://picsum.photos/id/10/200/300' },
-              { name: 'Dry Fruits', image: 'https://picsum.photos/id/11/200/300' },
-              { name: 'Toys', image: 'https://picsum.photos/id/12/200/300' },
-              { name: 'Electronics', image: 'https://picsum.photos/id/13/200/300' },
-              { name: 'Ceramics', image: 'https://picsum.photos/id/14/200/300' },
-              { name: 'Home Appliances', image: 'https://picsum.photos/id/15/200/300' }
-            ].map((category, index) => (
-              <div
-                key={index}
-                className="relative group rounded-lg overflow-hidden aspect-square bg-gray-100 dark:bg-gray-800"
-              >
-                <div className="absolute inset-0">
-                  <img
-                    src={category.image}
-                    alt={category.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                  <a
-                    href={`/category/${category.name.toLowerCase().replace(' ', '-')}`}
-                    className="text-white text-center px-4 py-2 rounded-lg hover:bg-white/20 transition-colors"
-                  >
-                    <span className="font-medium">{category.name}</span>
-                  </a>
-                </div>
+        <div className="card p-6">
+          <h2 className="text-2xl font-bold mb-4">Featured Categories</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {['Halwa', 'Dry Fruits', 'Toys', 'Electronics', 'Ceramics', 'Home Appliances'].map((category) => (
+              <div key={category} className="bg-neutral-100 dark:bg-neutral-800 p-4 rounded-lg">
+                <div className="h-24 bg-neutral-200 dark:bg-neutral-700 rounded mb-2"></div>
+                <h3 className="font-medium">{category}</h3>
               </div>
             ))}
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }

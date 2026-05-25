@@ -1,9 +1,9 @@
-Build a complete, production-ready Multi-page (5-10 pages) E-Commerce / Online Store from scratch.
+Build a complete, production-ready Multi-page (5-10 pages) E-Commerce / Online Store frontend from scratch.
 The website is for "BUPZO" — tagline: "The Next-Gen AI-Powered Multi-Vendor E-Commerce Platform".
-About: A highly premium, modern multi-vendor e-commerce marketplace inspired by the Phoenix Dashboard layout. It features a universal product catalog, advanced vendor profiles, dynamic admin controls, real-time live chat communication, and seamless multi-key Mistral AI integration for pricing, fraud tracking, and automated marketing copy.
+About: A highly premium, modern multi-vendor e-commerce marketplace inspired by the Phoenix Dashboard layout. It features a universal product catalog, advanced vendor profiles, dynamic admin controls, real-time live chat communication, and seamless multi-key Mistral AI integration for pricing, fraud tracking, and automated marketing copy. The logo is a stylized geometric capital 'B' forming an intricate shopping bag shape, with 'Z' and 'P' subtly blended inside, and 'U' as part of the overall flow. Colors are rich electric blues and lime greens.
 
 TECHNOLOGY:
-Use React (JSX) with CSS modules or styled-components. Write clean, well-structured, production-quality code.
+Use Next.js 15 (App Router) with Tailwind CSS and Shadcn UI. Write clean, well-structured, production-quality code. Ensure PWA capabilities are enabled.
 
 DESIGN DIRECTION:
 Style: Skeuomorphic with realistic textures and shadows mimicking physical objects
@@ -12,35 +12,47 @@ Tone & Voice: Techy and innovative
 Typography: Inter for body text, Plus Jakarta Sans for headings
 
 LAYOUT STRUCTURE:
-Navigation: Left sidebar navigation
-Hero Section: Image slider or carousel hero rotating multiple slides
-Content Layout: Single column with alternating left-right sections
-Footer: Multi-column footer with links, about, contact, and social sections
-Section Spacing: Compact section spacing with minimal padding between sections
-Scroll Animation: Fade-in animations on scroll for sections and elements
+Navigation: Left sidebar navigation for both Customer and Seller/Admin views.
+Hero Section: Image slider or carousel hero rotating multiple slides (managed via Super Admin Dashboard).
+Content Layout: Single column with alternating left-right sections.
+Footer: Multi-column footer with links, about, contact, and social sections.
+Section Spacing: Compact section spacing with minimal padding between sections.
+Scroll Animation: Fade-in animations on scroll for sections and elements.
+Skeleton Screens: Implement skeleton loading for dynamic content.
 
 SECTIONS TO INCLUDE:
-Dynamic Product Catalog Grid, Analytics Sales Charts, Advanced Live Chat Workspace, Refund Invoice Tracker, and AI Recommendation Widgets.
+Dynamic Product Catalog Grid (with filters for New Arrivals, Combo, Seller-based, Price Range), Analytics Sales Charts, Advanced Live Chat Workspace (AI Chatbot), Refund Invoice Tracker, and AI Recommendation Widgets.
 
 INTERACTIVE FEATURES:
 Include the following:
 - Responsive hamburger mobile menu
 - Dark / Light mode toggle
 - Smooth scroll navigation
-- Scroll-triggered fade-in animations
-- Contact form with validation
-- Image or testimonial carousel/slider
-- Pricing table section
-- FAQ accordion section
-- Back to top button
-- Animated statistics counter section
-- Image lightbox gallery
-- Newsletter subscription form
-- Social media icon links
-- Google Maps embed
-- Preloader / loading animation
-- Sticky call-to-action button
-- Custom cursor effect
+- Scroll-triggered fade-in animations.
+- Sticky call-to-action button.
+- Custom cursor effect.
+- Preloader / loading animation.
+- Image lightbox gallery.
+- FAQ accordion section.
+- Back to top button.
+- Animated statistics counter section.
+- Newsletter subscription form.
+- Social media icon links.
+- Google Maps embed.
+- Contact form with validation.
+- Image or testimonial carousel/slider.
+- Pricing table section.
+- **Real-time Toast Notifications:** For sellers/customers (via WebSockets).
+- **Daily Spin & Win feature:** For user engagement.
+- **Wishlist with Price Drop Alert:** Users can add products to a wishlist and get notifications if the price drops.
+- **Flash Sales & Countdown Timer:** For special offers.
+- **Augmented Reality (AR) Visualization:** For products like Home Appliances, allowing users to "see in their room" (using `model-viewer` library).
+- **1-Click Checkout:** For faster purchases.
+- **Smart Shipping Tracker:** Map-like display for live order tracking.
+- **Multi-Currency & Language Support:** Auto-switcher based on user location, with Tamil/English language options.
+- **Biometric Authentication:** WebAuthn (Fingerprint/FaceID) support for fast re-logins.
+- **Privacy Policy Consent:** Mandatory checkbox at signup and a dedicated section in user profile.
+- **AdSense/AdMob Integration:** For monetization, but **disabled for Premium users**.
 
 TECHNICAL REQUIREMENTS:
 - Include detailed code comments
@@ -49,14 +61,18 @@ TECHNICAL REQUIREMENTS:
 - Optimize for SEO with proper meta tags
 - Include Google Fonts
 - Use Font Awesome or Lucide icons
-- Ensure WCAG accessibility standards
-- Keep all code in a single HTML file
-- Configure the development server to strictly run on Port 3003 (to avoid default Port 3000 conflicts) and connect to the FastAPI backend on Port 8003.
+- Ensure WCAG accessibility standards.
+- Configure the development server for `bupzo-frontend` to strictly run on Port 3003 (to avoid default Port 3000 conflicts) and connect to the FastAPI backend on Port 8003.
+- Configure the development server for `bupzo-admin` to strictly run on Port 3005 and connect to the FastAPI backend on Port 8003.
+- **Unified App Logic:** The frontend should dynamically render customer or seller/admin UI based on user role after login.
+- **Multi-Seller Dashboard:** Implement Phoenix Dashboard layout for sellers to manage products, orders, payouts, and view sales analytics.
+- **Super Admin Dashboard:** Implement Phoenix Dashboard layout for global control, user/seller management, banner management, price overrides, and live application health monitoring.
 
 IMPORTANT GUIDELINES:
 - Make the website fully responsive across desktop, tablet, and mobile
 - Use smooth transitions and micro-interactions for a polished feel
 - Use placeholder images (via picsum.photos or placehold.co) where needed
 - Write realistic placeholder text instead of generic lorem ipsum
-- Ensure consistent spacing, alignment, and visual hierarchy throughout
-- Provide the complete, ready-to-use code
+- Ensure consistent spacing, alignment, and visual hierarchy throughout.
+- Provide the complete, ready-to-use code.
+- **BUPZO Logo:** Integrate the finalized BUPZO logo (stylized 'B' in a shopping bag shape with 'Z', 'P', 'U' blended, rich electric blues and lime greens).

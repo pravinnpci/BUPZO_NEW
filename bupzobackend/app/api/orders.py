@@ -1,116 +1,224 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from typing import List
-from uuid import UUID
-from decimal import Decimal
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from typing import List, Optional
+from databases import Database
+import os
+from dotenv import load_dotenv
 from datetime import datetime
 
-from .. import schemas, crud
-from ..database import get_db
+# Load environment variables
+load_dotenv()
 
-router = APIRouter(
-    prefix="/orders",
-    tags=["orders"]
-)
+# Router
+router = APIRouter()
 
-@router.post("/", response_model=schemas.Order)
-def create_order(
-    order: schemas.OrderCreate,
-    db: Session = Depends(get_db)
-):
-    # Check if user exists
-    user = crud.get_user(db, user_id=order.user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+# Models
+class OrderItemBase(BaseModel):
+    product_id: str
+    quantity: int
+    price: float
 
-    # Check if seller exists
-    seller = crud.get_user(db, user_id=order.seller_id)
-    if not seller or not hasattr(seller, 'seller'):
-        raise HTTPException(status_code=404, detail="Seller not found")
+class OrderItemCreate(OrderItemBase):
+    pass
 
-    # Check inventory for each product
-    total_amount = Decimal('0.00')
-    order_items = []
+class OrderItem(OrderItemBase):
+    id: str
 
-    for item in order.order_items:
-        product = crud.get_product(db, product_id=item.product_id)
-        if not product:
-            raise HTTPException(status_code=404, detail=f"Product {item.product_id} not found")
+    class Config:
+        orm_mode = True
 
-        if product.stock_quantity < item.quantity:
-            raise HTTPException(status_code=400, detail=f"Not enough stock for product {product.name}")
+class OrderBase(BaseModel):
+    user_id: str
+    seller_id: str
+    total_amount: float
+    currency: Optional[str] = "INR"
+    exchange_rate: Optional[float] = 1.00
+    status: Optional[str] = "PENDING"
+    tracking_id: Optional[str] = None
+    order_source: Optional[str] = "WEB"
+    shipping_partner: Optional[str] = None
+    payment_gateway: Optional[str] = None
 
-        # Calculate total amount
-        total_amount += item.price * item.quantity
+class OrderCreate(OrderBase):
+    items: List[OrderItemCreate]
 
-        order_items.append({
+class Order(OrderBase):
+    id: str
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        orm_mode = True
+
+class OrderListItem(BaseModel):
+    id: str
+    user_id: str
+    seller_id: str
+    total_amount: float
+    status: str
+    created_at: datetime
+
+# Utility functions
+def get_db():
+    return Database(os.getenv("DATABASE_URL"))
+
+async def get_order(db: Database, order_id: str):
+    query = """
+    SELECT id, user_id, seller_id, total_amount, currency, exchange_rate,
+           status, tracking_id, order_source, shipping_partner, payment_gateway,
+           created_at, updated_at
+    FROM orders
+    WHERE id = :order_id
+    """
+    return await db.fetch_one(query=query, values={"order_id": order_id})
+
+async def get_order_items(db: Database, order_id: str):
+    query = """
+    SELECT id, product_id, quantity, price
+    FROM order_items
+    WHERE order_id = :order_id
+    """
+    return await db.fetch_all(query=query, values={"order_id": order_id})
+
+async def create_order(db: Database, order: OrderCreate):
+    # Create order
+    query = """
+    INSERT INTO orders
+    (id, user_id, seller_id, total_amount, currency, exchange_rate,
+     status, tracking_id, order_source, shipping_partner, payment_gateway)
+    VALUES
+    (uuid_generate_v4(), :user_id, :seller_id, :total_amount, :currency,
+     :exchange_rate, :status, :tracking_id, :order_source, :shipping_partner, :payment_gateway)
+    RETURNING id
+    """
+    values = order.dict(exclude={"items"})
+    order_id = await db.fetch_val(query=query, values=values)
+
+    # Create order items
+    for item in order.items:
+        item_query = """
+        INSERT INTO order_items
+        (id, order_id, product_id, quantity, price)
+        VALUES
+        (uuid_generate_v4(), :order_id, :product_id, :quantity, :price)
+        """
+        await db.execute(item_query, values={
+            "order_id": order_id,
             "product_id": item.product_id,
             "quantity": item.quantity,
             "price": item.price
         })
 
-    # Check if total amount matches order total_amount
-    if abs(total_amount - order.total_amount) > Decimal('0.01'):
-        raise HTTPException(status_code=400, detail="Order total amount does not match calculated amount")
+    return order_id
 
-    # Create order
-    db_order = schemas.Order(
-        id=UUID(),
-        user_id=order.user_id,
-        seller_id=order.seller_id,
-        total_amount=order.total_amount,
-        status="PENDING",
-        tracking_id=None,
-        order_source=order.order_source,
-        shipping_partner=None,
-        payment_gateway=order.payment_gateway,
-        created_at=datetime.now(),
-        updated_at=datetime.now(),
-        order_items=[]
-    )
+async def get_orders(
+    db: Database,
+    user_id: Optional[str] = None,
+    seller_id: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 100
+):
+    query = """
+    SELECT id, user_id, seller_id, total_amount, status, created_at
+    FROM orders
+    WHERE 1=1
+    """
+    values = {}
 
-    # Create order in database
-    db_order = crud.create_order(db, order=db_order, order_items=order_items)
+    if user_id:
+        query += " AND user_id = :user_id"
+        values["user_id"] = user_id
 
-    # Update product stock quantities
-    for item in order_items:
-        product = crud.get_product(db, product_id=item["product_id"])
-        if product:
-            product.stock_quantity -= item["quantity"]
-            db.add(product)
+    if seller_id:
+        query += " AND seller_id = :seller_id"
+        values["seller_id"] = seller_id
 
-    return db_order
+    if status:
+        query += " AND status = :status"
+        values["status"] = status
 
-def create_order_in_db(db: Session, order: schemas.Order, order_items: List[dict]):
-    # Create order
-    db_order = models.Order(
-        id=order.id,
-        user_id=order.user_id,
-        seller_id=order.seller_id,
-        total_amount=order.total_amount,
-        status=order.status,
-        tracking_id=order.tracking_id,
-        order_source=order.order_source,
-        shipping_partner=order.shipping_partner,
-        payment_gateway=order.payment_gateway,
-        created_at=order.created_at,
-        updated_at=order.updated_at
-    )
-    db.add(db_order)
-    db.commit()
-    db.refresh(db_order)
+    query += " ORDER BY created_at DESC LIMIT :limit"
+    values["limit"] = limit
 
-    # Create order items
-    for item in order_items:
-        db_order_item = models.OrderItem(
-            id=UUID(),
-            order_id=db_order.id,
-            product_id=item["product_id"],
-            quantity=item["quantity"],
-            price=item["price"],
-            created_at=datetime.now()
-        )
-        db.add(db_order_item)
+    return await db.fetch_all(query=query, values=values)
 
-    db.commit()
-    return db_order
+# Routes
+@router.post("/", response_model=Order)
+async def create_order_endpoint(
+    order: OrderCreate,
+    db: Database = Depends(get_db)
+):
+    order_id = await create_order(db, order)
+    return await get_order(db, order_id)
+
+@router.get("/", response_model=List[OrderListItem])
+async def read_orders(
+    user_id: Optional[str] = None,
+    seller_id: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 100,
+    db: Database = Depends(get_db)
+):
+    return await get_orders(db, user_id, seller_id, status, limit)
+
+@router.get("/{order_id}", response_model=Order)
+async def read_order(
+    order_id: str,
+    db: Database = Depends(get_db)
+):
+    order = await get_order(db, order_id)
+    if order is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return order
+
+@router.get("/{order_id}/items", response_model=List[OrderItem])
+async def read_order_items(
+    order_id: str,
+    db: Database = Depends(get_db)
+):
+    items = await get_order_items(db, order_id)
+    if not items:
+        raise HTTPException(status_code=404, detail="Order items not found")
+    return items
+
+@router.put("/{order_id}", response_model=Order)
+async def update_order(
+    order_id: str,
+    order: OrderBase,
+    db: Database = Depends(get_db)
+):
+    query = """
+    UPDATE orders
+    SET
+        user_id = COALESCE(:user_id, user_id),
+        seller_id = COALESCE(:seller_id, seller_id),
+        total_amount = COALESCE(:total_amount, total_amount),
+        currency = COALESCE(:currency, currency),
+        exchange_rate = COALESCE(:exchange_rate, exchange_rate),
+        status = COALESCE(:status, status),
+        tracking_id = COALESCE(:tracking_id, tracking_id),
+        order_source = COALESCE(:order_source, order_source),
+        shipping_partner = COALESCE(:shipping_partner, shipping_partner),
+        payment_gateway = COALESCE(:payment_gateway, payment_gateway),
+        updated_at = NOW()
+    WHERE id = :order_id
+    RETURNING id
+    """
+    values = order.dict()
+    values["order_id"] = order_id
+    await db.execute(query=query, values=values)
+    return await get_order(db, order_id)
+
+@router.post("/{order_id}/cancel")
+async def cancel_order(
+    order_id: str,
+    db: Database = Depends(get_db)
+):
+    query = """
+    UPDATE orders
+    SET status = 'CANCELLED', updated_at = NOW()
+    WHERE id = :order_id
+    RETURNING id
+    """
+    await db.execute(query=query, values={"order_id": order_id})
+    return {"message": "Order cancelled successfully"}

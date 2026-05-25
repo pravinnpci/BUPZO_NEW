@@ -1,41 +1,20 @@
-'use client'
+"use client";
 
-import { useState, useEffect, createContext, useContext } from 'react'
+import * as React from "react";
+import { ThemeProvider as NextThemesProvider } from "next-themes";
+import { type ThemeProviderProps } from "next-themes/dist/types";
 
-type ThemeContextType = {
-  theme: string
-  toggleTheme: () => void
+export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
+  return <NextThemesProvider {...props}>{children}</NextThemesProvider>;
 }
 
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined)
+/*
+This is a basic ThemeProvider using next-themes.
+You might need to install it:
+npm install next-themes
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<string>('light')
+And add it to your package.json dependencies.
 
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') || 'light'
-    setTheme(savedTheme)
-  }, [])
-
-  const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light'
-    setTheme(newTheme)
-    localStorage.setItem('theme', newTheme)
-  }
-
-  return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
-      <div className={`min-h-screen bg-${theme} text-${theme === 'dark' ? 'slate-100' : 'slate-900'}`}>
-        {children}
-      </div>
-    </ThemeContext.Provider>
-  )
-}
-
-export function useTheme() {
-  const context = useContext(ThemeContext)
-  if (context === undefined) {
-    throw new Error('useTheme must be used within a ThemeProvider')
-  }
-  return context
-}
+For full Shadcn UI integration, you would typically also have a `useTheme` hook
+and potentially a button to toggle themes.
+*/
