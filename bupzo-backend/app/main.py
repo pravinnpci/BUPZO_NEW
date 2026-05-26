@@ -95,6 +95,42 @@ class ProductResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class CartItemCreate(BaseModel):
+    product_id: UUID
+    quantity: int
+    user_id: UUID
+
+class CartItemResponse(BaseModel):
+    id: UUID
+    product_id: UUID
+    quantity: int
+    user_id: UUID
+    product_name: str
+    product_price: float
+    created_at: datetime
+
+class WishlistItemCreate(BaseModel):
+    product_id: UUID
+    user_id: UUID
+
+class WishlistItemResponse(BaseModel):
+    id: UUID
+    product_id: UUID
+    user_id: UUID
+    product_name: str
+    product_price: float
+    created_at: datetime
+
+class CheckoutCreate(BaseModel):
+    user_id: UUID
+    items: List[CartItemCreate]
+    shipping_address: str
+    city: str
+    state: str
+    zip_code: str
+    phone: str
+    total_amount: float
+
 # Helper functions
 async def execute_query(query: str, *args):
     async with pool.acquire() as conn:
@@ -113,15 +149,15 @@ async def execute_query_none(query: str, *args):
         await conn.execute(query, *args)
 
 # API Endpoints
-@app.get("/")
+@app.get("/api/")
 async def read_root():
     return {"status": "BUPZO Backend Live"}
 
-@app.get("/health")
+@app.get("/api/health")
 async def health_check():
     return {"status": "healthy"}
 
-@app.post("/users/", response_model=UserResponse)
+@app.post("/api/users/", response_model=UserResponse)
 async def create_user(user: UserCreate):
     query = """
     INSERT INTO users
@@ -142,7 +178,7 @@ async def create_user(user: UserCreate):
     result = await execute_query_one(query, *values)
     return result
 
-@app.get("/users/", response_model=List[UserResponse])
+@app.get("/api/users/", response_model=List[UserResponse])
 async def read_users():
     query = """
     SELECT id, phone_number as phone, email, is_premium, signup_platform, wallet_balance, created_at
@@ -151,7 +187,7 @@ async def read_users():
     results = await execute_query(query)
     return results
 
-@app.post("/products/", response_model=ProductResponse)
+@app.post("/api/products/", response_model=ProductResponse)
 async def create_product(product: ProductCreate):
     query = """
     INSERT INTO products
@@ -174,7 +210,7 @@ async def create_product(product: ProductCreate):
     result = await execute_query_one(query, *values)
     return result
 
-@app.get("/products/", response_model=List[ProductResponse])
+@app.get("/api/products/", response_model=List[ProductResponse])
 async def read_products():
     query = """
     SELECT id, name, description, category_id, price, weight_grams, image_url, is_combo, stock_quantity, seller_id, created_at
@@ -182,3 +218,169 @@ async def read_products():
     """
     results = await execute_query(query)
     return results
+
+# Cart Endpoints
+@app.post("/api/cart/", response_model=CartItemResponse)
+async def add_to_cart(item: CartItemCreate):
+    query = """
+    INSERT INTO cart_items
+    (id, product_id, quantity, user_id, created_at)
+    VALUES ($1, $2, $3, $4, $5)
+    RETURNING id, product_id, quantity, user_id, created_at
+    """
+    values = (
+        uuid4(),
+        item.product_id,
+        item.quantity,
+        item.user_id,
+        datetime.now()
+    )
+    result = await execute_query_one(query, *values)
+
+    # Fetch product details to include in response
+    product_query = """
+    SELECT name, price
+    FROM products
+    WHERE id = $1
+    """
+    product = await execute_query_one(product_query, item.product_id)
+
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    result_dict = result.copy()
+    result_dict['product_name'] = product['name']
+    result_dict['product_price'] = product['price']
+
+    return result_dict
+
+@app.get("/api/cart/{user_id}", response_model=List[CartItemResponse])
+async def get_cart_items(user_id: UUID):
+    query = """
+    SELECT ci.id, ci.product_id, ci.quantity, ci.user_id, ci.created_at,
+           p.name as product_name, p.price as product_price
+    FROM cart_items ci
+    JOIN products p ON ci.product_id = p.id
+    WHERE ci.user_id = $1
+    """
+    results = await execute_query(query, user_id)
+    return results
+
+@app.delete("/api/cart/{item_id}")
+async def remove_from_cart(item_id: UUID):
+    query = "DELETE FROM cart_items WHERE id = $1"
+    await execute_query_none(query, item_id)
+    return {"message": "Item removed from cart"}
+
+@app.put("/api/cart/{item_id}/quantity")
+async def update_cart_item_quantity(item_id: UUID, quantity: int):
+    query = "UPDATE cart_items SET quantity = $1 WHERE id = $2"
+    await execute_query_none(query, quantity, item_id)
+    return {"message": "Quantity updated"}
+
+# Wishlist Endpoints
+@app.post("/api/wishlist/", response_model=WishlistItemResponse)
+async def add_to_wishlist(item: WishlistItemCreate):
+    query = """
+    INSERT INTO wishlist_items
+    (id, product_id, user_id, created_at)
+    VALUES ($1, $2, $3, $4)
+    RETURNING id, product_id, user_id, created_at
+    """
+    values = (
+        uuid4(),
+        item.product_id,
+        item.user_id,
+        datetime.now()
+    )
+    result = await execute_query_one(query, *values)
+
+    # Fetch product details to include in response
+    product_query = """
+    SELECT name, price
+    FROM products
+    WHERE id = $1
+    """
+    product = await execute_query_one(product_query, item.product_id)
+
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    result_dict = result.copy()
+    result_dict['product_name'] = product['name']
+    result_dict['product_price'] = product['price']
+
+    return result_dict
+
+@app.get("/wishlist/{user_id}", response_model=List[WishlistItemResponse])
+async def get_wishlist_items(user_id: UUID):
+    query = """
+    SELECT wi.id, wi.product_id, wi.user_id, wi.created_at,
+           p.name as product_name, p.price as product_price
+    FROM wishlist_items wi
+    JOIN products p ON wi.product_id = p.id
+    WHERE wi.user_id = $1
+    """
+    results = await execute_query(query, user_id)
+    return results
+
+@app.delete("/api/wishlist/{item_id}")
+async def remove_from_wishlist(item_id: UUID):
+    query = "DELETE FROM wishlist_items WHERE id = $1"
+    await execute_query_none(query, item_id)
+    return {"message": "Item removed from wishlist"}
+
+# Checkout Endpoints
+@app.post("/api/checkout/", response_model=dict)
+async def create_checkout(order: CheckoutCreate):
+    # Create order
+    order_id = uuid4()
+    order_query = """
+    INSERT INTO orders
+    (id, user_id, total_amount, shipping_address, city, state, zip_code, phone, status, created_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', $9)
+    RETURNING id
+    """
+    order_values = (
+        order_id,
+        order.user_id,
+        order.total_amount,
+        order.shipping_address,
+        order.city,
+        order.state,
+        order.zip_code,
+        order.phone,
+        datetime.now()
+    )
+    await execute_query_none(order_query, *order_values)
+
+    # Add order items
+    for item in order.items:
+        order_item_query = """
+        INSERT INTO order_items
+        (id, order_id, product_id, quantity, price_at_purchase)
+        VALUES ($1, $2, $3, $4, $5)
+        """
+        order_item_values = (
+            uuid4(),
+            order_id,
+            item.product_id,
+            item.quantity,
+            item.quantity * (await get_product_price(item.product_id))
+        )
+        await execute_query_none(order_item_query, *order_item_values)
+
+        # Update product stock
+        update_stock_query = """
+        UPDATE products
+        SET stock_quantity = stock_quantity - $1
+        WHERE id = $2
+        """
+        await execute_query_none(update_stock_query, item.quantity, item.product_id)
+
+    return {"message": "Order placed successfully", "order_id": order_id}
+
+async def get_product_price(product_id: UUID):
+    query = "SELECT price FROM products WHERE id = $1"
+    result = await execute_query_one(query, product_id)
+    return result['price']

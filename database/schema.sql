@@ -260,3 +260,7 @@ CREATE INDEX idx_product_views_product ON product_views(product_id);
 CREATE INDEX idx_product_views_user ON product_views(user_id);
 CREATE INDEX idx_wishlist_user ON wishlist(user_id);
 CREATE INDEX idx_wishlist_product ON wishlist(product_id);
+
+-- Indexes for cart_items table
+CREATE INDEX idx_cart_items_user ON cart_items(user_id);
+CREATE INDEX idx_cart_items_product ON cart_items(product_id);
