@@ -205,5 +205,5 @@ As an AI Assistant reading this file, please execute the following steps increme
 - PostgreSQL: `psql -h localhost -p 5434 -U bupzo_user -d bupzo_db`
 - Redis: `redis-cli -h localhost -p 6380 PING`
 - Backend: `http://localhost:8003`
-- Frontend: `http://localhost:3003`
+- Frontend: `http://localhost:3005`
 - MCP Server: `http://localhost:3004`

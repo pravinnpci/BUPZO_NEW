@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:15-alpine
@@ -9,11 +7,10 @@ services:
       POSTGRES_PASSWORD: bupzo_password
       POSTGRES_DB: bupzo_db
     volumes:
-      # Mount your setup_db.sql from the root of the monorepo
-      - ../database/setup_db.sql:/docker-entrypoint-initdb.d/setup_db.sql
+      - ./database/setup_db.sql:/docker-entrypoint-initdb.d/setup_db.sql
       - pgdata:/var/lib/postgresql/data
     ports:
-      - "5434:5432" # Expose PostgreSQL on host port 5434
+      - "5434:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U bupzo_user -d bupzo_db"]
       interval: 5s
@@ -24,7 +21,7 @@ services:
     image: redis:7-alpine
     container_name: bupzo_redis
     ports:
-      - "6380:6379" # Expose Redis on host port 6380
+      - "6380:6379"
     volumes:
       - redisdata:/data
     healthcheck:
@@ -35,62 +32,92 @@ services:
 
   backend-api:
     build:
-      context: ../bupzo-backend
+      context: ./bupzo-backend
       dockerfile: Dockerfile
     container_name: bupzo_backend
     environment:
       DATABASE_URL: postgresql://bupzo_user:bupzo_password@db:5432/bupzo_db
       REDIS_URL: redis://redis:6379
-      # Other API keys will be loaded from .env.local in the monorepo root
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      WHATSAPP_API_TOKEN: ${WHATSAPP_API_TOKEN}
+      BREVO_API_KEY: ${BREVO_API_KEY}
     ports:
-      - "8003:8000" # Expose FastAPI on host port 8003
+      - "8003:8000"
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
     volumes:
-      - ../bupzo-backend:/app # Mount for live code changes
-    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+      - ./bupzo-backend:/app
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
   mcp-server:
     build:
-      context: ../bupzo-mcp
+      context: ./bupzo-mcp
       dockerfile: Dockerfile
     container_name: bupzo_mcp
     environment:
       REDIS_URL: redis://redis:6379
       DATABASE_URL: postgresql://bupzo_user:bupzo_password@db:5432/bupzo_db
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY} # Loaded from .env.local
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      WHATSAPP_API_TOKEN: ${WHATSAPP_API_TOKEN}
     ports:
-      - "3004:3004" # Expose MCP Server on host port 3004
+      - "3004:3004"
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
     volumes:
-      - ../bupzo-mcp:/app # Mount for live code changes
-    command: ["node", "index.js"]
+      - ./bupzo-mcp:/app
+    command: ["npm", "run", "dev"]
 
-  frontend:
+  frontend-client:
     build:
-      context: ../bupzo-frontend
-      dockerfile: Dockerfile
-    container_name: bupzo_frontend
+      context: ./bupzo-frontend
+      dockerfile: Dockerfile.dev
+    container_name: bupzo_frontend_client
     ports:
-      - "3003:3000" # Expose Next.js on host port 3003
+      - "3003:3000"
     environment:
-      NEXT_PUBLIC_API_URL: http://bupzo_backend:8000
-      NEXT_PUBLIC_MCP_URL: http://bupzo_mcp:3004
+      NEXT_PUBLIC_API_URL: http://backend-api:8000
+      NEXT_PUBLIC_MCP_URL: http://mcp-server:3004
+      NEXT_PUBLIC_PORT: 3003
+      NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
     depends_on:
       backend-api:
-        condition: service_started # Use service_started for frontend to allow it to build even if backend is not fully healthy yet
+        condition: service_started
       mcp-server:
         condition: service_started
     volumes:
-      - ../bupzo-frontend:/app # Mount for live code changes
-      - /app/node_modules # Exclude node_modules from host mount to prevent issues
+      - ./bupzo-frontend:/app
+      - /app/node_modules
+    command: ["npm", "run", "dev"]
+
+  frontend-admin:
+    build:
+      context: ./bupzo-frontend
+      dockerfile: Dockerfile.dev
+    container_name: bupzo_frontend_admin
+    ports:
+      - "3005:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://backend-api:8000
+      NEXT_PUBLIC_MCP_URL: http://mcp-server:3004
+      NEXT_PUBLIC_PORT: 3005
+      NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+    depends_on:
+      backend-api:
+        condition: service_started
+      mcp-server:
+        condition: service_started
+    volumes:
+      - ./bupzo-frontend:/app
+      - /app/node_modules
+    command: ["npm", "run", "dev"]
 
 volumes:
   pgdata:

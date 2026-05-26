@@ -1,0 +1,10 @@
+C:\Users\localadmin\Downloads\Bupzo\ai-font end prompt-e-commerce.txt and C:\Users\localadmin\Downloads\Bupzo\BUPZO_V10_MASTER_REQUIREMENTS.md C:\Users\localadmin\Downloads\Bupzo\BUPZO_v10_MASTER_ARC.txt  read the files and read entire project , we were already workign, unfortunately session closed, so please resume the work and do developemet like senior full stack developer and deveops engineer also this command line not works && in cli, so please work orrdindly 
+
+- PostgreSQL: `psql -h localhost -p 5434 -U bupzo_user -d bupzo_db`
+- Redis: `redis-cli -h localhost -p 6380 PING`
+- Backend: `http://localhost:8003`
+- Frontend: `http://localhost:3003`
+- MCP Server: `http://localhost:3004`
+
+
+this is above port we have using due to port conflict, using docker ps and know the status then do work
