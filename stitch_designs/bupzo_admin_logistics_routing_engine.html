@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>BUPZO Admin - Logistics Routing Engine</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-low": "#faf2ee",
+                        "on-primary-container": "#ccc6dc",
+                        "on-error-container": "#93000a",
+                        "inverse-on-surface": "#f7efeb",
+                        "error": "#ba1a1a",
+                        "secondary-fixed-dim": "#e6bbc8",
+                        "on-primary-fixed": "#1c1929",
+                        "on-secondary": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "secondary-container": "#fed1de",
+                        "outline-variant": "#c9c5cc",
+                        "error-container": "#ffdad6",
+                        "electric-blue": "#007AFF",
+                        "on-tertiary-fixed": "#251913",
+                        "primary": "#3f3b4c",
+                        "on-secondary-container": "#795763",
+                        "tertiary-fixed-dim": "#d8c2b9",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-container": "#dac5bc",
+                        "surface-container-highest": "#e8e1dd",
+                        "background": "#fff8f4",
+                        "on-primary-fixed-variant": "#484456",
+                        "inverse-primary": "#cac3d9",
+                        "surface": "#fff8f4",
+                        "surface-bright": "#fff8f4",
+                        "on-surface-variant": "#48464c",
+                        "surface-variant": "#e8e1dd",
+                        "on-secondary-fixed-variant": "#5d3e49",
+                        "on-error": "#ffffff",
+                        "secondary-fixed": "#ffd9e4",
+                        "on-secondary-fixed": "#2d141d",
+                        "surface-tint": "#605c6e",
+                        "primary-fixed": "#e6dff5",
+                        "on-tertiary": "#ffffff",
+                        "primary-fixed-dim": "#cac3d9",
+                        "primary-container": "#565264",
+                        "on-surface": "#1e1b19",
+                        "secondary": "#775560",
+                        "surface-dark": "#1A191E",
+                        "dim-grey": "#706677",
+                        "surface-dim": "#e0d9d5",
+                        "inverse-surface": "#33302d",
+                        "outline": "#79767c",
+                        "lime-green": "#32D74B",
+                        "tertiary-container": "#61514a",
+                        "on-background": "#1e1b19",
+                        "on-tertiary-fixed-variant": "#53443d",
+                        "surface-container-high": "#eee7e3",
+                        "tertiary-fixed": "#f5ded4",
+                        "tertiary": "#493a34",
+                        "surface-container": "#f4ece8"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "stack-compact": "0.75rem",
+                        "stack-default": "1.5rem",
+                        "sidebar-width": "280px",
+                        "sidebar-collapsed": "80px",
+                        "container-max": "1440px",
+                        "gutter": "1.5rem",
+                        "margin-edge": "2rem"
+                    },
+                    "fontFamily": {
+                        "label-md": ["Inter"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "display-lg": ["Plus Jakarta Sans"],
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "mono-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-md": ["12px", { "lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "display-lg": ["48px", { "lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "body-sm": ["14px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "1.4", "fontWeight": "600" }],
+                        "mono-sm": ["13px", { "lineHeight": "1.4", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: theme('colors.surface-dark');
+            color: theme('colors.on-surface-variant');
+        }
+        .inner-shadow-custom {
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .ai-glow {
+            box-shadow: 0 0 15px rgba(0, 122, 255, 0.2);
+        }
+        .chart-bar {
+            transition: height 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden font-body-md text-body-md bg-surface-dark selection:bg-primary-fixed selection:text-on-primary-fixed">
+<!-- SideNavBar -->
+<nav class="bg-surface-dark border-r border-outline-variant shadow-none h-screen w-sidebar-width fixed left-0 top-0 z-40 flex flex-col py-stack-default hidden md:flex">
+<div class="px-4 mb-8 flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center shrink-0">
+<img alt="Seller Brand Logo" class="w-full h-full object-cover rounded-full" data-alt="A minimalist geometric logo design for a seller brand, featuring sharp interconnected lines forming a subtle 'B' shape. The logo uses a monochromatic palette of deep charcoal and pure white, exuding a highly professional, modern, and tech-forward identity. Clean edges and high contrast." src="https://lh3.googleusercontent.com/aida-public/AB6AXuASehsjtKXcsu190JG-PLkmIp19oCfUlLMPYpQ1Nt-nZoC0KPb2amu4hMjgy7TSogOhlbvgYvc5x3ERhCXe50ooJSXurU8o-NjDliUbZ10uYj0BkCgidXtm4cIG0FAtRXeBovgPCpi3sgegWJEZ-0LkIGuo9oZdkJYemY1oSaFhS1fbybzUN5hsNLQNV1AM20T8T4FbPNlPN6dGC8w7JxT5YINaA_JuOE_GDZnANFBcysDu3miUt90tV5ZZWAQj8kb9iy_cw-xs2A"/>
+</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary-fixed truncate">BUPZO Seller</h1>
+<p class="font-label-md text-label-md text-on-surface-variant opacity-80">Pro Merchant</p>
+</div>
+</div>
+<div class="flex flex-col gap-2 flex-grow overflow-y-auto">
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-container-highest transition-all duration-150 active:inner-shadow-custom group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary-fixed transition-colors">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-container-highest transition-all duration-150 active:inner-shadow-custom group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary-fixed transition-colors">inventory_2</span>
+<span class="font-label-md text-label-md">Inventory</span>
+</a>
+<a class="flex items-center gap-3 bg-primary/5 text-primary-fixed border-l-4 border-primary px-4 py-3 active:inner-shadow-custom" href="#">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">shopping_cart</span>
+<span class="font-label-md text-label-md">Orders</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-container-highest transition-all duration-150 active:inner-shadow-custom group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary-fixed transition-colors">insights</span>
+<span class="font-label-md text-label-md">Analytics</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-container-highest transition-all duration-150 active:inner-shadow-custom group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary-fixed transition-colors">campaign</span>
+<span class="font-label-md text-label-md">Marketing</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-container-highest transition-all duration-150 active:inner-shadow-custom group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary-fixed transition-colors">group</span>
+<span class="font-label-md text-label-md">Customers</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-container-highest transition-all duration-150 active:inner-shadow-custom group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary-fixed transition-colors">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-container-highest transition-all duration-150 active:inner-shadow-custom group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary-fixed transition-colors">help</span>
+<span class="font-label-md text-label-md">Help</span>
+</a>
+</div>
+<div class="px-4 mt-auto mb-4">
+<button class="w-full bg-primary-container text-on-primary-container font-label-md text-label-md py-3 rounded-lg hover:bg-primary transition-colors inner-shadow-custom flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]">workspace_premium</span>
+                 Upgrade Plan
+             </button>
+</div>
+<div class="flex flex-col gap-2 border-t border-outline-variant pt-4 mt-2">
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-container-highest transition-all duration-150 active:inner-shadow-custom group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-error transition-colors">logout</span>
+<span class="font-label-md text-label-md">Logout</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-container-highest transition-all duration-150 active:inner-shadow-custom group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary-fixed transition-colors">support_agent</span>
+<span class="font-label-md text-label-md">Support</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 md:ml-sidebar-width h-full overflow-y-auto bg-surface-dark flex flex-col relative">
+<!-- Header -->
+<header class="px-margin-edge py-6 sticky top-0 z-30 bg-surface-dark/90 backdrop-blur-md border-b border-outline-variant/30">
+<div class="flex justify-between items-center max-w-container-max mx-auto">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-primary-fixed">Logistics Routing Engine</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1 flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-lime-green animate-pulse"></span>
+                        AI Optimizer Active
+                    </p>
+</div>
+<div class="flex gap-3">
+<button class="bg-surface-container-highest text-on-surface-variant px-4 py-2 rounded-lg font-label-md text-label-md hover:bg-outline-variant/20 transition-colors flex items-center gap-2 inner-shadow-custom">
+<span class="material-symbols-outlined text-[18px]">history</span>
+                        Routing Logs
+                    </button>
+<button class="bg-electric-blue text-white px-4 py-2 rounded-lg font-label-md text-label-md hover:bg-electric-blue/90 transition-colors flex items-center gap-2 shadow-[0_4px_10px_rgba(0,122,255,0.3)]">
+<span class="material-symbols-outlined text-[18px]">save</span>
+                        Save Configuration
+                    </button>
+</div>
+</div>
+</header>
+<div class="flex-1 p-margin-edge max-w-container-max mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-gutter content-start">
+<!-- Left Column: Aggregator Toggles & Manual Override (Bento Style) -->
+<div class="lg:col-span-4 flex flex-col gap-gutter">
+<!-- Aggregator Toggle Swatches -->
+<section class="bg-inverse-surface rounded-xl p-6 shadow-[0_2px_4px_rgba(0,0,0,0.1)] border border-outline-variant/10">
+<div class="flex items-center justify-between mb-6">
+<h3 class="font-headline-md text-headline-md text-primary-fixed-dim">Active Carriers</h3>
+<span class="material-symbols-outlined text-outline-variant">local_shipping</span>
+</div>
+<div class="flex flex-col gap-4">
+<!-- Delhivery -->
+<div class="flex items-center justify-between p-4 bg-surface-dark rounded-lg border border-outline-variant/20 group hover:border-primary-fixed/50 transition-colors">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-primary-container flex items-center justify-center">
+<span class="font-mono-sm text-mono-sm font-bold text-on-primary-container">DEL</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface">Delhivery</p>
+<p class="font-body-sm text-[11px] text-lime-green">98.2% Uptime</p>
+</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-surface-tint peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-lime-green"></div>
+</label>
+</div>
+<!-- XpressBees -->
+<div class="flex items-center justify-between p-4 bg-surface-dark rounded-lg border border-outline-variant/20 group hover:border-primary-fixed/50 transition-colors">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-secondary-container flex items-center justify-center">
+<span class="font-mono-sm text-mono-sm font-bold text-on-secondary-container">XPR</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface">XpressBees</p>
+<p class="font-body-sm text-[11px] text-lime-green">95.5% Uptime</p>
+</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-surface-tint peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-lime-green"></div>
+</label>
+</div>
+<!-- Shiprocket -->
+<div class="flex items-center justify-between p-4 bg-surface-dark rounded-lg border border-outline-variant/20 group hover:border-primary-fixed/50 transition-colors opacity-60">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-surface-container-highest flex items-center justify-center">
+<span class="font-mono-sm text-mono-sm font-bold text-on-surface-variant">SHP</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface">Shiprocket</p>
+<p class="font-body-sm text-[11px] text-error">API Latency</p>
+</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-surface-tint peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-lime-green"></div>
+</label>
+</div>
+</div>
+</section>
+<!-- Manual Override Controls -->
+<section class="bg-inverse-surface rounded-xl p-6 shadow-[0_2px_4px_rgba(0,0,0,0.1)] border border-outline-variant/10 relative overflow-hidden">
+<!-- Subtle AI Glow accent -->
+<div class="absolute -top-10 -right-10 w-32 h-32 bg-electric-blue/10 rounded-full blur-2xl"></div>
+<div class="flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-electric-blue">tune</span>
+<h3 class="font-headline-md text-headline-md text-primary-fixed-dim">Routing Rules</h3>
+</div>
+<div class="space-y-5">
+<!-- Rule 1 -->
+<div>
+<label class="flex justify-between font-label-md text-label-md text-on-surface-variant mb-2">
+<span>Heavy Shipments (&gt;5kg)</span>
+<span class="text-primary-fixed">XpressBees</span>
+</label>
+<div class="relative w-full h-2 bg-surface-dark rounded-full overflow-hidden inner-shadow-custom">
+<div class="absolute top-0 left-0 h-full bg-secondary w-3/4 rounded-full"></div>
+</div>
+</div>
+<!-- Rule 2 -->
+<div>
+<label class="flex justify-between font-label-md text-label-md text-on-surface-variant mb-2">
+<span>High Value (&gt;$100)</span>
+<span class="text-primary-fixed">Delhivery</span>
+</label>
+<div class="relative w-full h-2 bg-surface-dark rounded-full overflow-hidden inner-shadow-custom">
+<div class="absolute top-0 left-0 h-full bg-primary w-full rounded-full"></div>
+</div>
+</div>
+<!-- Fallback Selection -->
+<div class="pt-4 border-t border-outline-variant/20">
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2">Global Fallback Carrier</label>
+<select class="w-full bg-surface-dark border border-outline-variant/30 text-on-surface rounded-lg p-3 font-body-sm text-body-sm focus:border-electric-blue focus:ring-1 focus:ring-electric-blue inner-shadow-custom appearance-none">
+<option>Auto-Select (AI Recommended)</option>
+<option>Delhivery</option>
+<option>XpressBees</option>
+<option>Shiprocket</option>
+</select>
+</div>
+</div>
+</section>
+</div>
+<!-- Right Column: AI Success Rate Chart & Metrics -->
+<div class="lg:col-span-8 flex flex-col gap-gutter">
+<!-- Main Chart Card -->
+<section class="bg-inverse-surface rounded-xl p-6 shadow-[0_2px_4px_rgba(0,0,0,0.1)] border border-electric-blue/20 ai-glow flex-1 flex flex-col">
+<div class="flex justify-between items-start mb-8">
+<div>
+<h3 class="font-headline-md text-headline-md text-primary-fixed flex items-center gap-2">
+<span class="material-symbols-outlined text-electric-blue">auto_awesome</span>
+                                AI Predictive Routing Performance
+                            </h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Real-time analysis of delivery speed vs return rates across active zones.</p>
+</div>
+<div class="flex gap-2">
+<span class="px-3 py-1 rounded-full bg-surface-dark border border-outline-variant/20 font-mono-sm text-[11px] text-on-surface-variant flex items-center gap-1">
+<div class="w-2 h-2 rounded-full bg-electric-blue"></div> Speed (Days)
+                            </span>
+<span class="px-3 py-1 rounded-full bg-surface-dark border border-outline-variant/20 font-mono-sm text-[11px] text-on-surface-variant flex items-center gap-1">
+<div class="w-2 h-2 rounded-full bg-error"></div> RTO %
+                            </span>
+</div>
+</div>
+<!-- Custom CSS Bar Chart -->
+<div class="flex-1 relative min-h-[300px] flex items-end justify-around pb-8 pt-10 px-4 border-b border-outline-variant/20">
+<!-- Grid Lines -->
+<div class="absolute inset-0 flex flex-col justify-between pointer-events-none pb-8 pt-10">
+<div class="w-full border-t border-outline-variant/10"></div>
+<div class="w-full border-t border-outline-variant/10"></div>
+<div class="w-full border-t border-outline-variant/10"></div>
+<div class="w-full border-t border-outline-variant/10"></div>
+<div class="w-full border-t border-outline-variant/10"></div>
+</div>
+<!-- Delhivery Data Group -->
+<div class="relative flex flex-col items-center gap-2 z-10 w-24 group">
+<div class="flex items-end gap-1 h-48">
+<div class="w-8 bg-electric-blue rounded-t-md chart-bar relative shadow-[inset_0_2px_4px_rgba(255,255,255,0.2)]" style="height: 80%;">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-surface-dark text-on-surface font-mono-sm text-[10px] px-2 py-1 rounded">2.1d</div>
+</div>
+<div class="w-8 bg-error/80 rounded-t-md chart-bar relative shadow-[inset_0_2px_4px_rgba(255,255,255,0.2)]" style="height: 15%;">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-surface-dark text-on-surface font-mono-sm text-[10px] px-2 py-1 rounded">4%</div>
+</div>
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant mt-2">North Zone</span>
+</div>
+<!-- XpressBees Data Group -->
+<div class="relative flex flex-col items-center gap-2 z-10 w-24 group">
+<div class="flex items-end gap-1 h-48">
+<div class="w-8 bg-electric-blue rounded-t-md chart-bar relative shadow-[inset_0_2px_4px_rgba(255,255,255,0.2)]" style="height: 60%;">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-surface-dark text-on-surface font-mono-sm text-[10px] px-2 py-1 rounded">3.5d</div>
+</div>
+<div class="w-8 bg-error/80 rounded-t-md chart-bar relative shadow-[inset_0_2px_4px_rgba(255,255,255,0.2)]" style="height: 25%;">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-surface-dark text-on-surface font-mono-sm text-[10px] px-2 py-1 rounded">8%</div>
+</div>
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant mt-2">South Zone</span>
+</div>
+<!-- Combined Data Group -->
+<div class="relative flex flex-col items-center gap-2 z-10 w-24 group">
+<div class="flex items-end gap-1 h-48">
+<div class="w-8 bg-electric-blue rounded-t-md chart-bar relative shadow-[inset_0_2px_4px_rgba(255,255,255,0.2)]" style="height: 90%;">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-surface-dark text-on-surface font-mono-sm text-[10px] px-2 py-1 rounded">1.8d</div>
+</div>
+<div class="w-8 bg-error/80 rounded-t-md chart-bar relative shadow-[inset_0_2px_4px_rgba(255,255,255,0.2)]" style="height: 10%;">
+<div class="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-surface-dark text-on-surface font-mono-sm text-[10px] px-2 py-1 rounded">2%</div>
+</div>
+</div>
+<span class="font-label-md text-label-md text-on-surface-variant mt-2">Metro (AI)</span>
+</div>
+</div>
+</section>
+<!-- Micro Metrics Bento -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+<div class="bg-inverse-surface rounded-xl p-5 border border-outline-variant/10 shadow-[0_2px_4px_rgba(0,0,0,0.1)]">
+<p class="font-label-md text-label-md text-on-surface-variant mb-1">Total Shipments Routed</p>
+<div class="flex items-end gap-2">
+<h4 class="font-display-lg text-[32px] font-bold text-primary-fixed">14,209</h4>
+<span class="font-body-sm text-[12px] text-lime-green mb-2 flex items-center"><span class="material-symbols-outlined text-[14px]">arrow_upward</span> 12%</span>
+</div>
+</div>
+<div class="bg-inverse-surface rounded-xl p-5 border border-outline-variant/10 shadow-[0_2px_4px_rgba(0,0,0,0.1)]">
+<p class="font-label-md text-label-md text-on-surface-variant mb-1">Cost Saved via AI</p>
+<div class="flex items-end gap-2">
+<h4 class="font-display-lg text-[32px] font-bold text-electric-blue">$3,450</h4>
+<span class="font-body-sm text-[12px] text-on-surface-variant mb-2">This Month</span>
+</div>
+</div>
+<div class="bg-inverse-surface rounded-xl p-5 border border-outline-variant/10 shadow-[0_2px_4px_rgba(0,0,0,0.1)]">
+<p class="font-label-md text-label-md text-on-surface-variant mb-1">Avg Fulfillment Time</p>
+<div class="flex items-end gap-2">
+<h4 class="font-display-lg text-[32px] font-bold text-primary-fixed">2.4<span class="text-[18px]">d</span></h4>
+<span class="font-body-sm text-[12px] text-lime-green mb-2 flex items-center"><span class="material-symbols-outlined text-[14px]">arrow_downward</span> 0.3d</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="bg-surface-dark/90 backdrop-blur-xl border-t border-outline-variant/20 shadow-[0_-4px_10px_rgba(0,0,0,0.2)] fixed bottom-0 w-full z-50 rounded-t-xl flex justify-around items-center h-16 md:hidden px-2 pb-safe">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 active:scale-90 transition-transform rounded-full px-4 py-1" href="#">
+<span class="material-symbols-outlined text-[24px]">dashboard</span>
+<span class="font-label-md text-[10px] mt-1">Dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-tertiary-container text-on-tertiary-container rounded-full px-4 py-1 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1;">local_shipping</span>
+<span class="font-label-md text-[10px] mt-1">Routing</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 active:scale-90 transition-transform rounded-full px-4 py-1" href="#">
+<span class="material-symbols-outlined text-[24px]">insights</span>
+<span class="font-label-md text-[10px] mt-1">Analytics</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 active:scale-90 transition-transform rounded-full px-4 py-1" href="#">
+<span class="material-symbols-outlined text-[24px]">settings</span>
+<span class="font-label-md text-[10px] mt-1">Settings</span>
+</a>
+</nav>
+</body></html>

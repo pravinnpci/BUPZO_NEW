@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-[#D6CFCB] dark:bg-[#1a191e] text-[#565264] dark:text-[#f3f4f6] font-sans antialiased;
+  }
+}
+
+.input-inset {
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.06);
+}
+
+.ai-glow {
+  box-shadow: 0 0 15px rgba(0, 122, 255, 0.15);
+}

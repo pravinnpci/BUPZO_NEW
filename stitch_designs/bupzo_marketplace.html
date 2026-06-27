@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>BUPZO Marketplace</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Plus+Jakarta+Sans:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-surface": "#1e1b19",
+                      "surface-variant": "#e8e1dd",
+                      "surface-dim": "#e0d9d5",
+                      "tertiary-container": "#61514a",
+                      "inverse-primary": "#cac3d9",
+                      "tertiary": "#493a34",
+                      "surface-bright": "#fff8f4",
+                      "outline-variant": "#c9c5cc",
+                      "on-secondary-fixed": "#2d141d",
+                      "on-secondary-fixed-variant": "#5d3e49",
+                      "inverse-surface": "#33302d",
+                      "primary-container": "#565264",
+                      "secondary-fixed-dim": "#e6bbc8",
+                      "on-error-container": "#93000a",
+                      "surface": "#fff8f4",
+                      "surface-container-low": "#faf2ee",
+                      "on-tertiary-fixed-variant": "#53443d",
+                      "lime-green": "#32D74B",
+                      "primary": "#3f3b4c",
+                      "surface-dark": "#1A191E",
+                      "secondary": "#775560",
+                      "primary-fixed": "#e6dff5",
+                      "outline": "#79767c",
+                      "surface-tint": "#605c6e",
+                      "surface-container-highest": "#e8e1dd",
+                      "on-primary-fixed-variant": "#484456",
+                      "background": "#fff8f4",
+                      "secondary-container": "#fed1de",
+                      "on-tertiary-fixed": "#251913",
+                      "on-secondary": "#ffffff",
+                      "on-error": "#ffffff",
+                      "dim-grey": "#706677",
+                      "on-surface-variant": "#48464c",
+                      "surface-container-high": "#eee7e3",
+                      "error": "#ba1a1a",
+                      "error-container": "#ffdad6",
+                      "on-primary": "#ffffff",
+                      "surface-container": "#f4ece8",
+                      "on-secondary-container": "#795763",
+                      "tertiary-fixed-dim": "#d8c2b9",
+                      "on-tertiary": "#ffffff",
+                      "primary-fixed-dim": "#cac3d9",
+                      "on-background": "#1e1b19",
+                      "surface-container-lowest": "#ffffff",
+                      "on-primary-fixed": "#1c1929",
+                      "inverse-on-surface": "#f7efeb",
+                      "on-primary-container": "#ccc6dc",
+                      "secondary-fixed": "#ffd9e4",
+                      "electric-blue": "#007AFF",
+                      "on-tertiary-container": "#dac5bc",
+                      "tertiary-fixed": "#f5ded4"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "stack-default": "1.5rem",
+                      "container-max": "1440px",
+                      "sidebar-width": "280px",
+                      "stack-compact": "0.75rem",
+                      "sidebar-collapsed": "80px",
+                      "margin-edge": "2rem",
+                      "gutter": "1.5rem"
+              },
+              "fontFamily": {
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "label-md": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "headline-md": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "mono-sm": [
+                              "Inter"
+                      ],
+                      "headline-lg-mobile": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "display-lg": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "1.5",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-md": [
+                              "12px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "1.3",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.4",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "mono-sm": [
+                              "13px",
+                              {
+                                      "lineHeight": "1.4",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.3",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "1.5",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "display-lg": [
+                              "48px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "1.6",
+                                      "fontWeight": "400"
+                              }
+                      }
+              }
+          },
+        }
+      </script>
+<style>
+        .inner-shadow {
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.06);
+        }
+        .skeuomorphic-shadow {
+            box-shadow: 0 2px 4px rgba(86, 82, 100, 0.05);
+        }
+        .skeuomorphic-hover:hover {
+            box-shadow: 0 10px 15px -3px rgba(86, 82, 100, 0.1);
+            transform: translateY(-2px);
+        }
+        .glass-panel {
+            backdrop-filter: blur(12px);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased overflow-x-hidden flex h-screen">
+<!-- SideNavBar -->
+<nav class="bg-surface-container-low dark:bg-surface-dark text-primary dark:text-primary-fixed font-label-md text-label-md h-screen w-sidebar-width fixed left-0 top-0 z-40 bg-surface-container-low dark:bg-surface-dark border-r border-outline-variant shadow-none flex flex-col py-stack-default hidden md:flex">
+<div class="px-4 mb-8">
+<h1 class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed">BUPZO Seller</h1>
+<p class="text-on-surface-variant mt-1">Pro Merchant</p>
+</div>
+<div class="flex-grow flex flex-col gap-2">
+<a class="flex items-center gap-3 bg-primary/5 text-primary border-l-4 border-primary px-4 py-3 active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+                Dashboard
+            </a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+                Inventory
+            </a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined">shopping_cart</span>
+                Orders
+            </a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined">insights</span>
+                Analytics
+            </a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined">campaign</span>
+                Marketing
+            </a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined">group</span>
+                Customers
+            </a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined">settings</span>
+                Settings
+            </a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined">help</span>
+                Help
+            </a>
+</div>
+<div class="px-4 mt-auto mb-4">
+<button class="w-full bg-electric-blue text-white py-2 rounded font-label-md hover:opacity-90 transition-opacity">Upgrade Plan</button>
+</div>
+<div class="flex flex-col gap-2 mt-4 pt-4 border-t border-outline-variant">
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined">logout</span>
+                Logout
+            </a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined">support_agent</span>
+                Support
+            </a>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<div class="flex-grow flex flex-col md:ml-[280px] w-full min-h-screen relative">
+<!-- TopNavBar -->
+<header class="bg-surface-bright dark:bg-surface-dark text-primary dark:text-primary-fixed-dim font-body-md text-body-md docked full-width top-0 sticky z-50 bg-surface-bright dark:bg-surface-dark shadow-[0_2px_4px_rgba(86,82,100,0.05)] shadow-sm flex justify-between items-center w-full px-margin-edge py-4 max-w-container-max mx-auto hidden md:flex">
+<div class="flex items-center gap-8">
+<span class="font-display-lg text-display-lg text-primary dark:text-primary-fixed font-bold tracking-tight">BUPZO</span>
+<div class="relative w-64">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-container rounded-full border-none focus:ring-2 focus:ring-primary inner-shadow font-body-sm text-on-surface placeholder:text-on-surface-variant outline-none" placeholder="Search products..." type="text"/>
+</div>
+</div>
+<nav class="flex gap-6">
+<a class="text-primary font-bold border-b-2 border-primary pb-1 cursor-pointer active:scale-95" href="#">Marketplace</a>
+<a class="text-on-surface-variant dark:text-outline-variant hover:text-primary transition-colors duration-200 cursor-pointer active:scale-95" href="#">Deals</a>
+<a class="text-on-surface-variant dark:text-outline-variant hover:text-primary transition-colors duration-200 cursor-pointer active:scale-95" href="#">Trending</a>
+<a class="text-on-surface-variant dark:text-outline-variant hover:text-primary transition-colors duration-200 cursor-pointer active:scale-95" href="#">Stores</a>
+<a class="text-on-surface-variant dark:text-outline-variant hover:text-primary transition-colors duration-200 cursor-pointer active:scale-95" href="#">Support</a>
+</nav>
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant dark:text-outline-variant hover:text-primary transition-colors duration-200 cursor-pointer active:scale-95 flex flex-col items-center">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant dark:text-outline-variant hover:text-primary transition-colors duration-200 cursor-pointer active:scale-95 flex flex-col items-center">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+</button>
+<button class="text-on-surface-variant dark:text-outline-variant hover:text-primary transition-colors duration-200 cursor-pointer active:scale-95 flex flex-col items-center">
+<span class="material-symbols-outlined">smart_toy</span>
+</button>
+<div class="h-8 w-[1px] bg-outline-variant mx-2"></div>
+<button class="font-label-md text-primary hover:text-primary/80 transition-colors cursor-pointer active:scale-95">Account</button>
+<button class="px-4 py-2 bg-primary text-on-primary rounded font-label-md hover:bg-primary/90 transition-colors shadow-sm cursor-pointer active:scale-95">Cart</button>
+</div>
+</header>
+<main class="flex-grow p-stack-default md:p-margin-edge w-full max-w-container-max mx-auto space-y-8 pb-24 md:pb-8">
+<!-- Hero Section -->
+<section class="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+<div class="md:col-span-2 bg-surface-container-low rounded-xl overflow-hidden relative min-h-[400px] flex items-center p-8 skeuomorphic-shadow">
+<div class="z-10 w-1/2">
+<span class="inline-block px-3 py-1 bg-secondary-container text-on-secondary-container rounded-full font-label-md mb-4">Featured Deal</span>
+<h2 class="font-display-lg text-display-lg font-bold text-on-surface leading-tight mb-4">Premium Nagore Halwa</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant mb-6">Authentic taste, delivered fresh to your door. Limited time offer on bulk orders.</p>
+<button class="bg-primary text-on-primary px-6 py-3 rounded-lg font-label-md hover:bg-primary/90 transition-all shadow-sm skeuomorphic-hover">Shop Now</button>
+</div>
+<div class="absolute right-0 top-0 bottom-0 w-1/2 bg-gradient-to-l from-transparent to-surface-container-low z-0 pointer-events-none"></div>
+<img class="absolute right-0 top-0 w-1/2 h-full object-cover rounded-r-xl" data-alt="A beautifully styled photograph of traditional Nagore Halwa, served in an ornate, silver-plated bowl on a textured wooden table. Soft, warm directional lighting highlights the rich, translucent, deep amber texture of the sweet, garnished with scattered cashews and pistachios. The background is softly blurred, conveying a premium, artisanal culinary aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD38JNwuca0cKiILRfQshTK9R-XEhE1D5WONIo0FFbYeXTKYEquDLBmqgxCdGma3uEBCRvfaVO-hSqpPFm-F9DeS_TJtBorvBTZv5qz4RGOzogg5CNgvNkHpsKpdY8u7M3NSFR3G63nZ9SU3miHSQCoyPOqMOTPWN2iabdvXewTCbdpkeb01Dn26CXxWPscijXXNbLS5gXMujnHl9Zb1EXmVLR0dx-7nMWoirCgC_HkzqVkUTInU5fardF4TFwZaVc8OqAyJRz9rQ"/>
+</div>
+<div class="bg-surface-container-lowest rounded-xl p-6 skeuomorphic-shadow flex flex-col justify-center items-center text-center border border-outline-variant/30 relative overflow-hidden">
+<img alt="Bupzo Logo" class="w-32 h-auto mb-4 z-10" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCGHjajiYdOApekeaNGtVQ2Q364QorKDtqXipqKd2vW38SgzBTXkvL_4rGr30bTtyHVjd72pyFIT-pSh2vmzwB3DefEj_fbh2_aSIQpxQsV6H3iOWXQC8qHzzNu3xyFq0nMe_T8yo5rzEI3LgAoxpL4WV29e6ddpbkNMkFyRt-UNXBiCtjGygeYUk-y-i7979ttQ6inNeKrZnA-qz5xiquVKIL76J-44b6EgQy32VkUyHDV61QkoKkQ-VKZTrMs6hydqSW74c4mDA"/>
+<h3 class="font-headline-md text-headline-md font-bold text-on-surface mb-2 z-10">Smart Home Appliances</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-6 z-10">Upgrade your living space today.</p>
+<button class="bg-electric-blue text-white w-full py-3 rounded-lg font-label-md hover:bg-electric-blue/90 transition-all shadow-sm skeuomorphic-hover z-10">Explore Category</button>
+<div class="absolute inset-0 opacity-5 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9IiMwMDAiLz48L3N2Zz4=')]"></div>
+</div>
+</section>
+<!-- AI Widget -->
+<section class="bg-surface-container rounded-xl p-6 border border-electric-blue/20 relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-r from-electric-blue/5 to-transparent pointer-events-none"></div>
+<div class="flex items-center gap-3 mb-6 relative z-10">
+<span class="material-symbols-outlined text-electric-blue" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+<h3 class="font-headline-md text-headline-md font-semibold text-on-surface">AI Recommended for You</h3>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 relative z-10">
+<!-- AI Product Cards -->
+<div class="bg-surface-container-lowest rounded-lg p-3 skeuomorphic-shadow hover:ring-1 hover:ring-electric-blue/50 transition-all cursor-pointer">
+<div class="aspect-square bg-surface-variant rounded-md mb-3 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A sleek, modern wireless noise-canceling headphone resting on a clean, minimal white desk. The lighting is crisp and cool, casting soft, realistic drop shadows that emphasize the premium matte texture of the device. The aesthetic is high-tech, functional, and perfectly aligned with a professional, clean e-commerce presentation." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBNi63Uj4Fcv2iPybEWQ5KXF4jE1QCCmoXwDYznH6MtebAE_bXMi4KrW0MYnc50TiHXjUyKy_u__nzxK9-_DYCVqKBl3uULcc1PQW-Cab2cGWYOEOhK4g-oVi3mLoGobQIpQHqvKE-f9TcHlNJp9p1p1vZ2Ha84-pB0JJ6G4Q9W2TWqxQr2li0JuDnvT8bL4ExX_m0IFal50XbfHMsyR6c_Cc_egNaJxMY2IxUtm5RgfSGi3xKQaDc5KHhh8MTtmrEqlf8uBaavtg"/>
+</div>
+<p class="font-label-md text-on-surface truncate mb-1">SonicPro Headphones</p>
+<p class="font-body-sm text-electric-blue font-semibold">$129.99</p>
+</div>
+<div class="bg-surface-container-lowest rounded-lg p-3 skeuomorphic-shadow hover:ring-1 hover:ring-electric-blue/50 transition-all cursor-pointer">
+<div class="aspect-square bg-surface-variant rounded-md mb-3 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A sleek, stainless steel smart coffee maker on a minimalist dark granite countertop. Steam gently rises from a pristine white mug below the spout. The scene is lit with sophisticated, dramatic studio lighting that highlights the metallic sheen and digital display of the appliance, conveying a premium, modern home aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAue8R-5GHfgf7kFHwIADMQDdK7oJ-okIVJmgJ3b0_szL5P6RKpnZISV1jglA8TvQcatvPJ16wAosEl_TxYIjTxy_9thBKkCINd97minaIh_oE1Y0ViIpoPAQVroEDTfvJZTHqWVeRS7rJV-DllWkrR7Y0JnhWt2RavYpsUq7mvdzh1Z9_fPGnUO3413-zh4xeaaKTWgW1BjcUSX_iKwQtP4eBicuYOcUolq022DgHoJAVeBJwfpG4qyX8INGQuJ3nyosnO6SFf6A"/>
+</div>
+<p class="font-label-md text-on-surface truncate mb-1">Smart Brew Master</p>
+<p class="font-body-sm text-electric-blue font-semibold">$89.00</p>
+</div>
+<div class="bg-surface-container-lowest rounded-lg p-3 skeuomorphic-shadow hover:ring-1 hover:ring-electric-blue/50 transition-all cursor-pointer hidden md:block">
+<div class="aspect-square bg-surface-variant rounded-md mb-3 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A high-end mechanical keyboard with customizable RGB backlighting, viewed from a slightly elevated angle against a dark, matte surface. The lighting is moody, focusing on the vibrant glow of the keys against the deep blacks of the board, suggesting a premium, high-performance tech product for enthusiasts." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDMN9fxzyHb06ZIcnbH6-Gho1WfyXmyeLUWc1Os04hMrBjHfEbHZxAgPYNGfc11XO-TdzAUwgur2iKKXuEfdJg6hs8ovlvrSQL1YuI_XiRYGbhJgSgQW6C0unsCOLUgFN9Dat1NUVT8tdgOmv1ZuAix33BARFKoi-xnhekel-RrNPzIFezeR9xf7qgXrimPNdy46E8ITBXgvL4ByJk5DIkVThoix5f2N-G2x34J94YbxJhnLxI20ujJZS7eCHup6jTPSybbxpu54Q"/>
+</div>
+<p class="font-label-md text-on-surface truncate mb-1">MechKey RGB Elite</p>
+<p class="font-body-sm text-electric-blue font-semibold">$145.50</p>
+</div>
+<div class="bg-surface-container-lowest rounded-lg p-3 skeuomorphic-shadow hover:ring-1 hover:ring-electric-blue/50 transition-all cursor-pointer hidden md:block">
+<div class="aspect-square bg-surface-variant rounded-md mb-3 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A beautifully crafted ceramic vase containing a simple, elegant arrangement of dried pampas grass. The vase sits on a light oak floating shelf against a subtle, textured warm-grey wall. Soft, natural daylight creates gentle, realistic shadows, evoking a calm, sophisticated, and serene lifestyle aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCVBiVZGKtC7PMoBuXgJ2fuziWfWJF5-BaArHOiyLHGGcXxfgW7OyMNHkSu_IMnvYpPt6FQ-bSEab769C0FLbG4nUWgfn9LSy7Ngnh3HBYBgK7x485phHlH_YRephAF1wmlWarp4mIhBYpRfocM-EJ_hLCcw4lYNWWpzTNOWCXwD_t7WJsk-S9GAY1gUjsvSWdNL2KHDQIc6axe7MUPlVSW5Y2F78UFhOhiZ8g0Sz9M0sRRnNNFcxCfOy0fuZgf9rN3iI7H91m67A"/>
+</div>
+<p class="font-label-md text-on-surface truncate mb-1">Minimalist Ceramic Vase</p>
+<p class="font-body-sm text-electric-blue font-semibold">$34.00</p>
+</div>
+</div>
+</section>
+<!-- Product Grid -->
+<section>
+<div class="flex justify-between items-end mb-6">
+<h2 class="font-headline-lg text-headline-lg font-bold text-on-surface">Top Picks</h2>
+<a class="font-label-md text-primary hover:underline" href="#">View All</a>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-gutter">
+<!-- Product Card 1 -->
+<div class="bg-surface-container-lowest rounded-xl p-4 skeuomorphic-shadow flex flex-col h-full group relative">
+<button class="absolute top-4 right-4 z-10 text-outline hover:text-error transition-colors bg-surface/50 rounded-full p-1 glass-panel">
+<span class="material-symbols-outlined text-[20px]">favorite</span>
+</button>
+<div class="aspect-square bg-surface-variant rounded-lg mb-4 overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="A minimalist, matte black smart home security camera positioned against a pristine white background. The lighting is flat and bright, simulating a clean, high-end e-commerce product shot. The lens has a subtle, realistic glass reflection, emphasizing the product's premium build quality and technical sophistication." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBPSbwaqOvqm49VIgm4ekSCmQRODd6d3rjnTxITtRF_ubCCj97OhU25AbVFTJmQo2MtXYtGIvYuSNxTHe3PrDqIoxxKUBoAtf1BpRNLDmIgs8xORRloQ1Ge4ZTthFAGe5g3p3vhojBT_VzCX6pR5SoOl2pjCAjMPOgPGkjBL6s48WNgiN4_GxrzWtIe7oQGLlTjMGn0LDuzhZV0OSr5oqD_s4qG592l80az6mxIXGcg5mGGkKmfFFAbcm5A6PvCLKFzhhpTnnKIYQ"/>
+</div>
+<div class="flex-grow flex flex-col">
+<div class="flex items-center gap-1 mb-1">
+<span class="material-symbols-outlined text-[14px] text-lime-green" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-label-md text-on-surface-variant text-[12px]">4.8 (124)</span>
+</div>
+<h3 class="font-body-md text-on-surface font-semibold mb-1 line-clamp-2">Guardian Vision Pro Camera</h3>
+<div class="mt-auto pt-4 flex items-center justify-between">
+<span class="font-headline-md text-on-surface font-bold">$199.99</span>
+</div>
+<button class="w-full mt-3 bg-secondary text-on-secondary py-2 rounded font-label-md hover:bg-secondary/90 transition-colors shadow-sm skeuomorphic-hover flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]">shopping_bag</span>
+                                1-Click Checkout
+                            </button>
+</div>
+</div>
+<!-- Product Card 2 -->
+<div class="bg-surface-container-lowest rounded-xl p-4 skeuomorphic-shadow flex flex-col h-full group relative">
+<div class="absolute top-4 left-4 z-10 bg-error text-on-error text-[10px] font-bold px-2 py-1 rounded">SALE</div>
+<button class="absolute top-4 right-4 z-10 text-outline hover:text-error transition-colors bg-surface/50 rounded-full p-1 glass-panel">
+<span class="material-symbols-outlined text-[20px]">favorite</span>
+</button>
+<div class="aspect-square bg-surface-variant rounded-lg mb-4 overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="A pair of elegant, minimalist leather sneakers in a soft taupe color, placed precisely on a subtle grey backdrop. The studio lighting provides soft, diffused shadows that highlight the fine grain of the leather and the clean stitching details, creating a highly polished, premium retail presentation." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDXmvnpr9SkkcBpZCc9TrcbMDVyz_JwzGlkeER78mSf9JFeWil4vemM2t48gfTXI1abWYvpeqKwe5LnWqpxmnRZfNe0_9Zy2H0x4oR6aKli7f9u2oH0tHzCHp_0onHnbD0PuOEQjEGCHmZ9yMujB6TsN16WR4rp8uxJ8oazj76KyDohgVGEzTjDArD7TcutxwO0TusHbG2K00GmPKo0EgUM8FrpWOVNRLFe4rOzdhynnhfHI3wGBoX1EETr49NU8j-sZnE5DepBUw"/>
+</div>
+<div class="flex-grow flex flex-col">
+<div class="flex items-center gap-1 mb-1">
+<span class="material-symbols-outlined text-[14px] text-lime-green" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-label-md text-on-surface-variant text-[12px]">4.5 (89)</span>
+</div>
+<h3 class="font-body-md text-on-surface font-semibold mb-1 line-clamp-2">Minimalist Urban Sneakers</h3>
+<div class="mt-auto pt-4 flex items-center justify-between">
+<div>
+<span class="font-headline-md text-on-surface font-bold">$75.00</span>
+<span class="text-outline-variant line-through text-[12px] ml-1">$110.00</span>
+</div>
+</div>
+<button class="w-full mt-3 bg-secondary text-on-secondary py-2 rounded font-label-md hover:bg-secondary/90 transition-colors shadow-sm skeuomorphic-hover flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]">shopping_bag</span>
+                                1-Click Checkout
+                            </button>
+</div>
+</div>
+<!-- Product Card 3 -->
+<div class="bg-surface-container-lowest rounded-xl p-4 skeuomorphic-shadow flex flex-col h-full group relative hidden md:flex">
+<button class="absolute top-4 right-4 z-10 text-outline hover:text-error transition-colors bg-surface/50 rounded-full p-1 glass-panel">
+<span class="material-symbols-outlined text-[20px]">favorite</span>
+</button>
+<div class="aspect-square bg-surface-variant rounded-lg mb-4 overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="A modern, geometric table lamp with a brushed brass base and a frosted glass globe shade. The lamp is situated on a dark walnut table against a deep charcoal wall. Soft, warm light emits from the globe, creating a cozy, sophisticated, and high-end interior design aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAe2-LomElsS0RMum5T3orYMFiYTCYqEAEYE24UsksxtppoEst2WbQ7ldq5MLFEN902Cia8rOtaC4WhjPxW8BenHDq53VzNsyEJ6v5tTLcCytbxG4u0X7O4BxW7eYgpk1M7TPI4gTTqmItk37iPWIpEi_JCvKu0i0d3FBu1KZ1jSUqEH7aRk1elY509v6nIFdXn77AT6mKEuvVqNtNi6SRrT00t_92pnm8UFjtUL5X35k3mHhpIphnkMQVHBwqgFIjxyq0bzQ-RtQ"/>
+</div>
+<div class="flex-grow flex flex-col">
+<div class="flex items-center gap-1 mb-1">
+<span class="material-symbols-outlined text-[14px] text-lime-green" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-label-md text-on-surface-variant text-[12px]">4.9 (210)</span>
+</div>
+<h3 class="font-body-md text-on-surface font-semibold mb-1 line-clamp-2">Lumina Brass Table Lamp</h3>
+<div class="mt-auto pt-4 flex items-center justify-between">
+<span class="font-headline-md text-on-surface font-bold">$140.00</span>
+</div>
+<button class="w-full mt-3 bg-secondary text-on-secondary py-2 rounded font-label-md hover:bg-secondary/90 transition-colors shadow-sm skeuomorphic-hover flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]">shopping_bag</span>
+                                1-Click Checkout
+                            </button>
+</div>
+</div>
+<!-- Product Card 4 -->
+<div class="bg-surface-container-lowest rounded-xl p-4 skeuomorphic-shadow flex flex-col h-full group relative hidden lg:flex">
+<button class="absolute top-4 right-4 z-10 text-outline hover:text-error transition-colors bg-surface/50 rounded-full p-1 glass-panel">
+<span class="material-symbols-outlined text-[20px]">favorite</span>
+</button>
+<div class="aspect-square bg-surface-variant rounded-lg mb-4 overflow-hidden">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="A meticulously arranged assortment of artisanal cheeses, cured meats, and fresh fruits presented on a rustic olive wood charcuterie board. The lighting is warm and natural, suggesting a late afternoon gathering. The composition is rich in texture and color, emphasizing a premium, gourmet culinary experience." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBnpjbMDLD5QuRH1dMYq9ZK5DkxutLIm0gC1_rotj9QbxRTRK4jM-vzwuZeo2wLs9wOCdklAt3BzXF7rSxpEAnuhY64P--krUstGy2amZ-H0auaZet-WgS0iYPK1wLdJXuBqGekhOw_UVvVFDBk29lW2yovPXYe8n8CGor8S-kd5ulVSZYRsIxju2zrkxVlT-KWqxgYn50BZOJd_y1kcJAzBYqIdzZwhqR8RzSaAknpYjLfQDNpvVnJfH4qhpcfIncUwkLO-p09pA"/>
+</div>
+<div class="flex-grow flex flex-col">
+<div class="flex items-center gap-1 mb-1">
+<span class="material-symbols-outlined text-[14px] text-lime-green" style="font-variation-settings: 'FILL' 1;">star</span>
+<span class="font-label-md text-on-surface-variant text-[12px]">4.7 (56)</span>
+</div>
+<h3 class="font-body-md text-on-surface font-semibold mb-1 line-clamp-2">Artisan Charcuterie Board Set</h3>
+<div class="mt-auto pt-4 flex items-center justify-between">
+<span class="font-headline-md text-on-surface font-bold">$65.00</span>
+</div>
+<button class="w-full mt-3 bg-secondary text-on-secondary py-2 rounded font-label-md hover:bg-secondary/90 transition-colors shadow-sm skeuomorphic-hover flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]">shopping_bag</span>
+                                1-Click Checkout
+                            </button>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-surface-container-highest dark:bg-surface-dark text-on-surface dark:text-on-surface-variant font-body-sm text-body-sm w-full mt-auto bg-surface-container-highest dark:bg-surface-dark border-t border-outline-variant flat no shadows grid grid-cols-1 md:grid-cols-4 gap-gutter px-margin-edge py-12 max-w-container-max mx-auto hidden md:grid">
+<div class="col-span-1">
+<h2 class="font-headline-md text-headline-md text-primary font-bold mb-4">BUPZO</h2>
+<p class="text-on-surface-variant mb-6">The premium marketplace for everything you need.</p>
+<p class="text-on-surface-variant">© 2024 BUPZO Multi-Vendor. All rights reserved.</p>
+</div>
+<div class="col-span-1 md:col-span-3 grid grid-cols-2 md:grid-cols-3 gap-8">
+<div class="flex flex-col gap-3">
+<h4 class="font-label-md font-bold text-on-surface">Links</h4>
+<a class="text-on-surface-variant hover:text-primary underline transition-opacity hover:opacity-80" href="#">Privacy Policy</a>
+<a class="text-on-surface-variant hover:text-primary underline transition-opacity hover:opacity-80" href="#">Terms of Service</a>
+<a class="text-on-surface-variant hover:text-primary underline transition-opacity hover:opacity-80" href="#">Become a Seller</a>
+<a class="text-on-surface-variant hover:text-primary underline transition-opacity hover:opacity-80" href="#">Affiliate Program</a>
+<a class="text-on-surface-variant hover:text-primary underline transition-opacity hover:opacity-80" href="#">Track Order</a>
+</div>
+</div>
+</footer>
+</div>
+<!-- BottomNavBar (Mobile) -->
+<nav class="bg-surface/80 dark:bg-surface-dark/80 backdrop-blur-xl text-primary dark:text-primary-fixed font-label-md text-label-md-mobile fixed bottom-0 w-full z-50 rounded-t-xl bg-surface dark:bg-surface-dark border-t border-outline-variant shadow-[0_-4px_10px_rgba(0,0,0,0.05)] flex justify-around items-center h-16 md:hidden px-2 pb-safe">
+<button class="flex flex-col items-center justify-center bg-secondary-container dark:bg-tertiary-container text-on-secondary-container dark:text-on-tertiary-container rounded-full px-4 py-1 active:scale-90 transition-transform">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="mt-1">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 active:scale-90 transition-transform">
+<span class="material-symbols-outlined">search</span>
+<span class="mt-1">Explore</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 active:scale-90 transition-transform">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span class="mt-1">Wallet</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 active:scale-90 transition-transform">
+<span class="material-symbols-outlined">local_shipping</span>
+<span class="mt-1">Orders</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 active:scale-90 transition-transform">
+<span class="material-symbols-outlined">auto_awesome</span>
+<span class="mt-1">AI Assistant</span>
+</button>
+</nav>
+</body></html>

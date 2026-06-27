@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>BUPZO Admin - AI Dispute &amp; Fraud Center</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Plus+Jakarta+Sans:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container-low": "#faf2ee",
+                      "on-primary-container": "#ccc6dc",
+                      "on-error-container": "#93000a",
+                      "inverse-on-surface": "#f7efeb",
+                      "error": "#ba1a1a",
+                      "secondary-fixed-dim": "#e6bbc8",
+                      "on-primary-fixed": "#1c1929",
+                      "on-secondary": "#ffffff",
+                      "on-primary": "#ffffff",
+                      "secondary-container": "#fed1de",
+                      "outline-variant": "#c9c5cc",
+                      "error-container": "#ffdad6",
+                      "electric-blue": "#007AFF",
+                      "on-tertiary-fixed": "#251913",
+                      "primary": "#3f3b4c",
+                      "on-secondary-container": "#795763",
+                      "tertiary-fixed-dim": "#d8c2b9",
+                      "surface-container-lowest": "#ffffff",
+                      "on-tertiary-container": "#dac5bc",
+                      "surface-container-highest": "#e8e1dd",
+                      "background": "#fff8f4",
+                      "on-primary-fixed-variant": "#484456",
+                      "inverse-primary": "#cac3d9",
+                      "surface": "#fff8f4",
+                      "surface-bright": "#fff8f4",
+                      "on-surface-variant": "#48464c",
+                      "surface-variant": "#e8e1dd",
+                      "on-secondary-fixed-variant": "#5d3e49",
+                      "on-error": "#ffffff",
+                      "secondary-fixed": "#ffd9e4",
+                      "on-secondary-fixed": "#2d141d",
+                      "surface-tint": "#605c6e",
+                      "primary-fixed": "#e6dff5",
+                      "on-tertiary": "#ffffff",
+                      "primary-fixed-dim": "#cac3d9",
+                      "primary-container": "#565264",
+                      "on-surface": "#1e1b19",
+                      "secondary": "#775560",
+                      "surface-dark": "#1A191E",
+                      "dim-grey": "#706677",
+                      "surface-dim": "#e0d9d5",
+                      "inverse-surface": "#33302d",
+                      "outline": "#79767c",
+                      "lime-green": "#32D74B",
+                      "tertiary-container": "#61514a",
+                      "on-background": "#1e1b19",
+                      "on-tertiary-fixed-variant": "#53443d",
+                      "surface-container-high": "#eee7e3",
+                      "tertiary-fixed": "#f5ded4",
+                      "tertiary": "#493a34",
+                      "surface-container": "#f4ece8"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "stack-compact": "0.75rem",
+                      "stack-default": "1.5rem",
+                      "sidebar-width": "280px",
+                      "sidebar-collapsed": "80px",
+                      "container-max": "1440px",
+                      "gutter": "1.5rem",
+                      "margin-edge": "2rem"
+              },
+              "fontFamily": {
+                      "label-md": [
+                              "Inter"
+                      ],
+                      "headline-lg-mobile": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "headline-lg": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "display-lg": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "mono-sm": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "label-md": [
+                              "12px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.3",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "1.3",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "display-lg": [
+                              "48px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "1.6",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "1.5",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "1.5",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.4",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "mono-sm": [
+                              "13px",
+                              {
+                                      "lineHeight": "1.4",
+                                      "fontWeight": "500"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex">
+<!-- SideNavBar -->
+<nav class="h-screen w-sidebar-width fixed left-0 top-0 z-40 bg-surface-container-low dark:bg-surface-dark border-r border-outline-variant shadow-none flex flex-col py-stack-default hidden md:flex">
+<div class="px-margin-edge mb-8">
+<h1 class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed">BUPZO Seller</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Pro Merchant</p>
+</div>
+<div class="flex-1 overflow-y-auto">
+<ul class="space-y-1">
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span class="font-label-md text-label-md">Inventory</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="shopping_cart">shopping_cart</span>
+<span class="font-label-md text-label-md">Orders</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 bg-primary/5 text-primary border-l-4 border-primary px-4 py-3 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="insights">insights</span>
+<span class="font-label-md text-label-md">Analytics</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="campaign">campaign</span>
+<span class="font-label-md text-label-md">Marketing</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="font-label-md text-label-md">Customers</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+<span class="font-label-md text-label-md">Help</span>
+</a>
+</li>
+</ul>
+</div>
+<div class="px-margin-edge mt-auto space-y-4">
+<button class="w-full bg-surface-variant text-on-surface py-2 rounded-lg font-label-md text-label-md hover:bg-outline-variant transition-colors border border-outline-variant shadow-sm">
+                Upgrade Plan
+            </button>
+<ul class="space-y-1">
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+<span class="font-label-md text-label-md">Logout</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="support_agent">support_agent</span>
+<span class="font-label-md text-label-md">Support</span>
+</a>
+</li>
+</ul>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="flex-1 ml-0 md:ml-sidebar-width min-h-screen flex flex-col">
+<!-- Top App Bar (Mobile Only for Sidebar Navigation) -->
+<header class="md:hidden bg-surface-bright flex justify-between items-center px-4 py-3 border-b border-outline-variant sticky top-0 z-50">
+<h1 class="font-headline-md text-headline-md font-bold text-primary">BUPZO</h1>
+<button class="text-on-surface-variant">
+<span class="material-symbols-outlined">menu</span>
+</button>
+</header>
+<div class="p-margin-edge flex-1 flex flex-col gap-stack-default max-w-container-max mx-auto w-full">
+<!-- Page Header -->
+<div class="flex justify-between items-end border-b border-outline-variant pb-4">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">AI Dispute &amp; Fraud Center</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Review flagged anomalies and abusive interactions.</p>
+</div>
+<div class="flex gap-3">
+<span class="inline-flex items-center gap-1 px-3 py-1 bg-error-container text-on-error-container rounded-full font-label-md text-label-md">
+<span class="material-symbols-outlined text-sm">warning</span> 12 Critical
+                    </span>
+<span class="inline-flex items-center gap-1 px-3 py-1 bg-surface-variant text-on-surface-variant rounded-full font-label-md text-label-md">
+<span class="material-symbols-outlined text-sm">pending_actions</span> 45 Pending
+                    </span>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter flex-1">
+<!-- Left Side: AI Fraud Report (Split Screen Component) -->
+<div class="lg:col-span-7 flex flex-col gap-stack-default">
+<div class="bg-surface-container-lowest rounded-xl shadow-[0_2px_4px_rgba(86,82,100,0.05)] border border-outline-variant overflow-hidden flex flex-col h-full">
+<div class="px-6 py-4 border-b border-outline-variant bg-surface-container flex justify-between items-center">
+<h3 class="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-electric-blue" data-weight="fill">robot_2</span> 
+                                AI Fraud Analysis
+                            </h3>
+<span class="text-xs font-mono-sm text-on-surface-variant">Case #FRD-8921-X</span>
+</div>
+<div class="p-6 flex-1 overflow-y-auto">
+<!-- Transaction Details -->
+<div class="grid grid-cols-2 gap-4 mb-6 p-4 bg-surface rounded-lg border border-outline-variant">
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant mb-1">Order Total</p>
+<p class="font-body-lg text-body-lg text-on-surface font-semibold">$1,249.99</p>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant mb-1">User Velocity</p>
+<p class="font-body-lg text-body-lg text-error font-semibold">High (3 orders/1hr)</p>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant mb-1">IP Location</p>
+<p class="font-body-md text-body-md text-on-surface">192.168.1.1 (VPN detected)</p>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant mb-1">Payment Method</p>
+<p class="font-body-md text-body-md text-on-surface">Card ending in 4242</p>
+</div>
+</div>
+<!-- AI Reasoning -->
+<h4 class="font-label-md text-label-md text-on-surface-variant mb-3 uppercase tracking-wider">Detection Reasoning</h4>
+<ul class="space-y-3">
+<li class="flex items-start gap-3 p-3 bg-error-container/20 rounded-lg border border-error-container/50">
+<span class="material-symbols-outlined text-error mt-0.5">location_off</span>
+<div>
+<p class="font-body-md text-body-md text-on-surface font-semibold">Shipping Address Mismatch</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Billing address is 500+ miles from shipping destination. Historical data shows 85% chargeback rate for this pattern.</p>
+</div>
+</li>
+<li class="flex items-start gap-3 p-3 bg-surface-variant/30 rounded-lg border border-outline-variant/50">
+<span class="material-symbols-outlined text-electric-blue mt-0.5">devices</span>
+<div>
+<p class="font-body-md text-body-md text-on-surface font-semibold">New Device Fingerprint</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">First time seeing this device hash for this user account. Browser language differs from IP geolocation.</p>
+</div>
+</li>
+<li class="flex items-start gap-3 p-3 bg-surface-variant/30 rounded-lg border border-outline-variant/50">
+<span class="material-symbols-outlined text-primary mt-0.5">history</span>
+<div>
+<p class="font-body-md text-body-md text-on-surface font-semibold">Dormant Account Activity</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Account was inactive for 14 months prior to this high-value transaction.</p>
+</div>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<!-- Right Side: Admin Action (Split Screen Component) -->
+<div class="lg:col-span-5 flex flex-col gap-stack-default">
+<div class="bg-surface-container-lowest rounded-xl shadow-[0_10px_15px_-3px_rgba(86,82,100,0.1)] border border-outline-variant p-6 flex flex-col h-full relative overflow-hidden">
+<!-- Decorative top highlight -->
+<div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-secondary"></div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-6">Resolution Action</h3>
+<!-- Confidence Score Widget -->
+<div class="flex items-center justify-between p-4 bg-surface-container rounded-lg border border-outline-variant mb-6 shadow-inner">
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant">AI Confidence</p>
+<p class="font-body-sm text-body-sm text-on-surface mt-1">Recommendation: Reject</p>
+</div>
+<div class="flex items-center gap-2">
+<div class="text-error font-headline-lg text-headline-lg">94%</div>
+</div>
+</div>
+<!-- Action Form -->
+<form class="flex-1 flex flex-col">
+<div class="mb-4">
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2">Internal Notes (Optional)</label>
+<textarea class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg p-3 font-body-md text-body-md text-on-surface focus:border-primary focus:ring-1 focus:ring-primary shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)] resize-none" placeholder="Add context for this decision..." rows="3"></textarea>
+</div>
+<div class="mb-6">
+<label class="flex items-center gap-2 cursor-pointer">
+<input class="rounded text-primary focus:ring-primary bg-surface-container-lowest border-outline-variant w-4 h-4" type="checkbox"/>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Blacklist IP Address &amp; Fingerprint</span>
+</label>
+</div>
+<div class="mt-auto grid grid-cols-2 gap-4">
+<button class="bg-surface-container-lowest text-on-surface border border-outline-variant py-3 px-4 rounded-lg font-label-md text-label-md hover:bg-surface-variant transition-colors shadow-sm flex justify-center items-center gap-2" type="button">
+<span class="material-symbols-outlined text-lime-green">check_circle</span>
+                                    Approve Order
+                                </button>
+<button class="bg-primary text-on-primary py-3 px-4 rounded-lg font-label-md text-label-md hover:bg-primary/90 transition-colors shadow-[0_2px_4px_rgba(86,82,100,0.05)] border-t border-white/20 flex justify-center items-center gap-2" type="button">
+<span class="material-symbols-outlined">block</span>
+                                    Reject &amp; Refund
+                                </button>
+</div>
+</form>
+</div>
+</div>
+<!-- Bottom Section: Abusive Review List -->
+<div class="lg:col-span-12 mt-4">
+<div class="bg-surface-container-lowest rounded-xl shadow-[0_2px_4px_rgba(86,82,100,0.05)] border border-outline-variant overflow-hidden">
+<div class="px-6 py-4 border-b border-outline-variant flex justify-between items-center bg-surface-container/50">
+<h3 class="font-headline-md text-headline-md text-on-surface">Flagged Content Moderation</h3>
+<button class="text-primary font-label-md text-label-md hover:underline">View All</button>
+</div>
+<div class="divide-y divide-outline-variant">
+<!-- Review Item 1 -->
+<div class="p-6 flex gap-4 items-start hover:bg-surface/50 transition-colors">
+<div class="bg-error-container text-on-error-container w-10 h-10 rounded-full flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-sm">gavel</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start mb-2">
+<div>
+<p class="font-body-md text-body-md text-on-surface font-semibold">User_992</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Product: Premium Wireless Headphones</p>
+</div>
+<span class="px-2 py-1 bg-surface-variant text-on-surface-variant text-xs rounded font-mono-sm">Hate Speech (99%)</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface italic bg-error/5 p-3 rounded border-l-2 border-error">"This seller is an absolute [REDACTED] and their products are complete garbage. I hope their business burns down."</p>
+</div>
+<div class="flex flex-col gap-2 shrink-0">
+<button class="text-error hover:bg-error/10 p-2 rounded-full transition-colors" title="Delete Review">
+<span class="material-symbols-outlined">delete</span>
+</button>
+<button class="text-on-surface-variant hover:bg-surface-variant p-2 rounded-full transition-colors" title="Ignore">
+<span class="material-symbols-outlined">visibility_off</span>
+</button>
+</div>
+</div>
+<!-- Review Item 2 -->
+<div class="p-6 flex gap-4 items-start hover:bg-surface/50 transition-colors">
+<div class="bg-secondary-container text-on-secondary-container w-10 h-10 rounded-full flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-sm">link</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start mb-2">
+<div>
+<p class="font-body-md text-body-md text-on-surface font-semibold">BargainHunterX</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Product: Smart Watch Gen 4</p>
+</div>
+<span class="px-2 py-1 bg-surface-variant text-on-surface-variant text-xs rounded font-mono-sm">Spam Link (85%)</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface italic bg-secondary/5 p-3 rounded border-l-2 border-secondary">"Great watch but I found it 50% cheaper here: http://suspicious-domain.com/buy-now"</p>
+</div>
+<div class="flex flex-col gap-2 shrink-0">
+<button class="text-error hover:bg-error/10 p-2 rounded-full transition-colors" title="Delete Review">
+<span class="material-symbols-outlined">delete</span>
+</button>
+<button class="text-on-surface-variant hover:bg-surface-variant p-2 rounded-full transition-colors" title="Ignore">
+<span class="material-symbols-outlined">visibility_off</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

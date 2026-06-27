@@ -1,0 +1,319 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>BUPZO | Multi-Vendor Marketplace</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Plus+Jakarta+Sans:wght@600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-dark": "#1A191E",
+                      "tertiary": "#493a34",
+                      "on-secondary-container": "#795763",
+                      "surface-bright": "#fff8f4",
+                      "error-container": "#ffdad6",
+                      "secondary-container": "#fed1de",
+                      "on-surface": "#1e1b19",
+                      "surface-variant": "#e8e1dd",
+                      "surface-container-highest": "#e8e1dd",
+                      "inverse-on-surface": "#f7efeb",
+                      "surface-container-lowest": "#ffffff",
+                      "error": "#ba1a1a",
+                      "on-secondary": "#ffffff",
+                      "on-primary-fixed-variant": "#484456",
+                      "dim-grey": "#706677",
+                      "surface-dim": "#e0d9d5",
+                      "on-error": "#ffffff",
+                      "surface-container-high": "#eee7e3",
+                      "background": "#fff8f4",
+                      "secondary-fixed": "#ffd9e4",
+                      "on-primary-fixed": "#1c1929",
+                      "on-tertiary": "#ffffff",
+                      "primary-fixed-dim": "#cac3d9",
+                      "on-primary-container": "#ccc6dc",
+                      "secondary": "#775560",
+                      "on-tertiary-fixed-variant": "#53443d",
+                      "on-tertiary-fixed": "#251913",
+                      "on-background": "#1e1b19",
+                      "tertiary-fixed-dim": "#d8c2b9",
+                      "electric-blue": "#007AFF",
+                      "on-surface-variant": "#48464c",
+                      "primary-fixed": "#e6dff5",
+                      "on-error-container": "#93000a",
+                      "tertiary-fixed": "#f5ded4",
+                      "surface-tint": "#605c6e",
+                      "surface-container": "#f4ece8",
+                      "inverse-primary": "#cac3d9",
+                      "lime-green": "#32D74B",
+                      "surface-container-low": "#faf2ee",
+                      "outline-variant": "#c9c5cc",
+                      "on-secondary-fixed-variant": "#5d3e49",
+                      "primary-container": "#565264",
+                      "secondary-fixed-dim": "#e6bbc8",
+                      "surface": "#fff8f4",
+                      "on-secondary-fixed": "#2d141d",
+                      "inverse-surface": "#33302d",
+                      "primary": "#3f3b4c",
+                      "on-tertiary-container": "#dac5bc",
+                      "outline": "#79767c",
+                      "tertiary-container": "#61514a",
+                      "on-primary": "#ffffff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "container-max": "1440px",
+                      "margin-edge": "2rem",
+                      "gutter": "1.5rem",
+                      "stack-default": "1.5rem",
+                      "stack-compact": "0.75rem",
+                      "sidebar-width": "280px",
+                      "sidebar-collapsed": "80px"
+              },
+              "fontFamily": {
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "headline-lg-mobile": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "label-md": [
+                              "Inter"
+                      ],
+                      "mono-sm": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "display-lg": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "headline-md": [
+                              "Plus Jakarta Sans"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "1.6",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.3",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-md": [
+                              "12px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "mono-sm": [
+                              "13px",
+                              {
+                                      "lineHeight": "1.4",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "1.3",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "display-lg": [
+                              "48px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.4",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "1.5",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "1.5",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-fill {
+            font-variation-settings: 'FILL' 1;
+        }
+        /* Custom Skeuomorphic Utilities */
+        .skeuo-inner-shadow {
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.06);
+        }
+        .skeuo-card-shadow {
+            box-shadow: 0 2px 4px rgba(86, 82, 100, 0.05);
+        }
+        .skeuo-hover-shadow:hover {
+            box-shadow: 0 10px 15px -3px rgba(86, 82, 100, 0.1);
+        }
+        .glass-overlay {
+            backdrop-filter: blur(12px);
+            background-color: rgba(255, 248, 244, 0.8); /* surface bright */
+        }
+        .btn-primary {
+            background-color: theme('colors.secondary');
+            color: theme('colors.on-secondary');
+            box-shadow: 0 2px 4px rgba(86, 82, 100, 0.05), inset 0 1px 0px rgba(255,255,255,0.2);
+            transition: all 0.2s;
+        }
+        .btn-primary:active {
+            transform: translateY(1px);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+        /* AI Glow */
+        .ai-glow {
+            box-shadow: 0 0 15px rgba(0, 122, 255, 0.2);
+            border: 1px solid rgba(0, 122, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md text-body-md antialiased min-h-screen flex flex-col">
+<!-- TopNavBar -->
+<header class="bg-surface-bright dark:bg-surface-dark font-body-md text-body-md w-full sticky top-0 z-50 bg-surface-bright dark:bg-surface-dark shadow-[0_2px_4px_rgba(86,82,100,0.05)] shadow-sm hidden md:block">
+<div class="flex justify-between items-center w-full px-margin-edge py-4 max-w-container-max mx-auto">
+<div class="flex items-center gap-6">
+<!-- Brand Logo -->
+<div class="font-display-lg text-display-lg text-primary dark:text-primary-fixed flex items-center gap-2 cursor-pointer">
+<img alt="BUPZO Logo" class="h-10 w-auto object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBEjcBVLRglKUm9Ks7SZus83ZBjdZuaudvbmSJBry9JYZza0Rad0XXhSirBtR0D6gkIuauLXYf-Rx7WmpxCL7CvLn9CpC34pQicn98TmGnLUQddKWsLOtJdOJQqptQBjbCMDlXNaSWDRSavSz8dzALotv4I7Wvj3Fc8jXFoI8hHe4VnKYO2qHRPx1ZL_G0ATbdypD0Q53VxeOL3Li4pXvpkmRczNnfMZkJFg7-Qp80lBZ0K9V9Zc4rDLMiaL3HIGii5BA02V6XTGg">
+<span class="tracking-tight">BUPZO</span>
+</div>
+<!-- Search Bar -->
+<div class="relative hidden lg:flex items-center w-[400px]">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-dim-grey">search</span>
+</div>
+<input class="block w-full pl-10 pr-12 py-2 border border-outline-variant rounded-full bg-surface-container-low text-on-surface focus:ring-2 focus:ring-primary focus:border-transparent skeuo-inner-shadow text-body-sm font-body-sm transition-all" placeholder="Search for Halwa, Electronics, Deals..." type="text">
+<div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+<button class="text-electric-blue hover:text-primary transition-colors cursor-pointer" title="AI Semantic Search">
+<span class="material-symbols-outlined icon-fill text-[20px]">auto_awesome</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Navigation Links -->
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-primary font-bold border-b-2 border-primary pb-1 cursor-pointer active:scale-95 transition-all" href="#">Marketplace</a>
+<a class="text-on-surface-variant dark:text-outline-variant hover:text-primary transition-colors duration-200 cursor-pointer active:scale-95" href="#">Deals</a>
+<a class="text-on-surface-variant dark:text-outline-variant hover:text-primary transition-colors duration-200 cursor-pointer active:scale-95" href="#">Trending</a>
+<a class="text-on-surface-variant dark:text-outline-variant hover:text-primary transition-colors duration-200 cursor-pointer active:scale-95" href="#">Stores</a>
+<a class="text-on-surface-variant dark:text-outline-variant hover:text-primary transition-colors duration-200 cursor-pointer active:scale-95" href="#">Support</a>
+</nav>
+<!-- Actions -->
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:text-primary transition-colors duration-200 cursor-pointer active:scale-95 relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors duration-200 cursor-pointer active:scale-95 relative group">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span class="text-body-sm font-body-sm hidden lg:block group-hover:underline">Account</span>
+</div>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors duration-200 cursor-pointer active:scale-95 relative group">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined">shopping_cart</span>
+<span class="absolute -top-1 -right-2 bg-primary text-on-primary text-[10px] w-4 h-4 flex items-center justify-center rounded-full">3</span>
+<span class="text-body-sm font-body-sm hidden lg:block group-hover:underline ml-1">Cart</span>
+</div>
+</button>
+<div class="h-8 w-8 rounded-full overflow-hidden border-2 border-outline-variant cursor-pointer ml-2">
+<img alt="User profile" class="w-full h-full object-cover" data-alt="A close up portrait of a smiling person, warmly lit, professional yet approachable, set against a soft, bright, modern light-mode background with subtle mauve and almond silk tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBCDUXRPj9l2P_1dp4vW5EB0v86naIWJoVIdjphRgEnID0GuJ0z4RWEYJX_XDc3CqlimDhPcGyKK7aK3sWWEl409wd9KTlLVLzo354DMdTA2TOGkM-NebuexQK6J-q0s7q1j-jxoeFznK3AoLzsW1nspDYZUWNLh_qY2-7eOG0Xb1uVY_bvG_jIg2OAXErAlY95US2OE94XsTxCL9slAQ5Tdlwj6OIiQJFOJZQydMqFlAv8rTJLd2sD79wrlPIQqOs3WCCXalb-Uw">
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow flex flex-col items-center w-full bg-surface-container-low pb-24 md:pb-0">
+<!-- Hero Section -->
+<section class="w-full max-w-container-max mx-auto px-margin-edge py-stack-default mt-4 relative">
+<div class="w-full h-[400px] md:h-[500px] rounded-xl overflow-hidden relative shadow-md">
+<div class="bg-cover bg-center w-full h-full" data-alt="A vibrant, high-quality photograph of rich, glossy Nagore Specialties Halwa arranged on a silver platter, surrounded by premium dry fruits like cashews and almonds. The lighting is warm and inviting, casting soft shadows that highlight the texture of the sweets, set against a luxurious but clean modern background." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBm2KjzgCBrzCbGgQuwGNEE2Y9nnS-hDm3BwqykfOZlWgKVX2uHDLKPRGx438OqKykQFkfvmOysQVPvrhA5UE0RzbgZqM4Iq-d2EvMlCC-iJlPlBf3yJpOefCCyAPuTpPcby3yfVWPYmvtXEoGBkVZSOHpvAY4aZM_i5COo5LTXR-39IPllWVzKQqVdBWBHT3olhqJ_qGXkstsLKazxqM1JpHyBr4RbjafhvSlM9L5cVIT4QlgQALpwKddDsMXQ_2TiZEIqgWFZCw')"></div>
+<div class="absolute inset-0 bg-gradient-to-r from-surface-dark/80 to-transparent flex items-center">
+<div class="px-8 md:px-16 max-w-2xl text-on-secondary">
+<span class="px-3 py-1 bg-lime-green text-on-secondary-fixed text-label-md font-label-md rounded-full uppercase tracking-wider mb-4 inline-block font-bold">Featured Specialty</span>
+<h1 class="font-display-lg text-display-lg md:text-[64px] font-bold leading-tight mb-4 drop-shadow-md">Nagore Specialties</h1>
+<p class="font-body-lg text-body-lg text-on-secondary/90 mb-8 max-w-md">Authentic, melt-in-your-mouth Halwa and premium dry fruits sourced directly from legendary makers.</p>
+<button class="btn-primary px-8 py-3 rounded-lg font-label-md text-label-md flex items-center gap-2 group">
+<span>Shop Now</span>
+<span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- BottomNavBar (Mobile) -->
+<nav class="bg-surface/80 dark:bg-surface-dark/80 backdrop-blur-xl text-primary dark:text-primary-fixed font-label-md text-label-md-mobile fixed bottom-0 w-full z-50 rounded-t-xl bg-surface dark:bg-surface-dark border-t border-outline-variant shadow-[0_-4px_10px_rgba(0,0,0,0.05)] flex justify-around items-center h-16 md:hidden px-2 pb-safe">
+<a class="flex flex-col items-center justify-center bg-secondary-container dark:bg-tertiary-container text-on-secondary-container dark:text-on-tertiary-container rounded-full px-4 py-1 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined icon-fill">home</span>
+<span class="mt-1">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 rounded-lg p-2 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined">search</span>
+<span class="mt-1">Explore</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 rounded-lg p-2 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span class="mt-1">Wallet</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 rounded-lg p-2 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined">local_shipping</span>
+<span class="mt-1">Orders</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 rounded-lg p-2 active:scale-90 transition-transform text-electric-blue" href="#">
+<span class="material-symbols-outlined">auto_awesome</span>
+<span class="mt-1">AI Assistant</span>
+</a>
+</nav>
+</body></html>

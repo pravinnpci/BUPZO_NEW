@@ -1,0 +1,715 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>BUPZO Super Admin Hub</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+                "surface-container": "#f4ece8",
+                "on-secondary-fixed-variant": "#5d3e49",
+                "secondary-fixed-dim": "#e6bbc8",
+                "on-primary-fixed": "#1c1929",
+                "on-secondary-fixed": "#2d141d",
+                "background": "#fff8f4",
+                "surface-container-highest": "#e8e1dd",
+                "primary-fixed": "#e6dff5",
+                "on-surface": "#1e1b19",
+                "on-tertiary": "#ffffff",
+                "on-surface-variant": "#48464c",
+                "tertiary-fixed-dim": "#d8c2b9",
+                "on-error-container": "#93000a",
+                "secondary-fixed": "#ffd9e4",
+                "on-background": "#1e1b19",
+                "on-secondary-container": "#795763",
+                "error-container": "#ffdad6",
+                "surface": "#fff8f4",
+                "surface-container-lowest": "#ffffff",
+                "outline-variant": "#c9c5cc",
+                "inverse-surface": "#33302d",
+                "primary-container": "#565264",
+                "on-secondary": "#ffffff",
+                "primary": "#3f3b4c",
+                "on-error": "#ffffff",
+                "surface-container-low": "#faf2ee",
+                "tertiary-fixed": "#f5ded4",
+                "surface-tint": "#605c6e",
+                "on-primary": "#ffffff",
+                "surface-container-high": "#eee7e3",
+                "on-tertiary-fixed-variant": "#53443d",
+                "inverse-primary": "#cac3d9",
+                "secondary-container": "#fed1de",
+                "electric-blue": "#007AFF",
+                "surface-variant": "#e8e1dd",
+                "surface-dim": "#e0d9d5",
+                "secondary": "#775560",
+                "on-tertiary-fixed": "#251913",
+                "on-primary-fixed-variant": "#484456",
+                "dim-grey": "#706677",
+                "surface-bright": "#fff8f4",
+                "tertiary": "#493a34",
+                "surface-dark": "#1A191E",
+                "outline": "#79767c",
+                "lime-green": "#32D74B",
+                "inverse-on-surface": "#f7efeb",
+                "tertiary-container": "#61514a",
+                "error": "#ba1a1a",
+                "primary-fixed-dim": "#cac3d9",
+                "on-tertiary-container": "#dac5bc",
+                "on-primary-container": "#ccc6dc"
+        },
+        "borderRadius": {
+                "DEFAULT": "0.125rem",
+                "lg": "0.25rem",
+                "xl": "0.5rem",
+                "full": "0.75rem"
+        },
+        "spacing": {
+                "margin-edge": "2rem",
+                "container-max": "1440px",
+                "stack-default": "1.5rem",
+                "stack-compact": "0.75rem",
+                "sidebar-width": "240px",
+                "sidebar-collapsed": "80px",
+                "gutter": "1.5rem"
+        },
+        "fontFamily": {
+                "display-lg": [
+                        "Plus Jakarta Sans"
+                ],
+                "body-sm": [
+                        "Inter"
+                ],
+                "body-lg": [
+                        "Inter"
+                ],
+                "mono-sm": [
+                        "Inter"
+                ],
+                "headline-lg-mobile": [
+                        "Plus Jakarta Sans"
+                ],
+                "label-md": [
+                        "Inter"
+                ],
+                "headline-md": [
+                        "Plus Jakarta Sans"
+                ],
+                "body-md": [
+                        "Inter"
+                ],
+                "headline-lg": [
+                        "Plus Jakarta Sans"
+                ]
+        },
+        "fontSize": {
+                "display-lg": [
+                        "36px",
+                        {
+                                "lineHeight": "1.2",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "700"
+                        }
+                ],
+                "body-sm": [
+                        "12px",
+                        {
+                                "lineHeight": "1.5",
+                                "fontWeight": "400"
+                        }
+                ],
+                "body-lg": [
+                        "16px",
+                        {
+                                "lineHeight": "1.6",
+                                "fontWeight": "400"
+                        }
+                ],
+                "mono-sm": [
+                        "11px",
+                        {
+                                "lineHeight": "1.4",
+                                "fontWeight": "500"
+                        }
+                ],
+                "headline-lg-mobile": [
+                        "20px",
+                        {
+                                "lineHeight": "1.3",
+                                "fontWeight": "600"
+                        }
+                ],
+                "label-md": [
+                        "11px",
+                        {
+                                "lineHeight": "1.2",
+                                "letterSpacing": "0.05em",
+                                "fontWeight": "600"
+                        }
+                ],
+                "headline-md": [
+                        "18px",
+                        {
+                                "lineHeight": "1.4",
+                                "fontWeight": "600"
+                        }
+                ],
+                "body-md": [
+                        "14px",
+                        {
+                                "lineHeight": "1.5",
+                                "fontWeight": "400"
+                        }
+                ],
+                "headline-lg": [
+                        "24px",
+                        {
+                                "lineHeight": "1.3",
+                                "fontWeight": "600"
+                        }
+                ]
+        }
+},
+    },
+  }
+</script>
+<style>
+        .inner-shadow { box-shadow: inset 0 2px 4px rgba(0,0,0,0.06); }
+        .glass-panel { backdrop-filter: blur(12px); background-color: rgba(255, 248, 244, 0.8); }
+        .shadow-level-1 { box-shadow: 0 1px 2px rgba(86, 82, 100, 0.05); }
+        .shadow-level-2 { box-shadow: 0 4px 6px -1px rgba(86, 82, 100, 0.1); }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Sparkline CSS */
+        .sparkline { stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .sparkline-fill { fill: currentColor; opacity: 0.1; stroke: none; }
+        
+        /* Bar Chart CSS */
+        .bar { fill: currentColor; rx: 2; ry: 2; }
+    </style>
+</head>
+<body class="bg-surface-container-low font-body-md text-on-surface antialiased overflow-x-hidden">
+<!-- Sidebar Component -->
+<nav class="bg-surface-container-lowest border-r border-outline-variant shadow-none h-screen w-sidebar-width fixed left-0 top-0 z-40 flex flex-col py-6 hidden md:flex">
+<div class="px-6 mb-8 flex items-center gap-3">
+<img alt="BUPZO Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDfABJB44xcrMK9XTbwYwJWmHFIbY2ojkXJ_px5xYuvgBIDvKvJxfGh8DsDryC4LcDyXFi-IKlUB1QV3hqQOgjBeyylwKb27ZAq4x5HyyAR2hWhHxUMyd3s4_szBl_ihv331Lf-XTM-JJu8VvTVwmf-kDyacSzgg-jcn8jysZIHQqZxjww7LZIjHXyp0c2EinLLUq26EV2yjoc_aa3UUIOslYXOrKL-rNu4X7hNK2bVAg_vvF5GCRBON1YsJCBWtGiiOHu1ojWvuA">
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary">BUPZO</h1>
+<span class="text-[9px] px-1.5 py-0.5 bg-primary-container text-on-primary-container rounded font-bold uppercase tracking-wider block mt-0.5">Super Admin</span>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto px-3 space-y-1 scrollbar-hide">
+<p class="px-3 py-2 text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mt-2 mb-1">Main</p>
+<a class="flex items-center gap-3 bg-primary/5 text-primary rounded-lg px-3 py-2 font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined text-[18px]">dashboard</span>
+                Dashboard
+            </a>
+<a class="flex items-center gap-3 text-on-surface-variant px-3 py-2 hover:bg-surface-variant/50 rounded-lg transition-all font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined text-[18px]">group</span>
+                Users
+            </a>
+<a class="flex items-center gap-3 text-on-surface-variant px-3 py-2 hover:bg-surface-variant/50 rounded-lg transition-all font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined text-[18px]">storefront</span>
+                Sellers
+            </a>
+<a class="flex items-center gap-3 text-on-surface-variant px-3 py-2 hover:bg-surface-variant/50 rounded-lg transition-all font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined text-[18px]">local_shipping</span>
+                Logistics
+            </a>
+<p class="px-3 py-2 text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mt-4 mb-1">Operations</p>
+<a class="flex items-center gap-3 text-on-surface-variant px-3 py-2 hover:bg-surface-variant/50 rounded-lg transition-all font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined text-[18px]">monitor_heart</span>
+                System Health
+            </a>
+<a class="flex items-center gap-3 text-on-surface-variant px-3 py-2 hover:bg-surface-variant/50 rounded-lg transition-all font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined text-[18px]">campaign</span>
+                WhatsApp Marketing
+            </a>
+<a class="flex items-center gap-3 text-on-surface-variant px-3 py-2 hover:bg-surface-variant/50 rounded-lg transition-all font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined text-[18px]">account_balance_wallet</span>
+                Wallet Operations
+            </a>
+<a class="flex items-center gap-3 text-on-surface-variant px-3 py-2 hover:bg-surface-variant/50 rounded-lg transition-all font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined text-[18px]">settings</span>
+                Settings
+            </a>
+</div>
+<div class="px-4 mt-auto border-t border-outline-variant pt-4 space-y-2">
+<button class="w-full flex items-center justify-center gap-2 bg-primary text-on-primary font-label-md text-label-md py-2 rounded-lg shadow-level-1 hover:shadow-level-2 transition-all">
+<span class="material-symbols-outlined text-[14px]">sync</span>
+                Force Sync
+            </button>
+<div class="flex items-center gap-3 px-2 py-2 mt-2">
+<div class="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-xs">SA</div>
+<div class="flex-1 min-w-0">
+<p class="text-sm font-semibold text-on-surface truncate">Admin User</p>
+<p class="text-xs text-on-surface-variant truncate">admin@bupzo.com</p>
+</div>
+</div>
+</div>
+</nav>
+<!-- Top Header Bar -->
+<header class="md:ml-[240px] h-16 bg-surface-container-lowest border-b border-outline-variant flex items-center justify-between px-6 sticky top-0 z-30">
+<div class="flex-1 flex items-center gap-4">
+<div class="relative w-full max-w-md hidden md:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+<input class="w-full bg-surface-variant/50 border-none rounded-lg pl-10 pr-4 py-1.5 text-sm focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Search system, users, or transactions..." type="text">
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-2 text-lime-green bg-lime-green/10 px-2.5 py-1 rounded-md border border-lime-green/20">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-lime-green opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-lime-green"></span>
+</span>
+<span class="font-mono-sm text-[10px] uppercase font-bold text-lime-green">Systems Nominal</span>
+</div>
+<button class="text-on-surface-variant hover:text-primary transition-colors relative">
+<span class="material-symbols-outlined text-[20px]">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-error rounded-full border border-surface-container-lowest"></span>
+</button>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="md:ml-[240px] p-6 min-h-screen pb-24 md:pb-6 max-w-[1600px] mx-auto">
+<div class="mb-6 flex justify-between items-end">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-primary">Global Command Center</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Live network telemetry and high-level platform administration.</p>
+</div>
+<div class="flex gap-2">
+<button class="px-3 py-1.5 bg-surface-container-lowest border border-outline-variant rounded-md text-sm font-medium flex items-center gap-2 hover:bg-surface-variant/50 transition-colors">
+<span class="material-symbols-outlined text-[16px]">calendar_today</span>
+                Last 7 Days
+            </button>
+<button class="px-3 py-1.5 bg-primary text-on-primary rounded-md text-sm font-medium flex items-center gap-2 hover:bg-primary/90 transition-colors shadow-level-1">
+<span class="material-symbols-outlined text-[16px]">download</span>
+                Export Report
+            </button>
+</div>
+</div>
+<!-- Alert Banner -->
+<div class="bg-error/10 border border-error/20 rounded-lg p-3 mb-6 flex items-start gap-3">
+<span class="material-symbols-outlined text-error mt-0.5">warning</span>
+<div class="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+<div>
+<h4 class="text-sm font-bold text-error">Fraudulent KYC Attempts Detected</h4>
+<p class="text-xs text-error/80 mt-0.5">Abnormal spike in synthetic ID verifications from IP range 192.168.x.x targeting Seller Onboarding.</p>
+</div>
+<div class="flex gap-2 shrink-0">
+<button class="bg-error text-white text-xs font-bold px-3 py-1.5 rounded hover:bg-error/90 transition-colors shadow-sm">Lock IPs</button>
+<button class="bg-surface-container-lowest text-error border border-error/30 text-xs font-bold px-3 py-1.5 rounded hover:bg-error/5 transition-colors">Investigate</button>
+</div>
+</div>
+</div>
+<!-- Master Metrics Grid -->
+<section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+<!-- Users -->
+<div class="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant shadow-level-1 flex flex-col">
+<div class="flex justify-between items-start mb-2">
+<div>
+<p class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Total Network Users</p>
+<div class="flex items-baseline gap-2 mt-1">
+<h3 class="font-display-lg text-3xl text-primary">104M</h3>
+<span class="text-xs font-medium text-lime-green bg-lime-green/10 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[12px]">trending_up</span> 12.4%
+                    </span>
+</div>
+</div>
+<div class="w-8 h-8 rounded-full bg-electric-blue/10 text-electric-blue flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">public</span>
+</div>
+</div>
+<div class="mt-auto pt-4 h-12 w-full text-electric-blue">
+<svg class="w-full h-full preserve-aspect-ratio=" none""="" viewBox="0 0 100 30">
+<path class="sparkline-fill" d="M0,30 L0,20 L10,15 L20,22 L30,12 L40,18 L50,5 L60,15 L70,8 L80,12 L90,2 L100,8 L100,30 Z"></path>
+<path class="sparkline" d="M0,20 L10,15 L20,22 L30,12 L40,18 L50,5 L60,15 L70,8 L80,12 L90,2 L100,8"></path>
+</svg>
+</div>
+</div>
+<!-- Escrow -->
+<div class="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant shadow-level-1 flex flex-col">
+<div class="flex justify-between items-start mb-2">
+<div>
+<p class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Total Escrow Holding</p>
+<div class="flex items-baseline gap-2 mt-1">
+<h3 class="font-display-lg text-3xl text-primary">₹4.2B</h3>
+<span class="text-xs font-medium text-lime-green bg-lime-green/10 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[12px]">trending_up</span> 8.1%
+                    </span>
+</div>
+</div>
+<div class="w-8 h-8 rounded-full bg-secondary/10 text-secondary flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">account_balance</span>
+</div>
+</div>
+<div class="mt-auto pt-4 h-12 w-full text-secondary flex items-end justify-between gap-1">
+<svg class="w-full h-full preserve-aspect-ratio=" none""="" viewBox="0 0 100 30">
+<!-- Bar Chart Approximation -->
+<rect class="bar" height="10" opacity="0.4" width="6" x="0" y="20"></rect>
+<rect class="bar" height="15" opacity="0.5" width="6" x="10" y="15"></rect>
+<rect class="bar" height="8" opacity="0.3" width="6" x="20" y="22"></rect>
+<rect class="bar" height="20" opacity="0.6" width="6" x="30" y="10"></rect>
+<rect class="bar" height="12" opacity="0.4" width="6" x="40" y="18"></rect>
+<rect class="bar" height="25" opacity="0.8" width="6" x="50" y="5"></rect>
+<rect class="bar" height="18" opacity="0.7" width="6" x="60" y="12"></rect>
+<rect class="bar" height="14" opacity="0.5" width="6" x="70" y="16"></rect>
+<rect class="bar" height="22" opacity="0.9" width="6" x="80" y="8"></rect>
+<rect class="bar" height="28" opacity="1.0" width="6" x="90" y="2"></rect>
+</svg>
+</div>
+</div>
+<!-- Active Orders -->
+<div class="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant shadow-level-1 flex flex-col">
+<div class="flex justify-between items-start mb-2">
+<div>
+<p class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Active Shipments</p>
+<div class="flex items-baseline gap-2 mt-1">
+<h3 class="font-display-lg text-3xl text-primary">845K</h3>
+<span class="text-xs font-medium text-error bg-error/10 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+<span class="material-symbols-outlined text-[12px]">trending_down</span> 2.3%
+                    </span>
+</div>
+</div>
+<div class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">local_shipping</span>
+</div>
+</div>
+<div class="mt-auto pt-4 flex gap-4">
+<div class="flex-1">
+<div class="flex justify-between text-[10px] mb-1">
+<span class="text-on-surface-variant">Processing</span>
+<span class="font-bold">62%</span>
+</div>
+<div class="w-full bg-surface-variant rounded-full h-1.5">
+<div class="bg-electric-blue h-1.5 rounded-full" style="width: 62%"></div>
+</div>
+</div>
+<div class="flex-1">
+<div class="flex justify-between text-[10px] mb-1">
+<span class="text-on-surface-variant">In Transit</span>
+<span class="font-bold">38%</span>
+</div>
+<div class="w-full bg-surface-variant rounded-full h-1.5">
+<div class="bg-primary h-1.5 rounded-full" style="width: 38%"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- System Health -->
+<div class="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant shadow-level-1 flex flex-col relative overflow-hidden">
+<div class="flex justify-between items-start z-10">
+<div>
+<p class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">System Health</p>
+<div class="mt-1">
+<h3 class="font-display-lg text-3xl text-primary">99.98%</h3>
+</div>
+</div>
+<div class="w-8 h-8 rounded-full bg-lime-green/10 text-lime-green flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">dns</span>
+</div>
+</div>
+<!-- Radial Gauge Background -->
+<div class="absolute -bottom-6 -right-6 w-32 h-32 opacity-20 pointer-events-none">
+<svg class="w-full h-full text-lime-green" viewBox="0 0 36 36">
+<path class="text-surface-variant" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3"></path>
+<path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-dasharray="99.98, 100" stroke-linecap="round" stroke-width="3"></path>
+</svg>
+</div>
+<div class="mt-auto pt-4 flex gap-4 z-10">
+<div>
+<span class="text-[10px] text-on-surface-variant uppercase">API Res</span>
+<p class="text-sm font-semibold">124ms</p>
+</div>
+<div>
+<span class="text-[10px] text-on-surface-variant uppercase">DB Load</span>
+<p class="text-sm font-semibold">42%</p>
+</div>
+<div class="ml-auto flex items-end">
+<a class="text-xs text-electric-blue hover:underline font-medium" href="#">Manage</a>
+</div>
+</div>
+</div>
+</section>
+<!-- Main Grid Structure -->
+<div class="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
+<!-- Large Chart Span -->
+<div class="lg:col-span-2 xl:col-span-3 bg-surface-container-lowest rounded-xl border border-outline-variant shadow-level-1 p-4 flex flex-col h-[400px]">
+<div class="flex justify-between items-center mb-4">
+<div>
+<h3 class="text-base font-bold text-primary">Revenue vs Transactions</h3>
+<p class="text-xs text-on-surface-variant">Daily volume across all nodes</p>
+</div>
+<select class="form-select text-xs rounded border-outline-variant py-1 pl-2 pr-8 bg-surface-variant/30">
+<option>Current Month</option>
+<option>Last Month</option>
+</select>
+</div>
+<div class="flex-1 w-full bg-surface-variant/10 rounded border border-outline-variant/50 relative overflow-hidden flex items-end p-4">
+<!-- Simulated complex chart -->
+<div class="absolute inset-0 flex flex-col justify-between p-4 pointer-events-none opacity-30">
+<div class="border-t border-outline-variant/50 w-full"></div>
+<div class="border-t border-outline-variant/50 w-full"></div>
+<div class="border-t border-outline-variant/50 w-full"></div>
+<div class="border-t border-outline-variant/50 w-full"></div>
+<div class="border-t border-outline-variant/50 w-full"></div>
+</div>
+<svg class="w-full h-full text-electric-blue preserve-aspect-ratio=" none""="" viewBox="0 0 1000 300">
+<!-- Line Chart -->
+<path class="sparkline text-primary" d="M0,250 L100,220 L200,150 L300,180 L400,90 L500,120 L600,40 L700,80 L800,150 L900,110 L1000,50" stroke-width="3"></path>
+<path class="sparkline-fill text-primary" d="M0,300 L0,250 L100,220 L200,150 L300,180 L400,90 L500,120 L600,40 L700,80 L800,150 L900,110 L1000,50 L1000,300 Z" opacity="0.05"></path>
+<!-- Overlay Bar Chart -->
+<rect class="bar text-electric-blue" height="80" opacity="0.6" width="20" x="40" y="220"></rect>
+<rect class="bar text-electric-blue" height="110" opacity="0.6" width="20" x="140" y="190"></rect>
+<rect class="bar text-electric-blue" height="170" opacity="0.6" width="20" x="240" y="130"></rect>
+<rect class="bar text-electric-blue" height="140" opacity="0.6" width="20" x="340" y="160"></rect>
+<rect class="bar text-electric-blue" height="230" opacity="0.6" width="20" x="440" y="70"></rect>
+<rect class="bar text-electric-blue" height="200" opacity="0.6" width="20" x="540" y="100"></rect>
+<rect class="bar text-electric-blue" height="270" opacity="0.6" width="20" x="640" y="30"></rect>
+<rect class="bar text-electric-blue" height="240" opacity="0.6" width="20" x="740" y="60"></rect>
+<rect class="bar text-electric-blue" height="170" opacity="0.6" width="20" x="840" y="130"></rect>
+<rect class="bar text-electric-blue" height="210" opacity="0.6" width="20" x="940" y="90"></rect>
+</svg>
+</div>
+</div>
+<!-- Right Sidebar Stack -->
+<div class="flex flex-col gap-4 xl:col-span-1 lg:col-span-1">
+<!-- Logistics Status -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant shadow-level-1 p-4 flex-1">
+<div class="flex justify-between items-center mb-3">
+<h3 class="text-sm font-bold text-primary">Logistics API</h3>
+<button class="text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined text-[16px]">refresh</span></button>
+</div>
+<div class="space-y-2">
+<div class="flex items-center justify-between p-2 rounded bg-surface-container hover:bg-surface-variant transition-colors border border-outline-variant/30">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded bg-surface flex items-center justify-center border border-outline-variant text-[10px] font-bold">SR</div>
+<span class="text-xs font-semibold">Shiprocket</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[10px] text-on-surface-variant font-mono">99.9%</span>
+<span class="w-2 h-2 rounded-full bg-lime-green"></span>
+</div>
+</div>
+<div class="flex items-center justify-between p-2 rounded bg-surface-container hover:bg-surface-variant transition-colors border border-outline-variant/30">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded bg-surface flex items-center justify-center border border-outline-variant text-[10px] font-bold">DL</div>
+<span class="text-xs font-semibold">Delhivery</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[10px] text-on-surface-variant font-mono">99.5%</span>
+<span class="w-2 h-2 rounded-full bg-lime-green"></span>
+</div>
+</div>
+<div class="flex items-center justify-between p-2 rounded bg-error/5 border border-error/20 transition-colors">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded bg-surface flex items-center justify-center border border-outline-variant text-[10px] font-bold">NP</div>
+<span class="text-xs font-semibold">NimbusPost</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[10px] text-error font-mono">850ms</span>
+<span class="w-2 h-2 rounded-full bg-error animate-pulse"></span>
+</div>
+</div>
+<div class="flex items-center justify-between p-2 rounded bg-surface-container hover:bg-surface-variant transition-colors border border-outline-variant/30">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded bg-surface flex items-center justify-center border border-outline-variant text-[10px] font-bold">E</div>
+<span class="text-xs font-semibold">EcomExpress</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[10px] text-on-surface-variant font-mono">98.2%</span>
+<span class="w-2 h-2 rounded-full bg-lime-green"></span>
+</div>
+</div>
+</div>
+<div class="mt-3 pt-3 border-t border-outline-variant/50 text-center">
+<a class="text-[11px] text-electric-blue font-medium hover:underline" href="#">View Integration Logs</a>
+</div>
+</div>
+<!-- Quick Actions -->
+<div class="bg-surface-container-lowest rounded-xl border border-outline-variant shadow-level-1 p-4">
+<h3 class="text-sm font-bold text-primary mb-3">Quick Actions</h3>
+<div class="grid grid-cols-2 gap-2">
+<button class="flex flex-col items-center justify-center gap-1 p-2 border border-outline-variant rounded-lg hover:bg-surface-variant/50 transition-colors">
+<span class="material-symbols-outlined text-secondary text-[20px]">account_balance_wallet</span>
+<span class="text-[10px] font-medium">Top-up Wallet</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-1 p-2 border border-outline-variant rounded-lg hover:bg-surface-variant/50 transition-colors">
+<span class="material-symbols-outlined text-lime-green text-[20px]">campaign</span>
+<span class="text-[10px] font-medium">WA Blast</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-1 p-2 border border-outline-variant rounded-lg hover:bg-surface-variant/50 transition-colors">
+<span class="material-symbols-outlined text-electric-blue text-[20px]">person_add</span>
+<span class="text-[10px] font-medium">Add User</span>
+</button>
+<button class="flex flex-col items-center justify-center gap-1 p-2 border border-outline-variant rounded-lg hover:bg-surface-variant/50 transition-colors">
+<span class="material-symbols-outlined text-error text-[20px]">gavel</span>
+<span class="text-[10px] font-medium">Ban IP</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Lower Section Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+<!-- Global Transaction Stream Table -->
+<div class="lg:col-span-2 bg-surface-container-lowest rounded-xl border border-outline-variant shadow-level-1 overflow-hidden flex flex-col h-[350px]">
+<div class="p-3 border-b border-outline-variant flex justify-between items-center bg-surface-container-low/50">
+<h3 class="text-sm font-bold text-primary">Global Transaction Stream</h3>
+<div class="flex gap-2 items-center">
+<span class="w-2 h-2 rounded-full bg-lime-green animate-pulse"></span>
+<span class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Live Feed</span>
+<button class="ml-2 text-on-surface-variant"><span class="material-symbols-outlined text-[16px]">more_vert</span></button>
+</div>
+</div>
+<div class="overflow-auto flex-1 scrollbar-hide">
+<table class="w-full text-left text-sm border-collapse">
+<thead class="sticky top-0 bg-surface-container-lowest shadow-sm z-10">
+<tr>
+<th class="p-3 text-[11px] text-on-surface-variant font-semibold border-b border-outline-variant uppercase tracking-wider">TXN ID</th>
+<th class="p-3 text-[11px] text-on-surface-variant font-semibold border-b border-outline-variant uppercase tracking-wider">User</th>
+<th class="p-3 text-[11px] text-on-surface-variant font-semibold border-b border-outline-variant uppercase tracking-wider">Amount</th>
+<th class="p-3 text-[11px] text-on-surface-variant font-semibold border-b border-outline-variant uppercase tracking-wider">Status</th>
+<th class="p-3 text-[11px] text-on-surface-variant font-semibold border-b border-outline-variant uppercase tracking-wider">Node</th>
+<th class="p-3 text-[11px] text-on-surface-variant font-semibold border-b border-outline-variant uppercase tracking-wider text-right">Time</th>
+</tr>
+</thead>
+<tbody class="font-mono-sm">
+<tr class="hover:bg-surface-variant/20 border-b border-outline-variant/50 transition-colors">
+<td class="p-3 text-electric-blue font-medium">#TRX-8921-A</td>
+<td class="p-3 text-xs">U-9921</td>
+<td class="p-3 font-semibold text-xs">₹12,450</td>
+<td class="p-3"><span class="px-2 py-0.5 bg-lime-green/10 text-lime-green rounded text-[10px] font-bold border border-lime-green/20">CLEARED</span></td>
+<td class="p-3 text-xs text-on-surface-variant">Mumbai_Core_1</td>
+<td class="p-3 text-right text-xs text-on-surface-variant">Just now</td>
+</tr>
+<tr class="hover:bg-surface-variant/20 border-b border-outline-variant/50 transition-colors">
+<td class="p-3 text-electric-blue font-medium">#TRX-8920-B</td>
+<td class="p-3 text-xs">S-4412</td>
+<td class="p-3 font-semibold text-xs">₹4,200</td>
+<td class="p-3"><span class="px-2 py-0.5 bg-secondary/10 text-secondary rounded text-[10px] font-bold border border-secondary/20">ESCROW</span></td>
+<td class="p-3 text-xs text-on-surface-variant">Delhi_Edge_4</td>
+<td class="p-3 text-right text-xs text-on-surface-variant">12s ago</td>
+</tr>
+<tr class="hover:bg-surface-variant/20 border-b border-outline-variant/50 transition-colors">
+<td class="p-3 text-electric-blue font-medium">#TRX-8919-C</td>
+<td class="p-3 text-xs">U-1102</td>
+<td class="p-3 font-semibold text-xs">₹89,000</td>
+<td class="p-3"><span class="px-2 py-0.5 bg-lime-green/10 text-lime-green rounded text-[10px] font-bold border border-lime-green/20">CLEARED</span></td>
+<td class="p-3 text-xs text-on-surface-variant">BLR_Core_2</td>
+<td class="p-3 text-right text-xs text-on-surface-variant">45s ago</td>
+</tr>
+<tr class="hover:bg-surface-variant/20 border-b border-outline-variant/50 transition-colors">
+<td class="p-3 text-electric-blue font-medium">#TRX-8918-D</td>
+<td class="p-3 text-xs">U-5541</td>
+<td class="p-3 font-semibold text-error text-xs">₹1,250</td>
+<td class="p-3"><span class="px-2 py-0.5 bg-error/10 text-error rounded text-[10px] font-bold border border-error/20">FAILED</span></td>
+<td class="p-3 text-xs text-on-surface-variant">Mumbai_Core_1</td>
+<td class="p-3 text-right text-xs text-on-surface-variant">1m ago</td>
+</tr>
+<tr class="hover:bg-surface-variant/20 border-b border-outline-variant/50 transition-colors">
+<td class="p-3 text-electric-blue font-medium">#TRX-8917-E</td>
+<td class="p-3 text-xs">S-2210</td>
+<td class="p-3 font-semibold text-xs">₹45,600</td>
+<td class="p-3"><span class="px-2 py-0.5 bg-surface-variant text-on-surface-variant rounded text-[10px] font-bold border border-outline-variant">PENDING</span></td>
+<td class="p-3 text-xs text-on-surface-variant">Pune_Edge_1</td>
+<td class="p-3 text-right text-xs text-on-surface-variant">2m ago</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-2 border-t border-outline-variant bg-surface-container-low/50 text-center">
+<a class="text-[11px] font-medium text-primary hover:underline" href="#">View All Transactions</a>
+</div>
+</div>
+<!-- Operations Stack -->
+<div class="flex flex-col gap-4">
+<!-- WhatsApp Marketing (Compact) -->
+<div class="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant shadow-level-1">
+<div class="flex justify-between items-center mb-3">
+<h3 class="text-sm font-bold text-primary flex items-center gap-1.5"><span class="material-symbols-outlined text-lime-green text-[18px]">forum</span> WA Blast</h3>
+<span class="px-1.5 py-0.5 bg-lime-green/10 text-lime-green rounded text-[9px] font-bold border border-lime-green/20 uppercase">10Cr+ Reach</span>
+</div>
+<div class="space-y-3">
+<select class="w-full text-xs rounded border-outline-variant bg-surface-variant/30 py-1.5 px-2 focus:ring-primary focus:border-primary">
+<option>Target: All Users (104M)</option>
+<option>Target: Active Buyers (45M)</option>
+<option>Target: Dormant (59M)</option>
+</select>
+<select class="w-full text-xs rounded border-outline-variant bg-surface-variant/30 py-1.5 px-2 focus:ring-primary focus:border-primary">
+<option>Template: Diwali Promo</option>
+<option>Template: Reactivation</option>
+<option>Template: System Update</option>
+</select>
+<button class="w-full bg-primary text-on-primary py-1.5 rounded text-xs font-bold hover:bg-primary/90 transition-all shadow-sm">Initialize Blast</button>
+</div>
+</div>
+<!-- Wallet Top-up (Compact) -->
+<div class="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant shadow-level-1">
+<h3 class="text-sm font-bold text-primary flex items-center gap-1.5 mb-3"><span class="material-symbols-outlined text-secondary text-[18px]">account_balance_wallet</span> Manual Top-up</h3>
+<div class="space-y-3">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-on-surface-variant text-[14px]">search</span>
+<input class="w-full text-xs rounded border-outline-variant bg-surface-variant/30 py-1.5 pl-7 pr-2 focus:ring-secondary focus:border-secondary" placeholder="User ID / Phone" type="text">
+</div>
+<div class="flex gap-2">
+<span class="inline-flex items-center px-2 rounded-l border border-r-0 border-outline-variant bg-surface-variant/50 text-xs text-on-surface-variant">₹</span>
+<input class="w-full text-xs rounded-r border-outline-variant bg-surface-variant/30 py-1.5 px-2 focus:ring-secondary focus:border-secondary" placeholder="Amount" type="number">
+</div>
+<button class="w-full bg-secondary text-on-secondary py-1.5 rounded text-xs font-bold hover:bg-secondary/90 transition-all shadow-sm">Process Funds</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- AI Assistant Floating Chatbox (Modernized) -->
+<div class="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2 hidden md:flex">
+<!-- Chat Window (Collapsible) -->
+<div class="bg-surface-container-lowest w-[320px] rounded-xl border border-outline-variant shadow-level-2 overflow-hidden flex flex-col transition-all duration-300 transform origin-bottom-right scale-100 opacity-100">
+<div class="bg-primary/5 border-b border-outline-variant/50 p-2.5 flex justify-between items-center">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded bg-primary text-on-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-[14px]">smart_toy</span>
+</div>
+<span class="font-bold text-xs text-primary">BUPZO Copilot</span>
+</div>
+<div class="flex gap-1">
+<button class="w-6 h-6 rounded hover:bg-surface-variant/50 flex items-center justify-center text-on-surface-variant transition-colors"><span class="material-symbols-outlined text-[14px]">minimize</span></button>
+<button class="w-6 h-6 rounded hover:bg-surface-variant/50 flex items-center justify-center text-on-surface-variant transition-colors"><span class="material-symbols-outlined text-[14px]">close</span></button>
+</div>
+</div>
+<div class="p-3 h-40 bg-surface-variant/10 overflow-y-auto flex flex-col gap-2 scrollbar-hide text-xs">
+<div class="bg-surface p-2 rounded-lg rounded-tl-none border border-outline-variant/50 self-start max-w-[85%] text-on-surface shadow-sm">
+                System health is nominal. Ready for queries or commands.
+            </div>
+</div>
+<div class="p-2 border-t border-outline-variant/50 bg-surface-container-lowest">
+<div class="relative flex items-center">
+<input class="w-full rounded-md border-outline-variant/50 bg-surface-variant/30 text-xs py-1.5 pl-2 pr-8 focus:ring-1 focus:ring-primary focus:border-primary placeholder-on-surface-variant/50" placeholder="Type a command (/) or ask..." type="text">
+<button class="absolute right-1 text-primary hover:text-primary/80 transition-colors w-6 h-6 flex items-center justify-center"><span class="material-symbols-outlined text-[14px]">send</span></button>
+</div>
+</div>
+</div>
+</div>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="bg-surface-container-lowest border-t border-outline-variant shadow-[0_-4px_10px_rgba(0,0,0,0.05)] fixed bottom-0 w-full z-40 flex justify-around items-center h-14 md:hidden px-2 pb-safe">
+<a class="flex flex-col items-center justify-center text-primary px-4 py-1" href="#">
+<span class="material-symbols-outlined text-[20px]">dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary px-4 py-1" href="#">
+<span class="material-symbols-outlined text-[20px]">group</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary px-4 py-1" href="#">
+<span class="material-symbols-outlined text-[20px]">local_shipping</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary px-4 py-1" href="#">
+<span class="material-symbols-outlined text-[20px]">menu</span>
+</a>
+</nav>
+</body></html>

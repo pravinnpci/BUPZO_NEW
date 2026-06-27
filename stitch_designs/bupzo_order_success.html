@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>BUPZO - Order Success</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Plus+Jakarta+Sans:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "secondary-container": "#fed1de",
+                    "on-primary": "#ffffff",
+                    "primary-fixed": "#e6dff5",
+                    "on-surface-variant": "#48464c",
+                    "on-background": "#1e1b19",
+                    "on-secondary-container": "#795763",
+                    "tertiary-fixed": "#f5ded4",
+                    "outline": "#79767c",
+                    "dim-grey": "#706677",
+                    "on-primary-fixed": "#1c1929",
+                    "surface-container": "#f4ece8",
+                    "primary-container": "#565264",
+                    "surface-dark": "#1A191E",
+                    "lime-green": "#32D74B",
+                    "inverse-surface": "#33302d",
+                    "on-secondary-fixed": "#2d141d",
+                    "on-primary-fixed-variant": "#484456",
+                    "on-secondary-fixed-variant": "#5d3e49",
+                    "inverse-primary": "#cac3d9",
+                    "on-tertiary-fixed-variant": "#53443d",
+                    "primary-fixed-dim": "#cac3d9",
+                    "surface-container-low": "#faf2ee",
+                    "outline-variant": "#c9c5cc",
+                    "secondary": "#775560",
+                    "on-primary-container": "#ccc6dc",
+                    "surface-tint": "#605c6e",
+                    "error-container": "#ffdad6",
+                    "on-tertiary-fixed": "#251913",
+                    "on-secondary": "#ffffff",
+                    "surface-container-high": "#eee7e3",
+                    "secondary-fixed-dim": "#e6bbc8",
+                    "tertiary": "#493a34",
+                    "primary": "#3f3b4c",
+                    "inverse-on-surface": "#f7efeb",
+                    "surface-bright": "#fff8f4",
+                    "surface-container-lowest": "#ffffff",
+                    "tertiary-fixed-dim": "#d8c2b9",
+                    "surface": "#fff8f4",
+                    "on-tertiary": "#ffffff",
+                    "error": "#ba1a1a",
+                    "tertiary-container": "#61514a",
+                    "surface-container-highest": "#e8e1dd",
+                    "on-tertiary-container": "#dac5bc",
+                    "surface-variant": "#e8e1dd",
+                    "secondary-fixed": "#ffd9e4",
+                    "background": "#fff8f4",
+                    "electric-blue": "#007AFF",
+                    "on-error-container": "#93000a",
+                    "surface-dim": "#e0d9d5",
+                    "on-error": "#ffffff",
+                    "on-surface": "#1e1b19"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "stack-compact": "0.75rem",
+                    "container-max": "1440px",
+                    "sidebar-collapsed": "80px",
+                    "stack-default": "1.5rem",
+                    "sidebar-width": "280px",
+                    "margin-edge": "2rem",
+                    "gutter": "1.5rem"
+            },
+            "fontFamily": {
+                    "body-md": [
+                            "Inter"
+                    ],
+                    "body-sm": [
+                            "Inter"
+                    ],
+                    "body-lg": [
+                            "Inter"
+                    ],
+                    "label-md": [
+                            "Inter"
+                    ],
+                    "display-lg": [
+                            "Plus Jakarta Sans"
+                    ],
+                    "mono-sm": [
+                            "Inter"
+                    ],
+                    "headline-md": [
+                            "Plus Jakarta Sans"
+                    ],
+                    "headline-lg": [
+                            "Plus Jakarta Sans"
+                    ],
+                    "headline-lg-mobile": [
+                            "Plus Jakarta Sans"
+                    ]
+            },
+            "fontSize": {
+                    "body-md": [
+                            "16px",
+                            {
+                                    "lineHeight": "1.5",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "body-sm": [
+                            "14px",
+                            {
+                                    "lineHeight": "1.5",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "body-lg": [
+                            "18px",
+                            {
+                                    "lineHeight": "1.6",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "label-md": [
+                            "12px",
+                            {
+                                    "lineHeight": "1.2",
+                                    "letterSpacing": "0.05em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "display-lg": [
+                            "48px",
+                            {
+                                    "lineHeight": "1.2",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "mono-sm": [
+                            "13px",
+                            {
+                                    "lineHeight": "1.4",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "headline-md": [
+                            "24px",
+                            {
+                                    "lineHeight": "1.4",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "headline-lg": [
+                            "32px",
+                            {
+                                    "lineHeight": "1.3",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "headline-lg-mobile": [
+                            "24px",
+                            {
+                                    "lineHeight": "1.3",
+                                    "fontWeight": "600"
+                            }
+                    ]
+            }
+    },
+        },
+      }
+    </script>
+<style>
+        .inner-shadow {
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.06);
+        }
+        .skeuomorphic-card {
+            background-color: #fff8f4; /* surface-bright */
+            box-shadow: 0 2px 4px rgba(86, 82, 100, 0.05);
+            border: 1px solid #e8e1dd; /* surface-variant */
+        }
+        .skeuomorphic-button {
+            box-shadow: 0 2px 4px rgba(86, 82, 100, 0.05), inset 0 1px 0 rgba(255,255,255,0.2);
+        }
+        .fade-in {
+            animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        .delay-100 { animation-delay: 100ms; }
+        .delay-200 { animation-delay: 200ms; }
+        .delay-300 { animation-delay: 300ms; }
+        .delay-400 { animation-delay: 400ms; }
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .pulse-dot {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(50, 215, 75, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(50, 215, 75, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(50, 215, 75, 0); }
+        }
+    </style>
+</head>
+<body class="bg-surface font-body-md text-body-md text-on-surface antialiased selection:bg-secondary-container selection:text-on-secondary-container">
+<!-- TopNavBar (Web) -->
+<header class="hidden md:flex justify-between items-center w-full px-margin-edge py-4 max-w-container-max mx-auto bg-surface-bright dark:bg-surface-dark shadow-[0_2px_4px_rgba(86,82,100,0.05)] docked full-width top-0 sticky z-50">
+<div class="flex items-center gap-8">
+<h1 class="font-display-lg text-display-lg text-primary dark:text-primary-fixed">BUPZO</h1>
+<nav class="flex gap-6">
+<a class="text-on-surface-variant dark:text-outline-variant hover:text-primary transition-colors duration-200 font-label-md text-label-md" href="#">Marketplace</a>
+<a class="text-on-surface-variant dark:text-outline-variant hover:text-primary transition-colors duration-200 font-label-md text-label-md" href="#">Deals</a>
+<a class="text-on-surface-variant dark:text-outline-variant hover:text-primary transition-colors duration-200 font-label-md text-label-md" href="#">Trending</a>
+<a class="text-on-surface-variant dark:text-outline-variant hover:text-primary transition-colors duration-200 font-label-md text-label-md" href="#">Stores</a>
+<a class="text-on-surface-variant dark:text-outline-variant hover:text-primary transition-colors duration-200 font-label-md text-label-md" href="#">Support</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant dark:text-outline-variant hover:text-primary transition-colors duration-200 cursor-pointer active:scale-95">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="text-on-surface-variant dark:text-outline-variant hover:text-primary transition-colors duration-200 cursor-pointer active:scale-95">
+<span class="material-symbols-outlined" data-icon="account_balance_wallet">account_balance_wallet</span>
+</button>
+<button class="text-on-surface-variant dark:text-outline-variant hover:text-primary transition-colors duration-200 cursor-pointer active:scale-95">
+<span class="material-symbols-outlined" data-icon="smart_toy">smart_toy</span>
+</button>
+<button class="ml-4 px-4 py-2 bg-surface-container-high rounded-full font-label-md text-label-md text-on-surface hover:bg-surface-container-highest transition-colors">Cart</button>
+<button class="ml-2 w-10 h-10 rounded-full overflow-hidden border border-outline-variant cursor-pointer active:scale-95">
+<img alt="User profile" class="object-cover w-full h-full" data-alt="A macro shot of a pristine, modern user avatar placeholder in a soft white environment. The lighting is diffused, casting a subtle, premium shadow. The color palette emphasizes clean whites, deep blacks, and a touch of dusty mauve. The overall mood is professional, minimal, and highly polished, suitable for an enterprise-grade platform." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDooaQ6xeRxULqvxTyp_2ubYZnHSzXG8KOg7D8VnC6ZursyiusbdBUj0gEHE72RufaAnc9zpbHjL5D5BcmYUMDCqP03AYoGH8Hv5HSOcpNzvNjdO_lK6Hzqg4ZwPwJN407qnu-74Lg457gmuF37g60-tdJwfnpSyqNZYlbsKPXlSii-8j0AAYg8P0Xii-ZqNOITdLHbVbKaZ5Qug9a6Vm3rDPC1OV61HTfS9ALb90FCtth6agCOdz7Xd39jgKSnODNj9mOhbLuLFQ"/>
+</button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="max-w-container-max mx-auto px-4 md:px-margin-edge py-stack-default md:py-8 pb-24 md:pb-12">
+<!-- Header Section -->
+<div class="text-center mb-8 fade-in">
+<div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-lime-green/10 text-lime-green mb-4">
+<span class="material-symbols-outlined text-[32px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary mb-2">Order Confirmed!</h2>
+<p class="font-body-md text-body-md text-on-surface-variant">Order #BUP-99283 has been successfully placed.</p>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Left Column: Map & Delivery Details (8 cols) -->
+<div class="lg:col-span-8 flex flex-col gap-stack-default fade-in delay-100">
+<!-- Tracking Map Card -->
+<div class="skeuomorphic-card rounded-xl overflow-hidden flex flex-col relative h-[400px]">
+<!-- Map Image -->
+<div class="absolute inset-0 bg-cover bg-center" data-alt="A high-resolution, detailed digital map interface displaying a route from Nagore to Bengaluru. The map uses a sophisticated 'Mauve Serenity' color scheme with light almond silk base tones, subtle grey roads, and a prominent electric blue route line. The styling is clean, modern, and data-dense, avoiding clutter while emphasizing the path. The lighting suggests a bright, daytime interface." data-location="Bengaluru" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuADzT2e6KcPKVx2fY3Bw1gA36xnrse9ldEpQUEhL4RW_Sjs0VbNZzB6LO2GpX67BaZiF-FqtZLUrBs4zq_crgZFGQ0EXJo9FPF2Sl8D8KhmcAJhKCSg2a4K6SvXXp4erVNuoYK_Lrs9Exl7Vy0a5Y4eR3-mhnie30to53fyWCUB_ubMUvD5PpXFEs5LxtNbMwZFaq3LSbG3MFyyuRDcldlHGRsYxy4BWHypx3COOe2ANlhj7wxYiccZoWXJf1BfsNghtz3zibV-yQ')"></div>
+<!-- Map Overlays (Simulated UI) -->
+<div class="absolute top-4 left-4 right-4 flex justify-between items-start pointer-events-none">
+<div class="bg-surface/90 backdrop-blur-md rounded-lg p-3 shadow-sm border border-outline-variant/30 pointer-events-auto">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-electric-blue text-[20px]">my_location</span>
+<span class="font-label-md text-label-md text-on-surface">Live Tracking</span>
+</div>
+</div>
+</div>
+<!-- Simulated Delivery Partner Marker -->
+<div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 flex flex-col items-center pointer-events-none">
+<div class="bg-primary text-on-primary px-3 py-1 rounded-full font-label-md text-label-md mb-2 shadow-sm whitespace-nowrap">
+                            Arjun - 2:45 PM
+                        </div>
+<div class="w-12 h-12 rounded-full border-4 border-surface bg-electric-blue flex items-center justify-center shadow-[0_4px_12px_rgba(0,122,255,0.4)] relative">
+<span class="material-symbols-outlined text-on-primary text-[24px]">local_shipping</span>
+<div class="absolute inset-0 rounded-full border-2 border-electric-blue pulse-dot"></div>
+</div>
+</div>
+</div>
+<!-- Delivery Details Card -->
+<div class="skeuomorphic-card rounded-xl p-stack-default flex flex-col sm:flex-row items-center justify-between gap-4">
+<div class="flex items-center gap-4">
+<div class="w-16 h-16 rounded-full overflow-hidden border border-outline-variant shrink-0 bg-surface-container">
+<img alt="Delivery Partner Arjun" class="object-cover w-full h-full" data-alt="A professional headshot of a delivery driver wearing a dark uniform, smiling softly. The background is slightly blurred. The lighting is natural and bright, conveying reliability and trust. The overall tone aligns with a premium, dependable service." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAm76HOrZOYAh8dLm2KLJhGq03dXHof5i2Vup4GvnLu-FEehxxRkja8_mnA2FtLfjereXQn5o3P_V02FUYxoUEJqjFepPPMRmLEQUaGpASPmJEqv2LS6eN6N_rIz5m672aOPql78gPGLwOb3QYDqgnJdWnAUREtUC1WaXE_PsJ2bdbaKo6HQ4g6KKuGA8hPDNrY8D1_wjoiU2TCYm7xekVzEPm1RfhWv1pvogdgtXMJTlprYi404WNJlvACiEfo0Xe_xGNy-psz0g"/>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-1">Delivery Partner</p>
+<p class="font-headline-md text-headline-md text-primary m-0">Arjun M.</p>
+<p class="font-body-sm text-body-sm text-dim-grey flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-[16px] text-lime-green">star</span>
+                                4.9 (120+ deliveries)
+                            </p>
+</div>
+</div>
+<div class="flex flex-col sm:items-end gap-2 w-full sm:w-auto">
+<p class="font-headline-md text-headline-md text-electric-blue">2:45 PM</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Estimated Arrival (Today)</p>
+<div class="flex gap-2 mt-2 w-full sm:w-auto">
+<button class="flex-1 sm:flex-none skeuomorphic-button bg-surface-container hover:bg-surface-container-high text-primary font-label-md text-label-md px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors">
+<span class="material-symbols-outlined text-[18px]">chat</span>
+                                Chat
+                            </button>
+<button class="flex-1 sm:flex-none skeuomorphic-button bg-primary hover:bg-primary/90 text-on-primary font-label-md text-label-md px-4 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors">
+<span class="material-symbols-outlined text-[18px]">call</span>
+                                Call
+                            </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Timeline & Order Summary (4 cols) -->
+<div class="lg:col-span-4 flex flex-col gap-stack-default fade-in delay-200">
+<!-- Order Timeline Card -->
+<div class="skeuomorphic-card rounded-xl p-stack-default">
+<h3 class="font-headline-md text-headline-md text-primary mb-6">Status</h3>
+<div class="relative pl-6 space-y-6">
+<!-- Connecting Line -->
+<div class="absolute left-[11px] top-[14px] bottom-[14px] w-[2px] bg-surface-container-highest"></div>
+<div class="absolute left-[11px] top-[14px] h-[60%] w-[2px] bg-electric-blue"></div> <!-- Active progress line -->
+<!-- Step 1: Placed -->
+<div class="relative flex items-start gap-4">
+<div class="absolute -left-6 w-6 h-6 rounded-full bg-electric-blue border-4 border-surface flex items-center justify-center z-10 shadow-sm">
+<div class="w-1.5 h-1.5 rounded-full bg-on-primary"></div>
+</div>
+<div>
+<p class="font-body-md text-body-md font-semibold text-primary">Order Placed</p>
+<p class="font-body-sm text-body-sm text-dim-grey">1:15 PM</p>
+</div>
+</div>
+<!-- Step 2: Processing -->
+<div class="relative flex items-start gap-4">
+<div class="absolute -left-6 w-6 h-6 rounded-full bg-electric-blue border-4 border-surface flex items-center justify-center z-10 shadow-sm">
+<div class="w-1.5 h-1.5 rounded-full bg-on-primary"></div>
+</div>
+<div>
+<p class="font-body-md text-body-md font-semibold text-primary">Processing</p>
+<p class="font-body-sm text-body-sm text-dim-grey">1:30 PM</p>
+</div>
+</div>
+<!-- Step 3: Out for Delivery (Active) -->
+<div class="relative flex items-start gap-4">
+<div class="absolute -left-[26px] w-7 h-7 rounded-full bg-surface border-2 border-electric-blue flex items-center justify-center z-10 shadow-sm pulse-dot">
+<div class="w-2.5 h-2.5 rounded-full bg-electric-blue"></div>
+</div>
+<div class="bg-surface-container-low p-3 rounded-lg border border-outline-variant/50 w-full mt-[-6px]">
+<p class="font-body-md text-body-md font-semibold text-electric-blue">Out for Delivery</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Arjun is on the way with your order.</p>
+</div>
+</div>
+<!-- Step 4: Delivered -->
+<div class="relative flex items-start gap-4 opacity-50">
+<div class="absolute -left-6 w-6 h-6 rounded-full bg-surface-container-highest border-4 border-surface z-10"></div>
+<div>
+<p class="font-body-md text-body-md text-on-surface-variant">Delivered</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Order Summary Card -->
+<div class="skeuomorphic-card rounded-xl p-stack-default fade-in delay-300">
+<h3 class="font-headline-md text-headline-md text-primary mb-4">Order Summary</h3>
+<div class="flex gap-4 items-center">
+<div class="w-20 h-20 rounded-lg overflow-hidden border border-outline-variant shrink-0 bg-surface-container">
+<img alt="Nagore Halwa Combo" class="object-cover w-full h-full" data-alt="A stylized, high-quality product photo of a 'Nagore Halwa Combo' packaged in a premium, minimalist box. The lighting is soft and directional, highlighting the rich textures of the food and the matte finish of the packaging. The scene is set against a clean, light almond surface, evoking a sense of modern luxury and culinary delight." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAU5PyujZTs9j7ZKuFgIbz0nwIDG0WnodrGNqZqbGOWQ5E5nxdrBLtvy7UsFISAuKpWMw1H5kVkY5362dAnzYmoDxigD3fUMAHxP8zLwt5xkuZgpIXKzbMRMKTUzwYTCEX9IglOuMBedy-9Ii5fqip6-GqpOJ343_9RSYTzulXjc9xyk1TJvsxk9Yr1rPwmTVd69iHFonhHW0Il86IZ1wcK8WARNRUozSkTXE23ztCz1fjmzneWiE3r5lO0jmdalqpNFc2Py-6s6Q"/>
+</div>
+<div class="flex-1">
+<p class="font-body-md text-body-md font-semibold text-primary line-clamp-2">Nagore Halwa Combo Pack - Premium Edition</p>
+<p class="font-body-sm text-body-sm text-dim-grey mt-1">Qty: 1</p>
+</div>
+<div class="text-right">
+<p class="font-body-md text-body-md font-semibold text-primary">₹850</p>
+</div>
+</div>
+<hr class="border-outline-variant/40 my-4"/>
+<div class="flex justify-between items-center">
+<p class="font-body-sm text-body-sm text-on-surface-variant">Paid via UPI</p>
+<button class="text-electric-blue font-label-md text-label-md hover:underline">View Receipt</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="flex justify-around items-center h-16 md:hidden px-2 pb-safe bg-surface/80 dark:bg-surface-dark/80 backdrop-blur-xl fixed bottom-0 w-full z-50 rounded-t-xl border-t border-outline-variant shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 active:scale-90 transition-transform rounded-full px-4 py-1" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-md text-label-md-mobile mt-1">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 active:scale-90 transition-transform rounded-full px-4 py-1" href="#">
+<span class="material-symbols-outlined">search</span>
+<span class="font-label-md text-label-md-mobile mt-1">Explore</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 active:scale-90 transition-transform rounded-full px-4 py-1" href="#">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span class="font-label-md text-label-md-mobile mt-1">Wallet</span>
+</a>
+<!-- Active Tab: Orders -->
+<a class="flex flex-col items-center justify-center bg-secondary-container dark:bg-tertiary-container text-on-secondary-container dark:text-on-tertiary-container hover:bg-surface-variant/20 active:scale-90 transition-transform rounded-full px-4 py-1" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">local_shipping</span>
+<span class="font-label-md text-label-md-mobile mt-1">Orders</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 active:scale-90 transition-transform rounded-full px-4 py-1" href="#">
+<span class="material-symbols-outlined">auto_awesome</span>
+<span class="font-label-md text-label-md-mobile mt-1">AI Assistant</span>
+</a>
+</nav>
+</body></html>

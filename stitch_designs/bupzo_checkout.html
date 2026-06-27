@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>BUPZO Checkout</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Plus+Jakarta+Sans:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-tint": "#605c6e",
+                        "primary-fixed-dim": "#cac3d9",
+                        "surface-container-low": "#faf2ee",
+                        "on-tertiary": "#ffffff",
+                        "surface-dark": "#1A191E",
+                        "on-primary-container": "#ccc6dc",
+                        "tertiary-fixed": "#f5ded4",
+                        "surface-container-high": "#eee7e3",
+                        "on-secondary-fixed": "#2d141d",
+                        "surface-variant": "#e8e1dd",
+                        "secondary-fixed": "#ffd9e4",
+                        "on-surface-variant": "#48464c",
+                        "inverse-primary": "#cac3d9",
+                        "secondary": "#775560",
+                        "outline-variant": "#c9c5cc",
+                        "surface-dim": "#e0d9d5",
+                        "primary": "#3f3b4c",
+                        "on-tertiary-fixed": "#251913",
+                        "surface-container-lowest": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "surface-container-highest": "#e8e1dd",
+                        "background": "#fff8f4",
+                        "surface-bright": "#fff8f4",
+                        "outline": "#79767c",
+                        "secondary-container": "#fed1de",
+                        "tertiary-fixed-dim": "#d8c2b9",
+                        "dim-grey": "#706677",
+                        "on-secondary-fixed-variant": "#5d3e49",
+                        "primary-fixed": "#e6dff5",
+                        "secondary-fixed-dim": "#e6bbc8",
+                        "on-error-container": "#93000a",
+                        "electric-blue": "#007AFF",
+                        "surface": "#fff8f4",
+                        "inverse-on-surface": "#f7efeb",
+                        "on-surface": "#1e1b19",
+                        "error": "#ba1a1a",
+                        "tertiary-container": "#61514a",
+                        "on-secondary": "#ffffff",
+                        "lime-green": "#32D74B",
+                        "on-secondary-container": "#795763",
+                        "primary-container": "#565264",
+                        "surface-container": "#f4ece8",
+                        "on-primary-fixed-variant": "#484456",
+                        "on-primary-fixed": "#1c1929",
+                        "on-error": "#ffffff",
+                        "on-tertiary-fixed-variant": "#53443d",
+                        "tertiary": "#493a34",
+                        "on-tertiary-container": "#dac5bc",
+                        "on-background": "#1e1b19",
+                        "on-primary": "#ffffff",
+                        "inverse-surface": "#33302d"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    spacing: {
+                        "margin-edge": "2rem",
+                        "stack-default": "1.5rem",
+                        "container-max": "1440px",
+                        "stack-compact": "0.75rem",
+                        "sidebar-collapsed": "80px",
+                        "sidebar-width": "280px",
+                        "gutter": "1.5rem"
+                    },
+                    fontFamily: {
+                        "label-md": ["Inter"],
+                        "mono-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "body-sm": ["Inter"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "display-lg": ["Plus Jakarta Sans"]
+                    },
+                    fontSize: {
+                        "label-md": ["12px", { lineHeight: "1.2", letterSpacing: "0.05em", fontWeight: "600" }],
+                        "mono-sm": ["13px", { lineHeight: "1.4", fontWeight: "500" }],
+                        "body-md": ["16px", { lineHeight: "1.5", fontWeight: "400" }],
+                        "body-lg": ["18px", { lineHeight: "1.6", fontWeight: "400" }],
+                        "headline-md": ["24px", { lineHeight: "1.4", fontWeight: "600" }],
+                        "body-sm": ["14px", { lineHeight: "1.5", fontWeight: "400" }],
+                        "headline-lg-mobile": ["24px", { lineHeight: "1.3", fontWeight: "600" }],
+                        "headline-lg": ["32px", { lineHeight: "1.3", fontWeight: "600" }],
+                        "display-lg": ["48px", { lineHeight: "1.2", letterSpacing: "-0.02em", fontWeight: "700" }]
+                    }
+                }
+            }
+        };
+    </script>
+<style>
+        .inner-shadow { box-shadow: inset 0 2px 4px rgba(0,0,0,0.06); }
+        .glass-panel { background: rgba(255, 248, 244, 0.8); backdrop-filter: blur(12px); }
+        .tactile-button { box-shadow: 0 10px 15px -3px rgba(86, 82, 100, 0.1), inset 0 1px 0 rgba(255,255,255,0.2); }
+        .form-radio:checked { background-color: #3f3b4c; border-color: #3f3b4c; }
+        .form-checkbox:checked { background-color: #3f3b4c; border-color: #3f3b4c; }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md h-screen overflow-hidden flex">
+<!-- Suppressed SideNavBar & TopNavBar as per transactional/checkout rule -->
+<!-- Content Canvas prioritized -->
+<main class="flex-1 overflow-y-auto w-full flex justify-center items-start pt-8 pb-24 md:pb-8 px-4 md:px-margin-edge">
+<div class="max-w-container-max w-full grid grid-cols-1 lg:grid-cols-12 gap-gutter relative">
+<!-- Left Column: Checkout Details -->
+<div class="lg:col-span-8 flex flex-col gap-stack-default">
+<header class="mb-4">
+<h1 class="font-headline-lg text-headline-lg text-primary tracking-tight">Checkout</h1>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Complete your purchase securely.</p>
+</header>
+<!-- Express Checkout Banner -->
+<div class="bg-primary/5 border border-primary/20 rounded-xl p-6 shadow-[0_2px_4px_rgba(86,82,100,0.05)] relative overflow-hidden flex items-center justify-between">
+<div class="absolute inset-0 bg-gradient-to-r from-primary/10 to-transparent pointer-events-none"></div>
+<div class="z-10 flex items-center gap-4">
+<div class="w-12 h-12 rounded-full bg-primary text-on-primary flex items-center justify-center">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">bolt</span>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-primary">1-Click Express Checkout</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Use saved payment &amp; address</p>
+</div>
+</div>
+<div class="z-10">
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-outline-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary shadow-sm inner-shadow"></div>
+</label>
+</div>
+</div>
+<!-- Shipping Address -->
+<section class="bg-surface-container-lowest rounded-xl p-6 shadow-[0_2px_4px_rgba(86,82,100,0.05)] border border-surface-variant">
+<div class="flex justify-between items-center mb-4">
+<h2 class="font-headline-md text-headline-md text-on-surface">Shipping Address</h2>
+<button class="font-label-md text-label-md text-electric-blue hover:underline">Edit</button>
+</div>
+<div class="border border-primary rounded-lg p-4 bg-surface flex items-start gap-3">
+<div class="mt-1">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">location_on</span>
+</div>
+<div>
+<p class="font-body-md text-body-md font-semibold">Arjun Mehta <span class="ml-2 inline-block px-2 py-0.5 bg-secondary-container text-on-secondary-container text-xs rounded-full font-label-md">Home</span></p>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">12th Floor, Sapphire Towers, Block B<br/>Whitefield, Bangalore, Karnataka 560066</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">+91 98765 43210</p>
+</div>
+</div>
+</section>
+<!-- Smart Shipping Tracker Preview -->
+<section class="bg-surface-container-lowest rounded-xl p-6 shadow-[0_2px_4px_rgba(86,82,100,0.05)] border border-surface-variant overflow-hidden relative group">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-4">Delivery Preview</h2>
+<div class="h-48 rounded-lg overflow-hidden relative inner-shadow">
+<!-- Map Image Placeholder -->
+<div class="bg-cover bg-center w-full h-full opacity-80 mix-blend-multiply" data-alt="A stylized, modern digital map interface highlighting a delivery route. The map should have a soft, 'Mauve Serenity' color palette with muted beige and subtle mauve tones. A glowing electric blue line traces a path across a clean, minimalist city grid. A subtle inner shadow gives the map a sunken, embedded feel within the UI. Light mode aesthetic." data-location="Bangalore" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDbFl4oo5xKqbGDiZOw5gH1qP_ejcu5nZjgX72kfdmy3JYF4XWZr2wzRu7zX5EN08NUcRniNLBxrdQgRnEDFaQtyR61ovFeZicuK1Qw7cCjgHyujStRd2dUDPLkpLknCGUqf03nsjOqQauW8lV7Cv-pUOLksrvphxmZEPkBJta_Spr65QGBPJJ4qdU7HV91E17GSR4S4mBUSu6vPDq1AXA6fcxHO6VtmxJ3NZYhCJSg7Q_0kcD7C47Zlq6bw8BUTCusX-IHcRp0ig')"></div>
+<!-- Overlay elements -->
+<div class="absolute top-4 left-4 right-4 flex justify-between items-center pointer-events-none">
+<div class="bg-surface/90 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm flex items-center gap-2 border border-outline-variant/30">
+<span class="w-2 h-2 rounded-full bg-lime-green animate-pulse"></span>
+<span class="font-label-md text-label-md text-on-surface">Expected: Tomorrow, 2 PM</span>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Right Column: Summary & Payment -->
+<div class="lg:col-span-4 flex flex-col gap-stack-default sticky top-8">
+<div class="bg-surface-container-lowest rounded-xl shadow-[0_2px_4px_rgba(86,82,100,0.05)] border border-surface-variant overflow-hidden flex flex-col h-full">
+<div class="p-6 flex-1 flex flex-col gap-4">
+<h2 class="font-headline-md text-headline-md text-on-surface border-b border-surface-variant pb-4">Order Summary</h2>
+<!-- Item List (Compact) -->
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded bg-surface-variant inner-shadow flex-shrink-0 relative overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A small product thumbnail showing a sleek, modern pair of wireless noise-canceling headphones resting on a minimalist off-white surface. The lighting is soft and studio-quality, highlighting the matte finish of the headphones. The aesthetic is premium and clean, fitting a high-end e-commerce platform. Light mode." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDB-iKHE-BFh6GxvZvE_8Cd8mNi3kiWu6c2Oi6OAO_81KCXl2HHfk2OJ5eiv3JZFSoIttWcvfNY4jaoF4pD-ccnqLwOL9yuKMLZi94EjC-UxZ9th-_1Sj_uA9ZExGjY5BoHR_19Ccogf9utuwUjukFSoE-3ROtVhI0FEd9y5MIYou2y80uGm4SJmhC8ttt7TPsv_suN5bAAiYqVMkrxzHWpPDs527J3Zi7WkUOesBzkV1wEvCInnl-_7Xj0admfMJP-PxaDyDm7Fw"/>
+</div>
+<div class="flex-1">
+<p class="font-body-sm text-body-sm text-on-surface truncate pr-2">Aura Studio Pro Wireless Headphones</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Qty: 1</p>
+</div>
+<div class="font-body-md text-body-md font-medium text-right text-on-surface">
+                                ₹12,999
+                            </div>
+</div>
+<!-- Wallet Integration -->
+<div class="mt-4 bg-surface-bright border border-outline-variant/50 rounded-lg p-3 flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+<div>
+<p class="font-label-md text-label-md text-on-surface">BUPZO Wallet</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Balance: ₹1,500</p>
+</div>
+</div>
+<label class="flex items-center">
+<input class="form-checkbox text-primary rounded shadow-sm focus:ring-primary w-5 h-5 inner-shadow" type="checkbox"/>
+</label>
+</div>
+<!-- Trust Fund -->
+<div class="bg-tertiary-fixed/30 rounded-lg p-3 flex items-start gap-2">
+<input checked="" class="form-checkbox text-tertiary mt-1 rounded shadow-sm focus:ring-tertiary w-4 h-4 inner-shadow" type="checkbox"/>
+<div>
+<p class="font-body-sm text-body-sm text-on-surface">Add ₹2 to BUPZO Trust Fund</p>
+<p class="text-[11px] text-on-surface-variant">Supporting rural artisans.</p>
+</div>
+</div>
+<hr class="border-surface-variant my-2"/>
+<!-- Calculations -->
+<div class="space-y-2">
+<div class="flex justify-between font-body-sm text-body-sm text-on-surface-variant">
+<span>Subtotal</span>
+<span>₹12,999</span>
+</div>
+<div class="flex justify-between font-body-sm text-body-sm text-on-surface-variant">
+<span>Shipping (Premium)</span>
+<div class="text-right">
+<span class="line-through text-outline mr-1">₹100</span>
+<span class="text-lime-green font-medium">₹50 (50% Off)</span>
+</div>
+</div>
+<div class="flex justify-between font-body-sm text-body-sm text-on-surface-variant">
+<span>Trust Fund</span>
+<span>₹2</span>
+</div>
+</div>
+<div class="flex justify-between items-end mt-2 pt-4 border-t border-surface-variant">
+<span class="font-headline-md text-headline-md text-on-surface">Total</span>
+<span class="font-headline-lg text-headline-lg text-primary tracking-tight">₹13,051</span>
+</div>
+</div>
+<!-- Payment Gateway Selection -->
+<div class="bg-surface-container p-6 border-t border-surface-variant">
+<p class="font-label-md text-label-md text-on-surface-variant mb-3">SELECT PAYMENT METHOD</p>
+<div class="grid grid-cols-3 gap-2 mb-6">
+<label class="cursor-pointer">
+<input checked="" class="peer sr-only" name="gateway" type="radio"/>
+<div class="bg-surface rounded-md border border-outline-variant p-2 text-center peer-checked:border-primary peer-checked:bg-primary/5 peer-checked:ring-1 peer-checked:ring-primary transition-all flex items-center justify-center h-12 inner-shadow">
+<span class="font-label-md text-label-md text-on-surface">Razorpay</span>
+</div>
+</label>
+<label class="cursor-pointer">
+<input class="peer sr-only" name="gateway" type="radio"/>
+<div class="bg-surface rounded-md border border-outline-variant p-2 text-center peer-checked:border-primary peer-checked:bg-primary/5 peer-checked:ring-1 peer-checked:ring-primary transition-all flex items-center justify-center h-12 inner-shadow">
+<span class="font-label-md text-label-md text-on-surface">PhonePe</span>
+</div>
+</label>
+<label class="cursor-pointer">
+<input class="peer sr-only" name="gateway" type="radio"/>
+<div class="bg-surface rounded-md border border-outline-variant p-2 text-center peer-checked:border-primary peer-checked:bg-primary/5 peer-checked:ring-1 peer-checked:ring-primary transition-all flex items-center justify-center h-12 inner-shadow">
+<span class="font-label-md text-label-md text-on-surface">Cashfree</span>
+</div>
+</label>
+</div>
+<button class="w-full bg-primary text-on-primary font-body-md text-body-md font-medium py-4 rounded-lg tactile-button flex items-center justify-center gap-2 hover:bg-primary/90 transition-all active:scale-[0.98]">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">lock</span>
+                            Pay ₹13,051 Securely
+                        </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

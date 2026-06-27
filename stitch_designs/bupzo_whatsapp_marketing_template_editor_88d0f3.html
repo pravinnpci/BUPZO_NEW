@@ -1,0 +1,440 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>BUPZO WhatsApp Marketing Template Editor</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface": "#fff8f4",
+                    "on-surface-variant": "#48464c",
+                    "on-surface": "#1e1b19",
+                    "electric-blue": "#007AFF",
+                    "error": "#ba1a1a",
+                    "inverse-on-surface": "#f7efeb",
+                    "on-secondary-fixed-variant": "#5d3e49",
+                    "on-secondary": "#ffffff",
+                    "on-error-container": "#93000a",
+                    "on-primary": "#ffffff",
+                    "background": "#fff8f4",
+                    "on-tertiary-fixed-variant": "#53443d",
+                    "outline": "#79767c",
+                    "secondary": "#775560",
+                    "on-primary-fixed": "#1c1929",
+                    "inverse-primary": "#cac3d9",
+                    "surface-container-lowest": "#ffffff",
+                    "tertiary-fixed": "#f5ded4",
+                    "surface-container": "#f4ece8",
+                    "on-error": "#ffffff",
+                    "surface-container-highest": "#e8e1dd",
+                    "dim-grey": "#706677",
+                    "tertiary-fixed-dim": "#d8c2b9",
+                    "on-primary-container": "#ccc6dc",
+                    "surface-dim": "#e0d9d5",
+                    "error-container": "#ffdad6",
+                    "on-background": "#1e1b19",
+                    "outline-variant": "#c9c5cc",
+                    "secondary-fixed-dim": "#e6bbc8",
+                    "primary-container": "#565264",
+                    "on-tertiary-fixed": "#251913",
+                    "primary-fixed-dim": "#cac3d9",
+                    "surface-container-high": "#eee7e3",
+                    "surface-tint": "#605c6e",
+                    "on-secondary-container": "#795763",
+                    "surface-dark": "#1A191E",
+                    "on-tertiary-container": "#dac5bc",
+                    "tertiary-container": "#61514a",
+                    "on-secondary-fixed": "#2d141d",
+                    "on-tertiary": "#ffffff",
+                    "lime-green": "#32D74B",
+                    "surface-container-low": "#faf2ee",
+                    "primary-fixed": "#e6dff5",
+                    "surface-bright": "#fff8f4",
+                    "on-primary-fixed-variant": "#484456",
+                    "primary": "#3f3b4c",
+                    "secondary-container": "#fed1de",
+                    "inverse-surface": "#33302d",
+                    "secondary-fixed": "#ffd9e4",
+                    "surface-variant": "#e8e1dd",
+                    "tertiary": "#493a34"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "sidebar-collapsed": "80px",
+                    "margin-edge": "2rem",
+                    "stack-default": "1.5rem",
+                    "gutter": "1.5rem",
+                    "stack-compact": "0.75rem",
+                    "sidebar-width": "280px",
+                    "container-max": "1440px"
+            },
+            "fontFamily": {
+                    "headline-lg": [
+                            "Plus Jakarta Sans"
+                    ],
+                    "body-sm": [
+                            "Inter"
+                    ],
+                    "headline-lg-mobile": [
+                            "Plus Jakarta Sans"
+                    ],
+                    "headline-md": [
+                            "Plus Jakarta Sans"
+                    ],
+                    "display-lg": [
+                            "Plus Jakarta Sans"
+                    ],
+                    "label-md": [
+                            "Inter"
+                    ],
+                    "mono-sm": [
+                            "Inter"
+                    ],
+                    "body-md": [
+                            "Inter"
+                    ],
+                    "body-lg": [
+                            "Inter"
+                    ]
+            },
+            "fontSize": {
+                    "headline-lg": [
+                            "32px",
+                            {
+                                    "lineHeight": "1.3",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "body-sm": [
+                            "14px",
+                            {
+                                    "lineHeight": "1.5",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "headline-lg-mobile": [
+                            "24px",
+                            {
+                                    "lineHeight": "1.3",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "headline-md": [
+                            "24px",
+                            {
+                                    "lineHeight": "1.4",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "display-lg": [
+                            "48px",
+                            {
+                                    "lineHeight": "1.2",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "label-md": [
+                            "12px",
+                            {
+                                    "lineHeight": "1.2",
+                                    "letterSpacing": "0.05em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "mono-sm": [
+                            "13px",
+                            {
+                                    "lineHeight": "1.4",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "body-md": [
+                            "16px",
+                            {
+                                    "lineHeight": "1.5",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "body-lg": [
+                            "18px",
+                            {
+                                    "lineHeight": "1.6",
+                                    "fontWeight": "400"
+                            }
+                    ]
+            }
+    },
+        },
+      }
+    </script>
+<style>
+        .inner-shadow {
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.06);
+        }
+        .skeuomorphic-btn {
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 4px rgba(86,82,100,0.1);
+        }
+        .skeuomorphic-card {
+            box-shadow: 0 2px 4px rgba(86,82,100,0.05);
+        }
+        .ai-glow {
+            box-shadow: 0 0 15px rgba(0, 122, 255, 0.2);
+            border: 1px solid rgba(0, 122, 255, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body-md antialiased flex h-screen overflow-hidden">
+<!-- SideNavBar -->
+<nav class="h-screen w-sidebar-width fixed left-0 top-0 z-40 bg-surface-container-low dark:bg-surface-dark border-r border-outline-variant shadow-none hidden md:flex flex-col py-stack-default">
+<div class="px-margin-edge mb-8">
+<div class="flex items-center gap-3 mb-6">
+<img class="w-10 h-10 rounded-full object-cover" data-alt="A clean, professional logo for a seller on the BUPZO multi-vendor platform, featuring a stylized shopping bag icon in a minimal, modern style, suitable for a light-mode dashboard aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBPdn9gNGb85T24S47m1kodFL9U5cuKL3khhPVaRhpXu893arxaJIhRA0foPkYLpzahl_tg9lKI6WL7bvbMZMhO_W1Tjog6cHScpa6dc8j_rKKlTJGZDCcFCvCgjqjrwBITA4aOwIeGfrMcmqScWDC1Y-DC8p9JnAQTm33VQWozBJqYYT_FcpPD3fTW5irVOp8mMJQyO_qthP4fKHglFKsiajrOfTD6tA-xFPlBa4mQFT6WY8oBa4DwS0KtlT0AxcurH9n6QtPNMA">
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed">BUPZO Seller</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Pro Merchant</p>
+</div>
+</div>
+<button class="w-full bg-surface-container text-on-surface font-label-md text-label-md py-2 rounded-md hover:bg-surface-variant transition-colors border border-outline-variant">Upgrade Plan</button>
+</div>
+<ul class="flex-1 overflow-y-auto font-label-md text-label-md">
+<li><a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:text-primary transition-all active:inner-shadow duration-150" href="#"><span class="material-symbols-outlined">dashboard</span>Dashboard</a></li>
+<li><a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:text-primary transition-all active:inner-shadow duration-150" href="#"><span class="material-symbols-outlined">inventory_2</span>Inventory</a></li>
+<li><a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:text-primary transition-all active:inner-shadow duration-150" href="#"><span class="material-symbols-outlined">shopping_cart</span>Orders</a></li>
+<li><a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:text-primary transition-all active:inner-shadow duration-150" href="#"><span class="material-symbols-outlined">insights</span>Analytics</a></li>
+<li><a class="flex items-center gap-3 bg-primary/5 text-primary border-l-4 border-primary px-4 py-3 active:inner-shadow duration-150" href="#"><span class="material-symbols-outlined">campaign</span>Marketing</a></li>
+<li><a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:text-primary transition-all active:inner-shadow duration-150" href="#"><span class="material-symbols-outlined">group</span>Customers</a></li>
+<li><a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:text-primary transition-all active:inner-shadow duration-150" href="#"><span class="material-symbols-outlined">settings</span>Settings</a></li>
+<li><a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:text-primary transition-all active:inner-shadow duration-150" href="#"><span class="material-symbols-outlined">help</span>Help</a></li>
+</ul>
+<div class="mt-auto px-margin-edge border-t border-outline-variant pt-4">
+<ul class="font-label-md text-label-md">
+<li><a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:text-primary transition-all active:inner-shadow duration-150" href="#"><span class="material-symbols-outlined">logout</span>Logout</a></li>
+<li><a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:text-primary transition-all active:inner-shadow duration-150" href="#"><span class="material-symbols-outlined">support_agent</span>Support</a></li>
+</ul>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 md:ml-sidebar-width h-full overflow-y-auto bg-surface flex flex-col">
+<!-- Header -->
+<header class="bg-surface-bright border-b border-outline-variant px-margin-edge py-4 sticky top-0 z-30 flex justify-between items-center">
+<div>
+<h2 class="font-headline-md text-headline-md font-bold text-on-surface">WhatsApp Campaign Editor</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Design message templates for the 10Cr user blast.</p>
+</div>
+<div class="flex gap-3">
+<button class="bg-surface-container text-on-surface font-label-md text-label-md px-4 py-2 rounded-lg hover:bg-surface-variant transition-colors border border-outline-variant skeuomorphic-card">Save Draft</button>
+<button class="bg-primary text-on-primary font-label-md text-label-md px-6 py-2 rounded-lg hover:bg-primary/90 transition-colors skeuomorphic-btn flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">send</span> Send to Meta for Approval
+                </button>
+</div>
+</header>
+<!-- Editor & Preview Layout -->
+<div class="flex-1 flex flex-col lg:flex-row p-margin-edge gap-gutter max-w-container-max mx-auto w-full">
+<!-- Left Column: Editor Tools -->
+<div class="flex-1 flex flex-col gap-stack-default min-w-[50%]">
+<!-- Category Selector -->
+<div class="bg-surface-container-lowest rounded-xl p-6 skeuomorphic-card border border-outline-variant">
+<h3 class="font-body-md text-body-md font-semibold mb-4 text-on-surface">1. Select Template Category</h3>
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+<label class="cursor-pointer">
+<input checked="" class="peer sr-only" name="category" type="radio" value="promotional">
+<div class="p-4 rounded-lg border border-outline-variant bg-surface-container-low peer-checked:border-primary peer-checked:bg-primary/5 peer-checked:ring-1 peer-checked:ring-primary transition-all h-full">
+<div class="flex items-center gap-2 mb-2 text-primary">
+<span class="material-symbols-outlined">campaign</span>
+<span class="font-label-md text-label-md">Promotional</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant text-xs">Offers, discounts, and product announcements.</p>
+</div>
+</label>
+<label class="cursor-pointer">
+<input class="peer sr-only" name="category" type="radio" value="utility">
+<div class="p-4 rounded-lg border border-outline-variant bg-surface-container-low peer-checked:border-primary peer-checked:bg-primary/5 peer-checked:ring-1 peer-checked:ring-primary transition-all h-full">
+<div class="flex items-center gap-2 mb-2 text-primary">
+<span class="material-symbols-outlined">receipt_long</span>
+<span class="font-label-md text-label-md">Utility</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant text-xs">Order updates, receipts, and account alerts.</p>
+</div>
+</label>
+<label class="cursor-pointer">
+<input class="peer sr-only" name="category" type="radio" value="marketing">
+<div class="p-4 rounded-lg border border-outline-variant bg-surface-container-low peer-checked:border-primary peer-checked:bg-primary/5 peer-checked:ring-1 peer-checked:ring-primary transition-all h-full">
+<div class="flex items-center gap-2 mb-2 text-primary">
+<span class="material-symbols-outlined">trending_up</span>
+<span class="font-label-md text-label-md">Marketing</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant text-xs">Re-engagement, cart abandonment, upsells.</p>
+</div>
+</label>
+</div>
+</div>
+<!-- Rich Text Editor -->
+<div class="bg-surface-container-lowest rounded-xl p-6 skeuomorphic-card border border-outline-variant flex-1 flex flex-col">
+<div class="flex justify-between items-end mb-4">
+<h3 class="font-body-md text-body-md font-semibold text-on-surface">2. Message Content</h3>
+<!-- AI Generate Button -->
+<button class="bg-surface-container text-electric-blue font-label-md text-label-md px-3 py-1.5 rounded-md hover:bg-surface-variant transition-colors border border-electric-blue/30 ai-glow flex items-center gap-1.5" onclick="generateAIContent()">
+<span class="material-symbols-outlined text-sm">auto_awesome</span> Generate AI Copy
+                        </button>
+</div>
+<!-- Editor Toolbar -->
+<div class="flex items-center gap-2 p-2 bg-surface-container-low border border-outline-variant border-b-0 rounded-t-lg">
+<button class="p-1.5 rounded hover:bg-surface-variant text-on-surface-variant" title="Bold"><span class="material-symbols-outlined text-sm">format_bold</span></button>
+<button class="p-1.5 rounded hover:bg-surface-variant text-on-surface-variant" title="Italic"><span class="material-symbols-outlined text-sm">format_italic</span></button>
+<div class="w-px h-5 bg-outline-variant mx-1"></div>
+<button class="p-1.5 rounded hover:bg-surface-variant text-on-surface-variant" title="Add Variable"><span class="material-symbols-outlined text-sm">data_object</span></button>
+<button class="p-1.5 rounded hover:bg-surface-variant text-on-surface-variant" title="Add Emoji"><span class="material-symbols-outlined text-sm">mood</span></button>
+<div class="flex-1"></div>
+<span class="font-mono-sm text-mono-sm text-on-surface-variant text-xs">Variables: <code class="bg-surface-variant px-1 rounded">{{name}}</code> <code class="bg-surface-variant px-1 rounded">{{discount}}</code></span>
+</div>
+<!-- Text Area -->
+<textarea class="flex-1 w-full p-4 border border-outline-variant rounded-b-lg bg-surface-container-lowest text-on-surface font-body-md resize-none focus:ring-2 focus:ring-primary focus:border-primary inner-shadow" id="messageEditor" placeholder="Type your WhatsApp message here. Use {{variable}} for placeholders..."></textarea>
+<div class="flex justify-between items-center mt-2 px-1">
+<span class="font-body-sm text-body-sm text-on-surface-variant text-xs" id="charCount">0/1024 characters</span>
+<a class="font-body-sm text-body-sm text-primary text-xs hover:underline" href="#">View WhatsApp Formatting Guide</a>
+</div>
+</div>
+<!-- Footer Actions Setup -->
+<div class="bg-surface-container-lowest rounded-xl p-6 skeuomorphic-card border border-outline-variant">
+<h3 class="font-body-md text-body-md font-semibold mb-4 text-on-surface">3. Interactive Actions (Optional)</h3>
+<div class="space-y-3">
+<div class="flex items-center gap-3">
+<input class="rounded text-primary focus:ring-primary bg-surface-container inner-shadow border-outline-variant" id="addBtn" type="checkbox">
+<label class="font-body-sm text-body-sm text-on-surface cursor-pointer" for="addBtn">Add Quick Reply Buttons (Max 3)</label>
+</div>
+<div class="flex items-center gap-3">
+<input class="rounded text-primary focus:ring-primary bg-surface-container inner-shadow border-outline-variant" id="addLink" type="checkbox">
+<label class="font-body-sm text-body-sm text-on-surface cursor-pointer" for="addLink">Add Call-to-Action Link</label>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Mobile Preview -->
+<div class="w-full lg:w-[380px] flex-shrink-0">
+<div class="sticky top-[100px]">
+<h3 class="font-body-md text-body-md font-semibold mb-4 text-on-surface hidden lg:block">Mobile Preview</h3>
+<!-- Phone Container -->
+<div class="relative mx-auto w-[320px] h-[650px] bg-[#E5DDD5] rounded-[2.5rem] border-[8px] border-surface-container-high shadow-xl overflow-hidden flex flex-col">
+<!-- Phone Notch -->
+<div class="absolute top-0 inset-x-0 h-6 bg-surface-container-high rounded-b-xl w-32 mx-auto z-20"></div>
+<!-- WhatsApp Header -->
+<div class="bg-[#075E54] text-white px-4 py-3 pt-8 flex items-center gap-3 z-10 shadow-sm">
+<span class="material-symbols-outlined text-white cursor-pointer">arrow_back</span>
+<img class="w-8 h-8 rounded-full bg-white object-cover" data-alt="A small, generic business avatar logo, simple shapes, white background, suitable for a chat interface profile picture." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA35FcgmwQDN_3wJ4m9ODc9hFUnEksw4IvdjycP5oEyLwQlTG5p4pLThoAhJkbcfvV42gri17pnO2EJJlFSRJTa3Som70o_RaUBXzgp4Lnh-ti9JbZy3hOyIeN70iniyF-arYAm1lXsQWX3P6VwbMYxGrZXk92hsIxOO1HLBZvrhUUEGDPEOChhkHrSjEsWU2aYyPSv-drO4-y6IVau0NAZ7XGDfBIyTOmCujZ-qD6qmvlnIb6THqdrVMn5cl0ARh6bCG13tGNWGw">
+<div class="flex-1">
+<div class="font-body-md text-body-md font-semibold leading-tight">BUPZO Deals</div>
+<div class="font-body-sm text-body-sm text-white/80 text-xs leading-tight">Verified Business</div>
+</div>
+<span class="material-symbols-outlined text-white">more_vert</span>
+</div>
+<!-- Chat Area -->
+<div class="flex-1 p-4 bg-[#E5DDD5] overflow-y-auto relative flex flex-col justify-end pb-8" style="background-image: url('data:image/svg+xml,%3Csvg width=\'100\' height=\'100\' viewBox=\'0 0 100 100\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z\' fill=\'%23d0c9c4\' fill-opacity=\'0.4\' fill-rule=\'evenodd\'/%3E%3C/svg%3E');">
+<!-- Date Badge -->
+<div class="flex justify-center mb-4">
+<span class="bg-[#E1F3FB] text-[#54656F] text-[11px] font-medium px-3 py-1 rounded-lg shadow-sm">Today</span>
+</div>
+<!-- Message Bubble -->
+<div class="bg-white rounded-lg rounded-tl-none p-3 shadow-sm max-w-[85%] relative self-start">
+<div class="font-body-md text-[#111B21] text-[15px] whitespace-pre-wrap break-words leading-relaxed" id="previewContent">
+*Hi {{customer_name}},* 👋
+
+Exclusive early access to our Diwali Mega Sale starts NOW!
+
+Get an extra *{{discount}}% OFF* on all electronics. Use code: *FESTIVE{{discount}}* at checkout.
+
+Tap below to shop before stock runs out! 👇
+                                </div>
+<div class="text-right mt-1">
+<span class="text-[#667781] text-[11px]">10:42 AM</span>
+</div>
+</div>
+<!-- Interactive Buttons Preview -->
+<div class="flex flex-col gap-1 mt-1 max-w-[85%] self-start w-full">
+<button class="bg-white text-[#00A884] font-body-md text-[15px] py-2.5 rounded-lg shadow-sm w-full text-center border-t border-gray-100 font-medium">Shop Now</button>
+<button class="bg-white text-[#00A884] font-body-md text-[15px] py-2.5 rounded-lg shadow-sm w-full text-center border-t border-gray-100 font-medium">Opt Out</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="fixed bottom-0 w-full z-50 rounded-t-xl bg-surface/80 dark:bg-surface-dark/80 backdrop-blur-xl border-t border-outline-variant shadow-[0_-4px_10px_rgba(0,0,0,0.05)] flex justify-around items-center h-16 md:hidden px-2 pb-safe">
+<div class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 active:scale-90 transition-transform font-label-md text-label-md-mobile cursor-pointer p-2">
+<span class="material-symbols-outlined mb-1">home</span>
+<span>Home</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 active:scale-90 transition-transform font-label-md text-label-md-mobile cursor-pointer p-2">
+<span class="material-symbols-outlined mb-1">search</span>
+<span>Explore</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 active:scale-90 transition-transform font-label-md text-label-md-mobile cursor-pointer p-2">
+<span class="material-symbols-outlined mb-1">account_balance_wallet</span>
+<span>Wallet</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 active:scale-90 transition-transform font-label-md text-label-md-mobile cursor-pointer p-2">
+<span class="material-symbols-outlined mb-1">local_shipping</span>
+<span>Orders</span>
+</div>
+<div class="flex flex-col items-center justify-center bg-secondary-container dark:bg-tertiary-container text-on-secondary-container dark:text-on-tertiary-container rounded-full px-4 py-1 active:scale-90 transition-transform font-label-md text-label-md-mobile cursor-pointer">
+<span class="material-symbols-outlined mb-1">campaign</span>
+<span>Marketing</span>
+</div>
+</nav>
+<script>
+        const editor = document.getElementById('messageEditor');
+        const preview = document.getElementById('previewContent');
+        const charCount = document.getElementById('charCount');
+
+        // Simple sync for demonstration
+        editor.addEventListener('input', function() {
+            let val = this.value;
+            charCount.textContent = `${val.length}/1024 characters`;
+            
+            if(val.trim() === '') {
+                preview.innerHTML = '*Hi {{customer_name}},* 👋\n\nExclusive early access to our Diwali Mega Sale starts NOW!\n\nGet an extra *{{discount}}% OFF* on all electronics. Use code: *FESTIVE{{discount}}* at checkout.\n\nTap below to shop before stock runs out! 👇';
+                return;
+            }
+
+            // Basic markdown simulation for bold
+            val = val.replace(/\*(.*?)\*/g, '<strong>$1</strong>');
+            // Basic simulation for variables (highlighting them)
+            val = val.replace(/\{\{(.*?)\}\}/g, '<span class="bg-yellow-100 px-1 rounded text-yellow-800">{{$1}}</span>');
+            
+            preview.innerHTML = val;
+        });
+
+        function generateAIContent() {
+            const btn = document.querySelector('.ai-glow');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin">refresh</span> Generating...';
+            btn.disabled = true;
+
+            setTimeout(() => {
+                const aiText = "*Flash Sale Alert, {{customer_name}}!* ⚡\n\nYour favorite items from your cart just dropped in price.\n\nUse code *QUICK{{discount}}* to claim your exclusive {{discount}}% discount before midnight.\n\nDon't miss out! 🛍️👇";
+                editor.value = aiText;
+                editor.dispatchEvent(new Event('input'));
+                
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }, 1200);
+        }
+
+        // Initialize editor with default text
+        editor.value = "*Hi {{customer_name}},* 👋\n\nExclusive early access to our Diwali Mega Sale starts NOW!\n\nGet an extra *{{discount}}% OFF* on all electronics. Use code: *FESTIVE{{discount}}* at checkout.\n\nTap below to shop before stock runs out! 👇";
+        editor.dispatchEvent(new Event('input'));
+    </script>
+</body></html>

@@ -1,0 +1,522 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>BUPZO Seller Overview Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface": "#fff8f4",
+                    "on-surface-variant": "#48464c",
+                    "on-surface": "#1e1b19",
+                    "electric-blue": "#007AFF",
+                    "error": "#ba1a1a",
+                    "inverse-on-surface": "#f7efeb",
+                    "on-secondary-fixed-variant": "#5d3e49",
+                    "on-secondary": "#ffffff",
+                    "on-error-container": "#93000a",
+                    "on-primary": "#ffffff",
+                    "background": "#fff8f4",
+                    "on-tertiary-fixed-variant": "#53443d",
+                    "outline": "#79767c",
+                    "secondary": "#775560",
+                    "on-primary-fixed": "#1c1929",
+                    "inverse-primary": "#cac3d9",
+                    "surface-container-lowest": "#ffffff",
+                    "tertiary-fixed": "#f5ded4",
+                    "surface-container": "#f4ece8",
+                    "on-error": "#ffffff",
+                    "surface-container-highest": "#e8e1dd",
+                    "dim-grey": "#706677",
+                    "tertiary-fixed-dim": "#d8c2b9",
+                    "on-primary-container": "#ccc6dc",
+                    "surface-dim": "#e0d9d5",
+                    "error-container": "#ffdad6",
+                    "on-background": "#1e1b19",
+                    "outline-variant": "#c9c5cc",
+                    "secondary-fixed-dim": "#e6bbc8",
+                    "primary-container": "#565264",
+                    "on-tertiary-fixed": "#251913",
+                    "primary-fixed-dim": "#cac3d9",
+                    "surface-container-high": "#eee7e3",
+                    "surface-tint": "#605c6e",
+                    "on-secondary-container": "#795763",
+                    "surface-dark": "#1A191E",
+                    "on-tertiary-container": "#dac5bc",
+                    "tertiary-container": "#61514a",
+                    "on-secondary-fixed": "#2d141d",
+                    "on-tertiary": "#ffffff",
+                    "lime-green": "#32D74B",
+                    "surface-container-low": "#faf2ee",
+                    "primary-fixed": "#e6dff5",
+                    "surface-bright": "#fff8f4",
+                    "on-primary-fixed-variant": "#484456",
+                    "primary": "#3f3b4c",
+                    "secondary-container": "#fed1de",
+                    "inverse-surface": "#33302d",
+                    "secondary-fixed": "#ffd9e4",
+                    "surface-variant": "#e8e1dd",
+                    "tertiary": "#493a34"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "sidebar-collapsed": "80px",
+                    "margin-edge": "2rem",
+                    "stack-default": "1.5rem",
+                    "gutter": "1.5rem",
+                    "stack-compact": "0.75rem",
+                    "sidebar-width": "280px",
+                    "container-max": "1440px"
+            },
+            "fontFamily": {
+                    "headline-lg": [
+                            "Plus Jakarta Sans"
+                    ],
+                    "body-sm": [
+                            "Inter"
+                    ],
+                    "headline-lg-mobile": [
+                            "Plus Jakarta Sans"
+                    ],
+                    "headline-md": [
+                            "Plus Jakarta Sans"
+                    ],
+                    "display-lg": [
+                            "Plus Jakarta Sans"
+                    ],
+                    "label-md": [
+                            "Inter"
+                    ],
+                    "mono-sm": [
+                            "Inter"
+                    ],
+                    "body-md": [
+                            "Inter"
+                    ],
+                    "body-lg": [
+                            "Inter"
+                    ]
+            },
+            "fontSize": {
+                    "headline-lg": [
+                            "32px",
+                            {
+                                    "lineHeight": "1.3",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "body-sm": [
+                            "14px",
+                            {
+                                    "lineHeight": "1.5",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "headline-lg-mobile": [
+                            "24px",
+                            {
+                                    "lineHeight": "1.3",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "headline-md": [
+                            "24px",
+                            {
+                                    "lineHeight": "1.4",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "display-lg": [
+                            "48px",
+                            {
+                                    "lineHeight": "1.2",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "label-md": [
+                            "12px",
+                            {
+                                    "lineHeight": "1.2",
+                                    "letterSpacing": "0.05em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "mono-sm": [
+                            "13px",
+                            {
+                                    "lineHeight": "1.4",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "body-md": [
+                            "16px",
+                            {
+                                    "lineHeight": "1.5",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "body-lg": [
+                            "18px",
+                            {
+                                    "lineHeight": "1.6",
+                                    "fontWeight": "400"
+                            }
+                    ]
+            }
+    },
+        },
+      }
+    </script>
+<style>
+        .inner-shadow {
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.06);
+        }
+        .skeuomorphic-shadow {
+            box-shadow: 0 2px 4px rgba(86, 82, 100, 0.05);
+        }
+        .skeuomorphic-hover:hover {
+            box-shadow: 0 10px 15px -3px rgba(86, 82, 100, 0.1);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body class="bg-surface font-body-md text-on-surface flex min-h-screen">
+<!-- SideNavBar (from JSON) -->
+<nav class="hidden md:flex flex-col h-screen w-sidebar-width fixed left-0 top-0 z-40 bg-surface-container-low dark:bg-surface-dark border-r border-outline-variant shadow-none py-stack-default">
+<!-- Header -->
+<div class="px-margin-edge mb-8 flex items-center gap-4">
+<div class="w-12 h-12 rounded-full overflow-hidden border border-outline-variant bg-surface-lowest flex-shrink-0">
+<img alt="Seller Brand Logo" class="w-full h-full object-cover" data-alt="A clean, minimalist logo for a premium online seller brand. The logo uses deep charcoal and subtle dusty mauve accents on a pure white background. The aesthetic is professional, sophisticated, and suitable for an enterprise-grade multi-vendor platform, capturing a 'Mauve Serenity' mood." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCchIqrcnrkwXvuZBTLnCAYh1UEyyui3u6hcVDI3WQpi8LJU_JTww8bvZxRImAFnXCeHzqQS8e0wXo34PRCoJbBS8CXAKPBRpEcIVkhDbDgt-zjDo6AGNjZ1XJX-ifnaVwY-yc1zDB5VDuNBYpAn6ZFT1d5RYICrzsKU2ol4NWVil9Wtdc2yOK3HTMERg2pKHzByuMIOYsPWerJSHHmhYN2mhc76rPs6wd8--oQKjnv5own3tyfBrJbm51pqTNvQwAz2puUr5DVHQ">
+</div>
+<div>
+<h2 class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed">BUPZO Seller</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Pro Merchant</p>
+</div>
+</div>
+<!-- Primary Navigation -->
+<div class="flex-1 overflow-y-auto">
+<ul class="space-y-1">
+<!-- Active Tab: Dashboard -->
+<li>
+<a class="flex items-center gap-3 bg-primary/5 text-primary border-l-4 border-primary px-4 py-3 active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+</li>
+<!-- Inactive Tabs -->
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="font-label-md text-label-md">Inventory</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined">shopping_cart</span>
+<span class="font-label-md text-label-md">Orders</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined">insights</span>
+<span class="font-label-md text-label-md">Analytics</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined">campaign</span>
+<span class="font-label-md text-label-md">Marketing</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-label-md text-label-md">Customers</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-label-md text-label-md">Help</span>
+</a>
+</li>
+</ul>
+</div>
+<!-- Footer / CTA -->
+<div class="px-margin-edge mt-auto space-y-4">
+<button class="w-full py-3 bg-secondary text-on-secondary rounded font-label-md text-label-md border-t border-white/20 shadow-sm hover:shadow-md transition-shadow">
+                Upgrade Plan
+            </button>
+<ul class="space-y-1">
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-label-md text-label-md">Logout</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined">support_agent</span>
+<span class="font-label-md text-label-md">Support</span>
+</a>
+</li>
+</ul>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 md:ml-sidebar-width w-full bg-surface min-h-screen">
+<!-- TopAppBar (Modified for Seller Context based on JSON hybrid) -->
+<header class="bg-surface-bright dark:bg-surface-dark shadow-[0_2px_4px_rgba(86,82,100,0.05)] sticky top-0 z-30 w-full">
+<div class="flex justify-between items-center w-full px-margin-edge py-4 max-w-container-max mx-auto">
+<div class="md:hidden flex items-center gap-4">
+<span class="material-symbols-outlined cursor-pointer text-primary">menu</span>
+<h1 class="font-headline-md text-headline-md font-bold text-primary">BUPZO</h1>
+</div>
+<!-- Search -->
+<div class="hidden md:flex flex-1 max-w-md mx-4 relative inner-shadow rounded-full bg-surface-container-low border border-outline-variant focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full bg-transparent border-none focus:ring-0 py-2 pl-10 pr-4 text-body-md font-body-md placeholder-on-surface-variant/70 rounded-full" placeholder="Search orders, products, or customers..." type="text">
+</div>
+<!-- Actions -->
+<div class="flex items-center gap-4 text-on-surface-variant">
+<button class="hover:text-primary transition-colors duration-200 cursor-pointer active:scale-95 p-2 rounded-full hover:bg-surface-variant/50 relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-1 right-1 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<button class="hover:text-primary transition-colors duration-200 cursor-pointer active:scale-95 p-2 rounded-full hover:bg-surface-variant/50">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+</button>
+<div class="w-10 h-10 rounded-full overflow-hidden border border-outline-variant skeuomorphic-shadow ml-2 cursor-pointer">
+<img alt="User profile" class="w-full h-full object-cover" data-alt="A clean, minimalist logo for a premium online seller brand. The logo uses deep charcoal and subtle dusty mauve accents on a pure white background. The aesthetic is professional, sophisticated, and suitable for an enterprise-grade multi-vendor platform, capturing a 'Mauve Serenity' mood." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCzFazRljybaa6648kjd2iq6VzNEMTbDA3bj_abEUvvTkcIOHveM5SiqA7m4xTDwvyn-Ew-Juaa2ZVwVbsqEgWIviTaJb0YO_FHGHmBBAxaVBOhbrLz5aAWK2OLiJ8wxkGDQKK0WECGALkZMbET5ob8wpkabs9q1hfRaS4aS7cVstFrTHYFlEQiFNpaZZRn_WOXIt3ecw5sf3U-6_R0ovE2kcAo_UoQfD7cNsrd9Ir7drn1Hg2bF6e5FpBtGaPFb4qRcoyw8uCn5w">
+</div>
+</div>
+</div>
+</header>
+<!-- Dashboard Content -->
+<div class="p-margin-edge max-w-container-max mx-auto space-y-gutter">
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+<div>
+<h1 class="font-headline-lg text-headline-lg text-primary">Overview</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Here's what's happening with your store today.</p>
+</div>
+<div class="flex gap-3">
+<button class="px-4 py-2 bg-surface-container-low text-on-surface border border-outline-variant rounded font-label-md text-label-md skeuomorphic-shadow skeuomorphic-hover transition-all flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">calendar_month</span>
+                         Last 30 Days
+                     </button>
+<button class="px-4 py-2 bg-primary text-on-primary rounded font-label-md text-label-md border-t border-white/20 shadow-sm skeuomorphic-hover transition-all flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">add</span>
+                         Add Product
+                     </button>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter">
+<!-- Live Order Counters (Top Row, spanning 12 cols) -->
+<div class="col-span-1 md:col-span-12 grid grid-cols-2 md:grid-cols-4 gap-gutter">
+<!-- New -->
+<div class="bg-surface-container-lowest rounded-xl p-5 skeuomorphic-shadow border border-surface-container-highest flex flex-col justify-between h-32 relative overflow-hidden group hover:border-electric-blue/30 transition-colors">
+<div class="absolute -right-6 -top-6 w-24 h-24 bg-electric-blue/5 rounded-full group-hover:scale-110 transition-transform"></div>
+<div class="flex justify-between items-start">
+<span class="font-label-md text-label-md text-on-surface-variant">New Orders</span>
+<span class="material-symbols-outlined text-electric-blue">fiber_new</span>
+</div>
+<div>
+<span class="font-headline-lg text-headline-lg text-on-surface">42</span>
+</div>
+</div>
+<!-- To Pack -->
+<div class="bg-surface-container-lowest rounded-xl p-5 skeuomorphic-shadow border border-surface-container-highest flex flex-col justify-between h-32 relative overflow-hidden group hover:border-secondary/30 transition-colors">
+<div class="absolute -right-6 -top-6 w-24 h-24 bg-secondary/5 rounded-full group-hover:scale-110 transition-transform"></div>
+<div class="flex justify-between items-start">
+<span class="font-label-md text-label-md text-on-surface-variant">To Pack</span>
+<span class="material-symbols-outlined text-secondary">inventory</span>
+</div>
+<div>
+<span class="font-headline-lg text-headline-lg text-on-surface">18</span>
+</div>
+</div>
+<!-- Shipped -->
+<div class="bg-surface-container-lowest rounded-xl p-5 skeuomorphic-shadow border border-surface-container-highest flex flex-col justify-between h-32 relative overflow-hidden group hover:border-lime-green/30 transition-colors">
+<div class="absolute -right-6 -top-6 w-24 h-24 bg-lime-green/5 rounded-full group-hover:scale-110 transition-transform"></div>
+<div class="flex justify-between items-start">
+<span class="font-label-md text-label-md text-on-surface-variant">Shipped</span>
+<span class="material-symbols-outlined text-lime-green">local_shipping</span>
+</div>
+<div>
+<span class="font-headline-lg text-headline-lg text-on-surface">156</span>
+</div>
+</div>
+<!-- Delivered -->
+<div class="bg-surface-container-lowest rounded-xl p-5 skeuomorphic-shadow border border-surface-container-highest flex flex-col justify-between h-32 relative overflow-hidden group hover:border-primary/30 transition-colors">
+<div class="absolute -right-6 -top-6 w-24 h-24 bg-primary/5 rounded-full group-hover:scale-110 transition-transform"></div>
+<div class="flex justify-between items-start">
+<span class="font-label-md text-label-md text-on-surface-variant">Delivered (30d)</span>
+<span class="material-symbols-outlined text-primary">check_circle</span>
+</div>
+<div>
+<span class="font-headline-lg text-headline-lg text-on-surface">892</span>
+</div>
+</div>
+</div>
+<!-- Revenue Analytics Widget (Spans 8 cols) -->
+<div class="col-span-1 md:col-span-8 bg-surface-container-lowest rounded-xl skeuomorphic-shadow border border-surface-container-highest p-6 flex flex-col">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-headline-md text-headline-md text-primary">Revenue Analytics</h3>
+<div class="flex bg-surface-container-low rounded-lg p-1 border border-outline-variant/50">
+<button class="px-3 py-1 text-label-md font-label-md rounded bg-surface-container-lowest shadow-sm text-on-surface">Daily</button>
+<button class="px-3 py-1 text-label-md font-label-md rounded text-on-surface-variant hover:text-on-surface">Weekly</button>
+<button class="px-3 py-1 text-label-md font-label-md rounded text-on-surface-variant hover:text-on-surface">Monthly</button>
+</div>
+</div>
+<div class="flex gap-8 mb-6">
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant mb-1">Total Revenue</p>
+<p class="font-headline-lg text-headline-lg text-on-surface">$24,592.00</p>
+<p class="font-body-sm text-body-sm text-lime-green flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-[16px]">trending_up</span>
+                                +12.5% vs last period
+                            </p>
+</div>
+</div>
+<!-- Graph Placeholder (Using CSS styling for aesthetic) -->
+<div class="flex-1 w-full bg-surface-container-low/30 rounded-lg border border-outline-variant/30 relative overflow-hidden min-h-[250px] flex items-end px-4 pb-4 pt-10">
+<!-- Mock Graph Grid Lines -->
+<div class="absolute inset-0 flex flex-col justify-between py-4 opacity-10 pointer-events-none">
+<div class="w-full border-b border-on-surface"></div>
+<div class="w-full border-b border-on-surface"></div>
+<div class="w-full border-b border-on-surface"></div>
+<div class="w-full border-b border-on-surface"></div>
+</div>
+<!-- Mock Data Visualization (SVG embedded directly as requested not to use external unprovided svgs, keeping it simple for the layout) -->
+<div class="w-full h-full relative flex items-end gap-2 z-10">
+<div class="w-1/12 bg-primary/20 hover:bg-primary/40 rounded-t transition-colors" style="height: 30%"></div>
+<div class="w-1/12 bg-primary/20 hover:bg-primary/40 rounded-t transition-colors" style="height: 45%"></div>
+<div class="w-1/12 bg-primary/20 hover:bg-primary/40 rounded-t transition-colors" style="height: 35%"></div>
+<div class="w-1/12 bg-primary/20 hover:bg-primary/40 rounded-t transition-colors" style="height: 60%"></div>
+<div class="w-1/12 bg-primary/20 hover:bg-primary/40 rounded-t transition-colors" style="height: 50%"></div>
+<div class="w-1/12 bg-primary/20 hover:bg-primary/40 rounded-t transition-colors" style="height: 80%"></div>
+<div class="w-1/12 bg-primary/40 hover:bg-primary/60 rounded-t transition-colors relative" style="height: 75%">
+<!-- Tooltip mock -->
+<div class="absolute -top-10 left-1/2 -translate-x-1/2 bg-surface-dark text-on-primary text-[10px] py-1 px-2 rounded whitespace-nowrap shadow-md">Today: $3,402</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column (Spans 4 cols) -->
+<div class="col-span-1 md:col-span-4 flex flex-col gap-gutter">
+<!-- Low Stock Warning Cards -->
+<div class="bg-surface-container-lowest rounded-xl skeuomorphic-shadow border border-surface-container-highest p-6">
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-headline-md text-body-lg font-bold text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-error">warning</span>
+                                Low Stock
+                            </h3>
+<a class="font-label-md text-label-md text-electric-blue hover:underline" href="#">View All</a>
+</div>
+<div class="space-y-4">
+<!-- Item 1 -->
+<div class="flex items-center gap-3 p-3 rounded-lg bg-error-container/20 border border-error/10 hover:bg-error-container/30 transition-colors cursor-pointer">
+<div class="w-12 h-12 bg-surface-container rounded border border-outline-variant overflow-hidden flex-shrink-0">
+<img alt="Product Image" class="w-full h-full object-cover" data-alt="A sleek, minimalist product photography shot of a premium ceramic coffee mug in a dusty mauve color. The mug sits on a clean, light almond silk surface with soft, diffused high-key lighting creating subtle realistic shadows. The background is pure white, emphasizing a clean e-commerce aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDUWfztaKiTRbPFIVrDvC2TikEF_NP4imtpiyt-KN1pEQmhPbJeWcJ_q_YL6DQjenWM1X2Ow1JPAlCn5WoUxicRC0jD8y2XMPJoMNmKHAgis4ahAAEkI35Gpy83Png_kd0Yek42Mkax93XKdD3HcJfmZuQqAvLYEnaubylM7d9JVSYM7f7LcSYPJS7kWpMa8m1BXW5WZBLS4-G_Nb7Rb2cfWgunsY1tuTMkpaTlwFcDVlz5sMLAjr8f80sfb_5nMcRlSkCXHneMYw">
+</div>
+<div class="flex-1 min-w-0">
+<p class="font-body-sm text-body-sm text-on-surface font-medium truncate">Ceramic Mauve Mug</p>
+<p class="font-label-md text-[10px] text-on-surface-variant">SKU: MUG-001</p>
+</div>
+<div class="text-right">
+<p class="font-headline-lg-mobile text-body-md font-bold text-error">2 left</p>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="flex items-center gap-3 p-3 rounded-lg hover:bg-surface-container-low transition-colors cursor-pointer">
+<div class="w-12 h-12 bg-surface-container rounded border border-outline-variant overflow-hidden flex-shrink-0">
+<img alt="Product Image" class="w-full h-full object-cover" data-alt="A clean, minimalist product photography shot of a textured linen throw blanket neatly folded. The blanket is a soft charcoal color. It sits on a bright, almond silk surface with soft, diffused high-key lighting. The aesthetic is premium, modern, and aligned with a 'Mauve Serenity' mood." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFvxESFAY0t6CWx2Qh0wZhPtkYiLk8SNGLHWJ5TjGlieca4V9Qu5xUBbilGv8yx80W6dGHXR8CAh-6II-ossE5c0kG3LclbUxcP3OVmpGGaV71KZ2frZiHAe6ZPoj2oHjyY7TpJeYd_WsYqYmxeDX1l0Qag9V_RoqcsgP340YPj789HNoQjEQbC5XlE4KVtpj60C2gTyrkoKo6SYsxjFPKaQv3Oj3xGbc34XhlxfQAeIOaa1XlGV-Jq47X0GmdM5o2Fzc16XZ4hw">
+</div>
+<div class="flex-1 min-w-0">
+<p class="font-body-sm text-body-sm text-on-surface font-medium truncate">Linen Throw Blanket</p>
+<p class="font-label-md text-[10px] text-on-surface-variant">SKU: LTB-045</p>
+</div>
+<div class="text-right">
+<p class="font-headline-lg-mobile text-body-md font-bold text-on-surface-variant">8 left</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Recent Activity Timeline -->
+<div class="bg-surface-container-lowest rounded-xl skeuomorphic-shadow border border-surface-container-highest p-6 flex-1">
+<h3 class="font-headline-md text-body-lg font-bold text-primary mb-6">Recent Activity</h3>
+<div class="relative border-l border-outline-variant/30 ml-3 space-y-6 pb-2">
+<!-- Activity Item 1 -->
+<div class="relative pl-6">
+<div class="absolute -left-1.5 top-1 w-3 h-3 rounded-full bg-lime-green border-2 border-surface-container-lowest"></div>
+<p class="font-body-sm text-body-sm text-on-surface">Order <span class="font-medium text-electric-blue">#ORD-9921</span> delivered.</p>
+<p class="font-label-md text-[10px] text-on-surface-variant mt-1">10 mins ago</p>
+</div>
+<!-- Activity Item 2 -->
+<div class="relative pl-6">
+<div class="absolute -left-1.5 top-1 w-3 h-3 rounded-full bg-secondary border-2 border-surface-container-lowest"></div>
+<p class="font-body-sm text-body-sm text-on-surface">New 5-star review on <span class="font-medium">Ceramic Mauve Mug</span>.</p>
+<p class="font-label-md text-[10px] text-on-surface-variant mt-1">1 hour ago</p>
+</div>
+<!-- Activity Item 3 -->
+<div class="relative pl-6">
+<div class="absolute -left-1.5 top-1 w-3 h-3 rounded-full bg-primary border-2 border-surface-container-lowest"></div>
+<p class="font-body-sm text-body-sm text-on-surface">Payout of <span class="font-medium">$1,240.00</span> initiated.</p>
+<p class="font-label-md text-[10px] text-on-surface-variant mt-1">3 hours ago</p>
+</div>
+<!-- Activity Item 4 -->
+<div class="relative pl-6">
+<div class="absolute -left-1.5 top-1 w-3 h-3 rounded-full bg-outline-variant border-2 border-surface-container-lowest"></div>
+<p class="font-body-sm text-body-sm text-on-surface">Inventory updated for 12 items.</p>
+<p class="font-label-md text-[10px] text-on-surface-variant mt-1">Yesterday</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only - from JSON) -->
+<nav class="flex justify-around items-center h-16 md:hidden px-2 pb-safe fixed bottom-0 w-full z-50 rounded-t-xl bg-surface/80 dark:bg-surface-dark/80 backdrop-blur-xl border-t border-outline-variant shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
+<!-- Dashboard/Home active equivalent -->
+<a class="flex flex-col items-center justify-center bg-secondary-container dark:bg-tertiary-container text-on-secondary-container dark:text-on-tertiary-container rounded-full px-4 py-1 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="font-label-md text-[10px]">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined">search</span>
+<span class="font-label-md text-[10px]">Explore</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span class="font-label-md text-[10px]">Wallet</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined">local_shipping</span>
+<span class="font-label-md text-[10px]">Orders</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined">auto_awesome</span>
+<span class="font-label-md text-[10px]">AI Assistant</span>
+</a>
+</nav>
+</body></html>

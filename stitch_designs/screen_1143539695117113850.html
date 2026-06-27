@@ -1,0 +1,209 @@
+# BUPZO V10 - MASTER ARCHITECTURE & REQUIREMENTS SPECIFICATION
+
+## 1. PROJECT OVERVIEW
+**Name:** BUPZO (Previously Asay Technology)
+**Tagline:** "The Next-Gen AI-Powered Multi-Vendor E-Commerce Platform"
+**Description:** An enterprise-grade, highly scalable, **AI-powered** e-commerce platform starting with Nagore specialties (Halwa, Dry fruits) and expanding to Toys, Home Appliances, Ceramics, Electricals, Electronics, etc. It supports a multi-vendor marketplace model.
+**Logo:** A modern geometric capital 'B' forming an intricate shopping bag shape, with 'Z' and 'P' subtly blended inside, and 'U' as part of the overall flow. Colors are rich electric blues and lime greens, with 'BUPZO' in a clean sans-serif font below.
+**Architecture:** Monorepo with Dockerized Microservices (Local-First Development, Cloud-Ready Deployment).
+**Target Agent:** Read this document completely to generate the working code for Frontend (Customer/Seller/Admin), Backend, Database, MCP Server, and Integrations.
+**Financial Goal:** Achieve ₹1 Lakh/month passive income with minimal initial investment (leveraging free tiers).
+
+### BUPZO Core Architecture Diagram (V9 - Ultra HD)
+
+This diagram visually represents the entire BUPZO system, from user applications to cloud deployment, ensuring all components and data flows are clearly integrated.
+
+
+---
+
+## 2. TECHNOLOGY STACK
+*   **Frontend:** Next.js 15 (App Router), Tailwind CSS, Shadcn UI, Zustand (State Management), PWA enabled.
+*   **Backend:** FastAPI (Python) for Core Business Logic.
+*   **MCP Server:** Node.js (@modelcontextprotocol/sdk) for AI Agent Tools.
+*   **Database:** PostgreSQL (via Supabase cloud for production, local Docker PostgreSQL for development, mapped to port 5434).
+*   **Caching/Rate Limiting:** Redis (via Upstash cloud, but local Docker Redis for development).
+*   **Containerization:** Docker & Docker Compose for local environment.
+*   **AI Engine:** Mistral AI / Google Gemini API.
+
+---
+
+## 3. UI/UX DESIGN & FRONTEND SPECIFICATIONS
+*   **Theme & Style:** Skeuomorphic touches with realistic textures and shadows combined with a modern "Phoenix Dashboard" multi-vendor layout. Tone is techy and innovative.
+*   **Color Palette (Mauve Serenity):** Charcoal (`#565264`), Dim Grey (`#706677`), Dusty Mauve (`#A6808C`), Almond Silk (`#CCB7AE`), and Dust Grey (`#D6CFCB`). Implement this using Tailwind CSS custom configuration.
+*   **Typography:** 'Inter' for body text, 'Plus Jakarta Sans' for headings. Dark Mode support is mandatory.
+*   **Layout Structure:**
+    *   Left sidebar navigation for both Customers and Sellers.
+    *   Image slider / carousel hero rotating multiple slides (managed via Super Admin Dashboard).
+    *   Compact section spacing with minimal padding between sections.
+    *   Multi-column footer (links, about, contact, social).
+*   **Interactive Features:**
+    *   Dark / Light mode toggle & Responsive hamburger mobile menu.
+    *   Smooth scroll navigation with scroll-triggered fade-in animations.
+    *   Sticky call-to-action button, custom cursor effect, and preloader/loading animation.
+    *   Image lightbox gallery, FAQ accordion, back to top button, and animated statistics counter.
+    *   Dynamic Product Catalog Grid, Analytics Sales Charts, Refund Invoice Tracker, and AI Recommendation Widgets.
+    *   Real-time Toast Notifications for sellers/customers (via WebSockets).
+    *   Daily Spin & Win feature for user engagement.
+    *   Wishlist with Price Drop Alert.
+    *   Flash Sales & Countdown Timer.
+
+---
+
+## 4. CORE BUSINESS LOGIC & FEATURES
+
+### A. User Roles & Unified App
+*   **Single Unified App:** Users and Sellers login to the same app. UI toggles based on role.
+*   **Roles:** 
+    1. `Customer` (Normal & Premium)
+    2. `Seller` (Manages own inventory & orders, receives app notifications only)
+    3. `Super Admin` (Global control, overrides, health monitoring)
+
+### B. User Tiers & Wallet System
+*   **Normal User:** Standard shipping, Ad-supported (Google AdSense/AdMob), ₹5 Referral Bonus.
+*   **Premium User:** No Ads, **50% Flat Discount on Shipping**, ₹10 Referral Bonus, 1% Cashback on purchases, Exclusive Combos, Priority Support, Early Access to new products.
+*   **Wallet:** Users have a wallet balance. Refunds process directly to the wallet. *No withdrawal allowed* (ensures customer retention).
+*   **Wallet Top-up:** Users can top-up their wallet. Partial payments using wallet are NOT allowed to encourage full top-ups.
+
+### C. Authentication & Security
+*   **Primary Auth:** Mobile Number OTP via Firebase.
+*   **Failover Auth:** WhatsApp OTP (Meta Cloud API) if SMS limits are reached.
+*   **Biometrics:** WebAuthn (Fingerprint/FaceID) support for fast re-logins.
+*   **Privacy:** Bank details are NOT stored in the database. Privacy policy consent checkbox is mandatory at signup.
+*   **Session Management:** JWT tokens for 30-day login sessions to reduce OTP frequency.
+*   **Bot Protection:** Google reCAPTCHA on signup.
+*   **Data Privacy:** Clear Privacy Policy section in user profile and signup flow, with marketing consent toggle.
+*   **Legal Compliance:** FSSAI License, GST/MSME details for automated invoice generation.
+
+### D. E-Commerce Engine
+*   **Dynamic Categories:** Supports weights (for shipping calculations) and combo flags.
+*   **Checkout:** 1-Click checkout, partial wallet payments, optional ₹2 "Trust Fund" donation checkbox.
+*   **Reviews:** 1-5 Star ratings with comments.
+
+### E. Multi-Seller Marketplace
+*   **Seller Profiles:** Each seller has a profile and manages their own products.
+*   **Inventory Management:** Sellers can add/update/delete their products.
+*   **Commission Logic:** Configurable commission rates for sellers.
+*   **Product Approval:** Super Admin can approve/reject seller products.
+---
+
+## 5. INTEGRATIONS & MULTI-AGGREGATORS
+
+### A. Payment Gateways (Multi-Routing)
+*   **Aggregators:** Razorpay, Cashfree, PhonePe.
+*   **Logic:** Dynamic routing to the gateway with the lowest fee or highest uptime.
+*   **International Payments:** Supported via Razorpay/Cashfree with IEC code (required for production). Currency conversion handled by backend.
+
+### B. Shipping Partners (Multi-Routing)
+*   **Aggregators:** Shiprocket, NimbusPost, Delhivery.
+*   **Logic:** Rate comparison based on Pincode and Weight. NimbusPost for international, Delhivery for rural, Shiprocket for standard domestic.
+*   **International Shipping:** Supported with required documentation (IEC, AD Code, FSSAI).
+*   **Real-time Tracking:** Live tracking updates via WebSockets for app users.
+
+### C. Omni-Channel Notifications
+*   **Web Customers:** Order confirmation and updates via **WhatsApp** (Meta Cloud API - limited free tier) and Email (Brevo - free tier).
+*   **App Customers:** Real-time **Push Notifications** (Firebase FCM - free) & WebSockets for live shipping updates.
+*   **Sellers (App Only):** Real-time **Push Notifications** (Firebase FCM - free) & WebSockets for new orders, inventory alerts. (No WhatsApp for sellers to save cost).
+*   **OTP Failover:** Automatic switch from Firebase SMS to WhatsApp OTP if SMS limits are reached.
+
+### D. SEO & Analytics
+*   **Google Search Console & Analytics (GA4):** Free traffic and user behavior tracking.
+*   **Sitemap Automation:** Dynamic sitemap generation and submission via GitHub Actions.
+*   **Schema Markup:** JSON-LD for rich snippets (price, ratings) in search results.
+*   **Google AdSense/AdMob:** For monetization, disabled for Premium users.
+---
+
+## 6. DATABASE SCHEMA REQUIREMENTS (PostgreSQL)
+The AI Agent must generate the initial SQL migration script including:
+*   `users`: id, phone, email, is_premium, signup_platform (WEB/APP), referred_by, wallet_balance, privacy_accepted.
+*   `categories`: id, name.
+*   `products`: id, name, category_id, price, weight_grams, image_url, is_combo, stock_quantity, seller_id.
+*   `sellers`: id, user_id, business_name, commission_rate, status (PENDING/APPROVED), kyc_details (JSONB).
+*   `orders`: id, user_id, seller_id, total_amount, status, tracking_id, order_source (WEB/APP), shipping_partner, payment_gateway, trust_donation_amount, currency, exchange_rate.
+*   `wallet_transactions`: id, user_id, amount, type (REFERRAL, PURCHASE, TOPUP, REFUND, ADMIN_ADJUSTMENT), description.
+*   `payment_logs`: id, order_id, gateway_name, amount, status, transaction_date.
+*   `shipping_logs`: id, order_id, courier_partner, shipping_cost, delivery_status, created_at.
+*   `reviews`: id, product_id, user_id, rating, comment, image_urls (S3 links).
+*   `banners`: id, image_url (S3), start_date, end_date, link_url, is_active.
+*   `system_alerts`: id, message, is_active, start_date, end_date.
+*   `coupons`: id, code, discount_percent, is_premium_only, expiry_date, usage_limit, min_order_value.
+*   `audit_logs`: id, user_id, action, details, timestamp (for admin actions).
+*   `seller_products`: (Junction table for many-to-many if a product can have multiple sellers, or if products are unique to sellers).
+*   `seller_payouts`: id, seller_id, amount, status, request_date, processed_date.
+*   `referrals`: id, referrer_id, referee_id, bonus_amount, status.
+*   `product_views`: id, product_id, user_id, timestamp (for AI recommendations).
+*   `spin_win_rewards`: id, user_id, reward_type, reward_value, claimed_at.
+*   `wishlist`: id, user_id, product_id, added_at.
+*   `flash_sales`: id, product_id, discount_percent, start_time, end_time.
+*   `admin_settings`: key, value (for global configs like commission rates).
+
+---
+
+## 7. SYSTEM ARCHITECTURE & DOCKER COMPOSE
+The AI must create a `docker-compose.yml` for local development with specific port mappings to avoid any local port conflicts:
+1.  **db**: `postgres:13` container (Mapped to host port 5434 to avoid 5432 conflicts).
+2.  **redis**: `redis:7` container (Mapped to host port 6380 to avoid 6379 conflicts).
+3.  **backend-api**: FastAPI container (Mapped to host port 8003) connected to `db` and `redis`.
+4.  **frontend-client**: Next.js container for Customer/Seller Unified App (Mapped to host port 3003 to avoid 3000 conflicts).
+5.  **frontend-admin**: Next.js container for Super Admin Dashboard (Mapped to host port 3005).
+6.  **mcp-server**: Node.js container for the AI context tools (Mapped to host port 3004).
+*Strictly use these alternate ports across package.json, Dockerfiles, and docker-compose.yml to prevent "port already allocated" issues during local development. Ensure `frontend-admin` is also Dockerized.*
+
+---
+## 8. AI AGENT & MCP INTEGRATION (Mistral AI / Google Gemini)
+*   **AI Engine:** Mistral AI / Google Gemini acts as the chatbot, automated marketing copy generator, and smart search engine.
+*   **MCP Server (`bupzomcp/index.js`):** Already included in `docker-compose.yml`. It must be updated to connect to the actual local PostgreSQL database using the `DATABASE_URL` environment variable.
+*   **Exposed Tools (via Zod objects):**
+    *   `get_shipping_rates` (calculates across the 3 aggregators).
+    *   `get_bupzo_orders` (fetches real order status from the PostgreSQL DB instead of returning mock data).
+    *   `send_whatsapp_update` (triggers Meta API).
+    *   `get_product_recommendations` (fetches personalized product recommendations based on user history).
+    *   `get_seller_products` (fetches products for a specific seller).
+    *   `get_banner_images` (fetches active banner images for the homepage, managed by Super Admin).
+    *   `get_flash_sale_products` (fetches active flash sale products).
+    *   `get_spin_win_reward` (logic for daily spin & win).
+
+---
+
+## 9. MONITORING & HEALTH CHECK
+*   **Super Admin Dashboard:** Dedicated section for live application health monitoring.
+    *   API Latency (FastAPI endpoints).
+    *   Database Size (Progress bar for Supabase 500MB limit with alerts).
+    *   Active Users (Real-time count).
+    *   Error Logs (Integrated with Sentry for future).
+    *   **Real-time Sales Analytics:** Graphs and charts for sales, top products, seller performance.
+    *   **Audit Logs:** Track all admin/seller actions.
+*   **Vercel Analytics:** For frontend traffic.
+*   **Google Analytics 4 (GA4):** Unified tracking for Web and Mobile App traffic.
+*   **UptimeRobot:** External uptime monitoring (future integration).
+*   **Budget Alerts:** Automated alerts for exceeding free tier limits on Vercel, Supabase, Upstash.
+
+---
+
+## 9. DEVOPS & CI/CD PIPELINE (FUTURE CLOUD PHASE)
+*   Code must be structured for GitHub Actions.
+*   `.github/workflows/deploy.yml` will handle Terraform provisioning (Vercel, Supabase).
+*   All API keys (GEMINI_API_KEY, WHATSAPP_API_TOKEN, SUPABASE_URL, etc.) must be strictly loaded via `.env` locally and GitHub Secrets in production.
+*   **Docker Image Automation:** GitHub Actions will build Docker images for frontend (client & admin), backend, and MCP server, then push them to GitHub Container Registry (GHCR) or Docker Hub.
+*   **Automated Health Checks:** Post-deployment, GitHub Actions will run scripts to verify API endpoints and notification services.
+*   **Terraform for Infra:** Terraform will provision Vercel projects, Supabase project (DB, S3 buckets), and Upstash Redis instance.
+*   **DB Migrations:** Automated database schema migrations via GitHub Actions.
+
+---
+
+## 11. AI AGENT TASK INSTRUCTIONS (ACTION REQUIRED)
+As an AI Assistant reading this file, please execute the following steps incrementally to build a fully working local system:
+
+1.  **Step 1: Generate `docker-compose.yml` and `.env.example`:** Create the complete `docker-compose.yml` for local development and the `.env.example` file with all required API keys.
+2.  **Step 2: Generate `schema.sql`:** Provide the exact `schema.sql` to initialize the PostgreSQL database with all the tables and columns mentioned in Section 6.
+3.  **Step 3: Generate FastAPI Boilerplate:** Create the boilerplate FastAPI application (`main.py`, database connection, and basic endpoints for Auth, Products, and Wallet).
+4.  **Step 4: Build Next.js Frontend (Customer/Seller Unified App):** Generate the Next.js `bupzofrontend` using Tailwind CSS and the *Mauve Serenity* color palette. Implement the Phoenix Dashboard layout with Left Sidebar, Dark Mode, and scroll animations. Connect it to the FastAPI backend.
+5.  **Step 5: Build Next.js Admin Dashboard:** Generate the Next.js `bupzoadmin` frontend for the Super Admin dashboard, following the Phoenix Dashboard layout. Implement sections for User/Seller Management, Global Settings, Wallet & Commission, and Live Health Monitor. Connect it to the FastAPI backend.
+6.  **Step 6: Update MCP Server:** Update the existing MCP Server (`bupzomcp/index.js`) to connect to the PostgreSQL database using the `DATABASE_URL` environment variable and implement the exposed tools with actual database queries.
+
+
+
+- PostgreSQL: `psql -h localhost -p 5434 -U bupzo_user -d bupzo_db`
+- Redis: `redis-cli -h localhost -p 6380 PING`
+- Backend: `http://localhost:8003`
+- Frontend: `http://localhost:3005`
+- MCP Server: `http://localhost:3004`

@@ -1,0 +1,374 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>BUPZO | Add Product</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Plus+Jakarta+Sans:wght@600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface": "#fff8f4",
+                    "on-surface-variant": "#48464c",
+                    "on-surface": "#1e1b19",
+                    "electric-blue": "#007AFF",
+                    "error": "#ba1a1a",
+                    "inverse-on-surface": "#f7efeb",
+                    "on-secondary-fixed-variant": "#5d3e49",
+                    "on-secondary": "#ffffff",
+                    "on-error-container": "#93000a",
+                    "on-primary": "#ffffff",
+                    "background": "#fff8f4",
+                    "on-tertiary-fixed-variant": "#53443d",
+                    "outline": "#79767c",
+                    "secondary": "#775560",
+                    "on-primary-fixed": "#1c1929",
+                    "inverse-primary": "#cac3d9",
+                    "surface-container-lowest": "#ffffff",
+                    "tertiary-fixed": "#f5ded4",
+                    "surface-container": "#f4ece8",
+                    "on-error": "#ffffff",
+                    "surface-container-highest": "#e8e1dd",
+                    "dim-grey": "#706677",
+                    "tertiary-fixed-dim": "#d8c2b9",
+                    "on-primary-container": "#ccc6dc",
+                    "surface-dim": "#e0d9d5",
+                    "error-container": "#ffdad6",
+                    "on-background": "#1e1b19",
+                    "outline-variant": "#c9c5cc",
+                    "secondary-fixed-dim": "#e6bbc8",
+                    "primary-container": "#565264",
+                    "on-tertiary-fixed": "#251913",
+                    "primary-fixed-dim": "#cac3d9",
+                    "surface-container-high": "#eee7e3",
+                    "surface-tint": "#605c6e",
+                    "on-secondary-container": "#795763",
+                    "surface-dark": "#1A191E",
+                    "on-tertiary-container": "#dac5bc",
+                    "tertiary-container": "#61514a",
+                    "on-secondary-fixed": "#2d141d",
+                    "on-tertiary": "#ffffff",
+                    "lime-green": "#32D74B",
+                    "surface-container-low": "#faf2ee",
+                    "primary-fixed": "#e6dff5",
+                    "surface-bright": "#fff8f4",
+                    "on-primary-fixed-variant": "#484456",
+                    "primary": "#3f3b4c",
+                    "secondary-container": "#fed1de",
+                    "inverse-surface": "#33302d",
+                    "secondary-fixed": "#ffd9e4",
+                    "surface-variant": "#e8e1dd",
+                    "tertiary": "#493a34"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "sidebar-collapsed": "80px",
+                    "margin-edge": "2rem",
+                    "stack-default": "1.5rem",
+                    "gutter": "1.5rem",
+                    "stack-compact": "0.75rem",
+                    "sidebar-width": "280px",
+                    "container-max": "1440px"
+            },
+            "fontFamily": {
+                    "headline-lg": ["Plus Jakarta Sans"],
+                    "body-sm": ["Inter"],
+                    "headline-lg-mobile": ["Plus Jakarta Sans"],
+                    "headline-md": ["Plus Jakarta Sans"],
+                    "display-lg": ["Plus Jakarta Sans"],
+                    "label-md": ["Inter"],
+                    "mono-sm": ["Inter"],
+                    "body-md": ["Inter"],
+                    "body-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-lg": ["32px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                    "body-sm": ["14px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                    "headline-md": ["24px", {"lineHeight": "1.4", "fontWeight": "600"}],
+                    "display-lg": ["48px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "label-md": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "mono-sm": ["13px", {"lineHeight": "1.4", "fontWeight": "500"}],
+                    "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                    "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        .input-inset {
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.06);
+        }
+        .ai-glow {
+            box-shadow: 0 0 15px rgba(0, 122, 255, 0.15);
+        }
+    </style>
+</head>
+<body class="bg-surface-container font-body-md text-on-surface antialiased flex">
+<!-- SideNavBar (Shared Component) -->
+<nav class="bg-surface-container-low border-r border-outline-variant shadow-none h-screen w-sidebar-width fixed left-0 top-0 z-40 flex flex-col py-stack-default">
+<!-- Header -->
+<div class="px-6 mb-8 flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container font-headline-md text-headline-md overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A stylized, modern geometric logo for a premium merchant brand, featuring abstract shapes in mauve and deep charcoal against a clean white background. High contrast, professional light-mode aesthetic, corporate identity design." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAAnIJ9yWPVyHv_yLlqRDU83oZF_ZujmQO8h8eajxiNe8TLXJxmD8xQ8gXOJeu41r-5SKxy_h0coHc5Y1OVRku35rQdFVdEP5F35GWlMXc-mbNSD9SQBkM_V8pldOF1Oqv_KKbnJDMbJBIMC17YNN32mB67hLfqRHEkKp7879G018s8fIggGh4DXshlQldHRDTWev3gMtMhqMbQWSt75Nw4SU3RPckWwO7loOqxZDduznmyTa9vQCVKIxPO6BgcDVPC5V8faSfJAQ">
+</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary">BUPZO Seller</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Pro Merchant</p>
+</div>
+</div>
+<!-- Navigation Links -->
+<ul class="flex flex-col gap-1 flex-grow">
+<!-- Dashboard (Inactive) -->
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 transition-all active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+</li>
+<!-- Inventory (Active) -->
+<li>
+<a class="flex items-center gap-3 bg-primary/5 text-primary border-l-4 border-primary px-4 py-3 active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="font-label-md text-label-md">Inventory</span>
+</a>
+</li>
+<!-- Orders (Inactive) -->
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 transition-all active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined">shopping_cart</span>
+<span class="font-label-md text-label-md">Orders</span>
+</a>
+</li>
+<!-- Analytics (Inactive) -->
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 transition-all active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined">insights</span>
+<span class="font-label-md text-label-md">Analytics</span>
+</a>
+</li>
+<!-- Marketing (Inactive) -->
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 transition-all active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined">campaign</span>
+<span class="font-label-md text-label-md">Marketing</span>
+</a>
+</li>
+<!-- Customers (Inactive) -->
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 transition-all active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-label-md text-label-md">Customers</span>
+</a>
+</li>
+<!-- Settings (Inactive) -->
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 transition-all active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</li>
+<!-- Help (Inactive) -->
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 transition-all active:inner-shadow duration-150" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-label-md text-label-md">Help</span>
+</a>
+</li>
+</ul>
+<!-- Footer Actions -->
+<div class="px-4 mt-auto space-y-2 border-t border-outline-variant pt-4 mx-4">
+<button class="w-full bg-primary/10 text-primary hover:bg-primary hover:text-white font-label-md text-label-md py-2 rounded-lg transition-colors border border-primary/20">Upgrade Plan</button>
+<ul class="pt-2 flex flex-col gap-1">
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant px-2 py-2 hover:bg-surface-variant/50 rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-label-md text-label-md">Logout</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant px-2 py-2 hover:bg-surface-variant/50 rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined">support_agent</span>
+<span class="font-label-md text-label-md">Support</span>
+</a>
+</li>
+</ul>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="ml-sidebar-width flex-grow min-h-screen pb-12">
+<!-- Page Header -->
+<header class="sticky top-0 z-30 bg-surface-container/90 backdrop-blur-md border-b border-outline-variant px-margin-edge py-4 flex justify-between items-center">
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:text-primary transition-colors flex items-center justify-center h-10 w-10 rounded-full hover:bg-surface-variant">
+<span class="material-symbols-outlined">arrow_back</span>
+</button>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Add New Product</h2>
+</div>
+<div class="flex items-center gap-3">
+<button class="px-6 py-2.5 rounded-lg bg-surface font-label-md text-label-md text-on-surface border border-outline-variant hover:bg-surface-variant transition-colors shadow-sm">Save Draft</button>
+<button class="px-6 py-2.5 rounded-lg bg-primary font-label-md text-label-md text-on-primary hover:bg-primary-fixed-dim hover:text-primary transition-colors shadow-[0_2px_4px_rgba(86,82,100,0.1)] shadow-[inset_0_1px_0_rgba(255,255,255,0.2)]">Publish Product</button>
+</div>
+</header>
+<!-- Form Layout (Bento Grid) -->
+<div class="px-margin-edge py-8 max-w-container-max mx-auto">
+<form class="grid grid-cols-1 lg:grid-cols-3 gap-gutter items-start">
+<!-- Left Column: Core Data & Media (Broader) -->
+<div class="col-span-1 lg:col-span-2 space-y-stack-default flex flex-col">
+<!-- Basic Information Card -->
+<section class="bg-surface-container-lowest rounded-xl shadow-[0_2px_4px_rgba(86,82,100,0.05)] p-stack-default border border-outline-variant/30">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-6">Basic Information</h3>
+<div class="space-y-6">
+<!-- Title Input -->
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2" for="product_title">Product Title <span class="text-error">*</span></label>
+<input class="w-full bg-surface-container border border-outline-variant rounded-lg px-4 py-3 font-body-md text-body-md text-on-surface input-inset focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all placeholder-dim-grey" id="product_title" placeholder="e.g. Wireless Noise-Cancelling Headphones" type="text">
+</div>
+<!-- AI Description Generator & Editor -->
+<div class="border border-outline-variant rounded-xl overflow-hidden focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
+<!-- Editor Header / Toolbar -->
+<div class="bg-surface border-b border-outline-variant p-3 flex justify-between items-center flex-wrap gap-3">
+<div class="flex items-center gap-1 text-on-surface-variant">
+<button class="p-1.5 hover:bg-surface-variant rounded text-on-surface-variant transition-colors" title="Bold" type="button"><span class="material-symbols-outlined text-sm">format_bold</span></button>
+<button class="p-1.5 hover:bg-surface-variant rounded text-on-surface-variant transition-colors" title="Italic" type="button"><span class="material-symbols-outlined text-sm">format_italic</span></button>
+<button class="p-1.5 hover:bg-surface-variant rounded text-on-surface-variant transition-colors" title="Underline" type="button"><span class="material-symbols-outlined text-sm">format_underlined</span></button>
+<div class="w-px h-5 bg-outline-variant mx-1"></div>
+<button class="p-1.5 hover:bg-surface-variant rounded text-on-surface-variant transition-colors" title="List" type="button"><span class="material-symbols-outlined text-sm">format_list_bulleted</span></button>
+<button class="p-1.5 hover:bg-surface-variant rounded text-on-surface-variant transition-colors" title="Link" type="button"><span class="material-symbols-outlined text-sm">link</span></button>
+</div>
+<!-- The AI Button -->
+<button class="flex items-center gap-2 bg-electric-blue/10 text-electric-blue border border-electric-blue/30 hover:bg-electric-blue hover:text-white rounded-lg px-3 py-1.5 font-label-md text-label-md transition-all ai-glow group" type="button">
+<span class="material-symbols-outlined text-[18px] group-hover:animate-pulse">auto_awesome</span>
+                                        Generate Description via AI
+                                    </button>
+</div>
+<!-- Rich Text Area -->
+<div class="bg-surface-container input-inset p-4">
+<textarea class="w-full bg-transparent border-none p-0 font-body-md text-body-md text-on-surface outline-none resize-y placeholder-dim-grey" id="product_description" placeholder="Describe your product here, or click the AI button above to generate an SEO-optimized description based on your title..." rows="8"></textarea>
+</div>
+</div>
+</div>
+</section>
+<!-- Media Uploader Dropzone -->
+<section class="bg-surface-container-lowest rounded-xl shadow-[0_2px_4px_rgba(86,82,100,0.05)] p-stack-default border border-outline-variant/30">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-headline-md text-headline-md text-on-surface">Media</h3>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Up to 10 images/videos</span>
+</div>
+<!-- Dropzone Area -->
+<div class="border-2 border-dashed border-outline-variant bg-surface-container hover:bg-surface hover:border-primary rounded-xl p-10 flex flex-col items-center justify-center cursor-pointer transition-all text-center group">
+<div class="w-16 h-16 rounded-full bg-surface border border-outline-variant flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm">
+<span class="material-symbols-outlined text-3xl text-primary">cloud_upload</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface mb-1">Drag &amp; drop your images here</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-4">or <span class="text-electric-blue font-medium underline underline-offset-2">click to browse</span></p>
+<p class="font-label-md text-label-md text-dim-grey">JPEG, PNG, MP4 up to 50MB</p>
+</div>
+<!-- Lazy Loaded Previews (Mockup) -->
+<div class="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
+<!-- Preview 1 (Primary) -->
+<div class="relative aspect-square rounded-lg overflow-hidden border border-outline-variant group">
+<img class="w-full h-full object-cover" data-alt="A high-quality, professional product photograph of sleek, minimalist wireless headphones resting on a smooth, slightly reflective surface. Warm, soft studio lighting creating a mauve and grey aesthetic. The focus is sharp on the product's texture." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDHOmf6kceIbBaZO9WnVo6gXhNsTn2IflE54AR4n58_OOduJXH_RfvawhtdYGvcb0osPfpvrCXaAIvrNLq3Gzu62bBTJsAR_ZwAlPaz_ThW52PnHRGH_jls47cO4H0piGS1gTGXFKm8E9QHgiqEWIhWVkzrkrgskqnR2GyU9v8qgfxKTdCKYnnmoKbYDSeUSG6RUFpMBc7JC7672K5pTHSXPUDEPaMOIIpJ0MZu8GLnGLraBf8VsiL0b5Dj7LB-B7QHHpHzDn4opQ">
+<div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+<button class="p-1.5 bg-surface rounded-full text-on-surface hover:text-error transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+</div>
+<div class="absolute top-2 left-2 bg-primary text-white font-label-md text-[10px] px-2 py-0.5 rounded shadow-sm">Cover</div>
+</div>
+<!-- Preview 2 -->
+<div class="relative aspect-square rounded-lg overflow-hidden border border-outline-variant group">
+<img class="w-full h-full object-cover" data-alt="A close-up macro shot of the ear pad of luxury wireless headphones, highlighting the premium soft leather texture and meticulous stitching. Bright, clean light-mode studio setting with subtle depth of field." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCtX0uhegSGy1J152EtB7QTAA9n5Y7H3Iyg4dQDRAWnNMgVBgC74bT-hCEE-yfXFsfphpdpCxnuW-b5AvftCAJDw9iAlUP8u_M1AvT1mFaoeSCMhZCqg-zPSL9bB9k5jsJA59qXR7nG__jaq1meLcuG_IBEu7onT3htlS5jnVUsspzUqJFccBSw7uVv1kZeofITnMEfwtGywGOTSqU0ZD7xqaKuh1oTkN7SHXKBjEFY27ub_qCGKdQkY-Ow0zZT4Qk00_4lSPuHxg">
+<div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+<button class="p-1.5 bg-surface rounded-full text-on-surface hover:text-error transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+</div>
+</div>
+<!-- Uploading Placeholder -->
+<div class="relative aspect-square rounded-lg border border-outline-variant bg-surface flex flex-col items-center justify-center p-4">
+<div class="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mb-2"></div>
+<span class="font-label-md text-label-md text-on-surface-variant text-center">Uploading...<br>45%</span>
+</div>
+</div>
+</section>
+</div>
+<!-- Right Column: Contextual Settings (Narrower) -->
+<div class="col-span-1 space-y-stack-default flex flex-col">
+<!-- Pricing & Inventory -->
+<section class="bg-surface-container-lowest rounded-xl shadow-[0_2px_4px_rgba(86,82,100,0.05)] p-stack-default border border-outline-variant/30">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-6">Pricing &amp; Inventory</h3>
+<div class="space-y-5">
+<!-- Price -->
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2" for="product_price">Regular Price <span class="text-error">*</span></label>
+<div class="relative">
+<span class="absolute left-4 top-1/2 -translate-y-1/2 font-body-md text-body-md text-dim-grey">$</span>
+<input class="w-full pl-8 pr-4 py-3 bg-surface-container border border-outline-variant rounded-lg font-mono-sm text-mono-sm text-on-surface input-inset focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" id="product_price" placeholder="0.00" type="number">
+</div>
+</div>
+<!-- SKU -->
+<div>
+<div class="flex justify-between items-center mb-2">
+<label class="block font-label-md text-label-md text-on-surface-variant" for="product_sku">SKU (Stock Keeping Unit)</label>
+<button class="text-electric-blue font-label-md text-[10px] hover:underline" type="button">Auto-generate</button>
+</div>
+<input class="w-full bg-surface-container border border-outline-variant rounded-lg px-4 py-3 font-mono-sm text-mono-sm text-on-surface input-inset focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" id="product_sku" placeholder="e.g. WH-1000XM4-BLK" type="text">
+</div>
+<!-- Stock Quantity -->
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2" for="product_stock">Available Quantity</label>
+<input class="w-full bg-surface-container border border-outline-variant rounded-lg px-4 py-3 font-mono-sm text-mono-sm text-on-surface input-inset focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" id="product_stock" type="number" value="0">
+</div>
+</div>
+</section>
+<!-- Organization -->
+<section class="bg-surface-container-lowest rounded-xl shadow-[0_2px_4px_rgba(86,82,100,0.05)] p-stack-default border border-outline-variant/30">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-6">Organization</h3>
+<div class="space-y-5">
+<!-- Category -->
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2" for="product_category">Category</label>
+<div class="relative">
+<select class="w-full bg-surface-container border border-outline-variant rounded-lg px-4 py-3 appearance-none font-body-md text-body-md text-on-surface input-inset focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all pr-10 cursor-pointer" id="product_category">
+<option disabled="" selected="" value="">Select a category</option>
+<option value="electronics">Electronics &amp; Audio</option>
+<option value="apparel">Apparel &amp; Accessories</option>
+<option value="home">Home &amp; Garden</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-dim-grey pointer-events-none">expand_more</span>
+</div>
+</div>
+<!-- Status -->
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-2">Product Status</label>
+<div class="p-1 bg-surface-container border border-outline-variant rounded-lg flex input-inset">
+<button class="flex-1 py-1.5 bg-surface shadow-sm rounded-md font-label-md text-label-md text-on-surface border border-outline-variant/50" type="button">Active</button>
+<button class="flex-1 py-1.5 font-label-md text-label-md text-on-surface-variant hover:text-on-surface transition-colors" type="button">Draft</button>
+</div>
+</div>
+</div>
+</section>
+<!-- AI SEO Tips Widget -->
+<section class="bg-surface-container-lowest rounded-xl p-stack-default border border-electric-blue/20 relative overflow-hidden">
+<div class="absolute top-0 right-0 w-32 h-32 bg-electric-blue/5 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none"></div>
+<div class="flex items-center gap-2 mb-3">
+<span class="material-symbols-outlined text-electric-blue">lightbulb</span>
+<h4 class="font-headline-md text-body-md font-bold text-on-surface">AI SEO Insights</h4>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-3">Include keywords like <span class="font-mono-sm bg-surface px-1.5 py-0.5 rounded text-primary">noise-cancelling</span> and <span class="font-mono-sm bg-surface px-1.5 py-0.5 rounded text-primary">wireless</span> in your title to improve search ranking by up to 24%.</p>
+<button class="text-electric-blue font-label-md text-label-md hover:underline flex items-center gap-1" type="button">
+                            Analyze current title <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+</button>
+</section>
+</div>
+</form>
+</div>
+</main>
+</body></html>

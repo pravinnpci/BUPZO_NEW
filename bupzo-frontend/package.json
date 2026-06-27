@@ -2,23 +2,24 @@
   "name": "bupzofrontend",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3005",
+    "dev": "next dev",
     "build": "next build",
-    "start": "next start -p 3005",
+    "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
-    "firebase": "^12.13.0",
-    "next": "15.5.18",
+    "firebase": "^10.13.0",
+    "next": "15.0.0",
     "next-themes": "^0.3.0",
-    "react": "18.2.0",
-    "react-dom": "18.2.0",
-    "uuid": "^14.0.0"
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "uuid": "^10.0.0",
+    "zustand": "^4.5.2"
   },
   "devDependencies": {
     "@types/node": "20.14.10",
-    "@types/react": "18.2.66",
-    "@types/react-dom": "18.2.22",
+    "@types/react": "18.3.3",
+    "@types/react-dom": "18.3.0",
     "autoprefixer": "10.4.19",
     "eslint": "8.57.0",
     "eslint-config-next": "15.0.0",

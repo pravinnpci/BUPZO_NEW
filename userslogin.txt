@@ -1,0 +1,9 @@
+  I created and successfully executed seed.sql to inject authentic vendor records, products, and user profiles
+  into your PostgreSQL database.
+
+  The seed script inserted the following default test accounts:
+
+  • Admin User: Phone:  +919876543210  | Email:  admin@bupzo.com
+  • Seller User: Phone:  +919876543211  | Email:  seller@bupzo.com  | Business: Nagore Halwa Palace
+  • Customer User: Phone:  +919876543212  | Email:  customer@bupzo.com  | Wallet:  ₹250.00
+  • Universal Bypass Verification PIN:  123456

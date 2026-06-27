@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>BUPZO Admin - Financial Audit &amp; Wallet Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Plus+Jakarta+Sans:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-variant": "#e8e1dd",
+                        "secondary": "#775560",
+                        "tertiary-container": "#61514a",
+                        "on-tertiary": "#ffffff",
+                        "secondary-container": "#fed1de",
+                        "primary-fixed-dim": "#cac3d9",
+                        "on-tertiary-fixed-variant": "#53443d",
+                        "on-surface-variant": "#48464c",
+                        "tertiary-fixed": "#f5ded4",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-container": "#dac5bc",
+                        "lime-green": "#32D74B",
+                        "surface-dark": "#1A191E",
+                        "background": "#fff8f4",
+                        "error-container": "#ffdad6",
+                        "primary-container": "#565264",
+                        "on-surface": "#1e1b19",
+                        "dim-grey": "#706677",
+                        "on-primary-fixed": "#1c1929",
+                        "on-primary": "#ffffff",
+                        "surface-container-low": "#faf2ee",
+                        "tertiary": "#493a34",
+                        "secondary-fixed": "#ffd9e4",
+                        "surface": "#fff8f4",
+                        "inverse-surface": "#33302d",
+                        "on-secondary-container": "#795763",
+                        "outline": "#79767c",
+                        "surface-dim": "#e0d9d5",
+                        "primary": "#3f3b4c",
+                        "on-secondary-fixed": "#2d141d",
+                        "electric-blue": "#007AFF",
+                        "on-secondary-fixed-variant": "#5d3e49",
+                        "primary-fixed": "#e6dff5",
+                        "surface-bright": "#fff8f4",
+                        "inverse-on-surface": "#f7efeb",
+                        "surface-container": "#f4ece8",
+                        "secondary-fixed-dim": "#e6bbc8",
+                        "on-tertiary-fixed": "#251913",
+                        "tertiary-fixed-dim": "#d8c2b9",
+                        "on-background": "#1e1b19",
+                        "surface-tint": "#605c6e",
+                        "on-error": "#ffffff",
+                        "surface-container-highest": "#e8e1dd",
+                        "surface-container-high": "#eee7e3",
+                        "inverse-primary": "#cac3d9",
+                        "on-primary-fixed-variant": "#484456",
+                        "on-primary-container": "#ccc6dc",
+                        "on-error-container": "#93000a",
+                        "on-secondary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "outline-variant": "#c9c5cc"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    spacing: {
+                        "gutter": "1.5rem",
+                        "stack-default": "1.5rem",
+                        "sidebar-width": "280px",
+                        "sidebar-collapsed": "80px",
+                        "margin-edge": "2rem",
+                        "container-max": "1440px",
+                        "stack-compact": "0.75rem"
+                    },
+                    fontFamily: {
+                        "label-md": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "body-sm": ["Inter"],
+                        "display-lg": ["Plus Jakarta Sans"],
+                        "body-lg": ["Inter"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "mono-sm": ["Inter"]
+                    },
+                    fontSize: {
+                        "label-md": ["12px", { lineHeight: "1.2", letterSpacing: "0.05em", fontWeight: "600" }],
+                        "body-md": ["16px", { lineHeight: "1.5", fontWeight: "400" }],
+                        "headline-md": ["24px", { lineHeight: "1.4", fontWeight: "600" }],
+                        "body-sm": ["14px", { lineHeight: "1.5", fontWeight: "400" }],
+                        "display-lg": ["48px", { lineHeight: "1.2", letterSpacing: "-0.02em", fontWeight: "700" }],
+                        "body-lg": ["18px", { lineHeight: "1.6", fontWeight: "400" }],
+                        "headline-lg-mobile": ["24px", { lineHeight: "1.3", fontWeight: "600" }],
+                        "headline-lg": ["32px", { lineHeight: "1.3", fontWeight: "600" }],
+                        "mono-sm": ["13px", { lineHeight: "1.4", fontWeight: "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .inner-shadow-input {
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.06);
+        }
+        .soft-card-shadow {
+            box-shadow: 0 2px 4px rgba(86, 82, 100, 0.05);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md antialiased min-h-screen flex overflow-hidden">
+<!-- SideNavBar -->
+<aside class="h-screen w-sidebar-width fixed left-0 top-0 z-40 bg-surface-container-low dark:bg-surface-dark border-r border-outline-variant flex flex-col h-full py-stack-default hidden md:flex">
+<div class="px-margin-edge mb-8">
+<h1 class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed flex items-center gap-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">admin_panel_settings</span>
+                BUPZO Admin
+            </h1>
+</div>
+<nav class="flex-1 overflow-y-auto">
+<ul class="space-y-1">
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 transition-all font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+                        Dashboard
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 transition-all font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">group</span>
+                        Users &amp; Sellers
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-3 bg-primary/5 text-primary border-l-4 border-primary px-4 py-3 active:inner-shadow duration-150 font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+                        Financial Audit
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 transition-all font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">receipt_long</span>
+                        Transactions
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 transition-all font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">report</span>
+                        Reports
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 transition-all font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">settings</span>
+                        System Settings
+                    </a>
+</li>
+</ul>
+</nav>
+<div class="mt-auto border-t border-outline-variant pt-4">
+<ul class="space-y-1">
+<li>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 transition-all font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined">logout</span>
+                        Logout
+                    </a>
+</li>
+</ul>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 flex flex-col md:ml-[280px] h-screen overflow-hidden bg-background">
+<!-- TopAppBar (Admin Variant) -->
+<header class="bg-surface-bright dark:bg-surface-dark shadow-[0_2px_4px_rgba(86,82,100,0.05)] h-16 flex items-center justify-between px-margin-edge z-30 flex-shrink-0">
+<div class="flex items-center gap-4">
+<button class="md:hidden text-on-surface-variant">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<h2 class="font-headline-md text-headline-md font-bold text-on-surface md:hidden">Financial Audit</h2>
+<div class="hidden md:flex items-center bg-surface-variant rounded-full px-4 py-2 w-96 inner-shadow-input">
+<span class="material-symbols-outlined text-outline">search</span>
+<input class="bg-transparent border-none outline-none focus:ring-0 w-full text-body-sm text-on-surface ml-2" placeholder="Search User ID, Transaction ID..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4 text-on-surface-variant">
+<button class="hover:text-primary transition-colors">
+<span class="material-symbols-outlined">dark_mode</span>
+</button>
+<button class="hover:text-primary transition-colors relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<div class="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-label-md">
+                    AD
+                </div>
+</div>
+</header>
+<!-- Scrollable Content Area -->
+<div class="flex-1 overflow-y-auto p-stack-default md:p-margin-edge">
+<div class="mb-stack-default flex justify-between items-end">
+<div>
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-2">Financial Audit &amp; Wallet Management</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Manage manual wallet adjustments and oversee seller payouts.</p>
+</div>
+<div class="flex gap-2">
+<button class="bg-surface-container-high text-on-surface px-4 py-2 rounded-lg font-label-md text-label-md flex items-center gap-2 hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined text-[18px]">download</span> Export Audit
+                    </button>
+</div>
+</div>
+<!-- Dashboard Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-stack-default mb-stack-default">
+<!-- Manual Wallet Adjustment Form -->
+<div class="lg:col-span-1 bg-surface-container-lowest rounded-xl p-stack-default soft-card-shadow border border-outline-variant/30 flex flex-col">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-electric-blue">account_balance</span>
+                        Manual Adjustment
+                    </h3>
+<form class="flex-1 flex flex-col gap-4">
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1">Target User/Seller ID</label>
+<input class="w-full bg-surface-variant/50 border border-outline-variant rounded-lg px-3 py-2 text-body-sm focus:border-primary focus:ring-1 focus:ring-primary inner-shadow-input transition-all outline-none" placeholder="e.g. USR-98234" type="text"/>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1">Type</label>
+<select class="w-full bg-surface-variant/50 border border-outline-variant rounded-lg px-3 py-2 text-body-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none">
+<option>Credit (+)</option>
+<option>Debit (-)</option>
+</select>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1">Amount ($)</label>
+<input class="w-full bg-surface-variant/50 border border-outline-variant rounded-lg px-3 py-2 text-body-sm focus:border-primary focus:ring-1 focus:ring-primary inner-shadow-input outline-none" placeholder="0.00" type="number"/>
+</div>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1">Mandatory Reason / Ticket Ref</label>
+<textarea class="w-full bg-surface-variant/50 border border-outline-variant rounded-lg px-3 py-2 text-body-sm focus:border-primary focus:ring-1 focus:ring-primary inner-shadow-input outline-none resize-none" placeholder="Reason for manual adjustment..." rows="3"></textarea>
+</div>
+<button class="mt-auto w-full bg-primary text-on-primary py-3 rounded-lg font-label-md text-label-md flex justify-center items-center gap-2 shadow-[0_2px_4px_rgba(86,82,100,0.1)] hover:bg-primary/90 transition-colors" type="button">
+<span class="material-symbols-outlined text-[18px]">gavel</span>
+                            Execute Adjustment
+                        </button>
+</form>
+</div>
+<!-- Seller Payout Approval Section -->
+<div class="lg:col-span-2 bg-surface-container-lowest rounded-xl p-stack-default soft-card-shadow border border-outline-variant/30 flex flex-col">
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">payments</span>
+                            Pending Payout Approvals
+                        </h3>
+<div class="flex gap-2">
+<button class="text-error bg-error-container/50 px-3 py-1.5 rounded-md font-label-md text-label-md hover:bg-error-container transition-colors">Reject Selected</button>
+<button class="text-on-primary bg-primary px-3 py-1.5 rounded-md font-label-md text-label-md hover:bg-primary/90 transition-colors">Approve Selected</button>
+</div>
+</div>
+<div class="flex-1 overflow-auto rounded-lg border border-outline-variant/50">
+<table class="w-full text-left border-collapse">
+<thead class="bg-surface-container-low font-label-md text-label-md text-on-surface-variant sticky top-0">
+<tr>
+<th class="p-3 w-10"><input class="rounded border-outline-variant text-primary focus:ring-primary" type="checkbox"/></th>
+<th class="p-3">Seller ID</th>
+<th class="p-3">Requested Amount</th>
+<th class="p-3">Available Balance</th>
+<th class="p-3">Date Requested</th>
+<th class="p-3 text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="font-mono-sm text-mono-sm text-on-surface divide-y divide-outline-variant/30">
+<tr class="hover:bg-surface-variant/30 transition-colors">
+<td class="p-3"><input class="rounded border-outline-variant text-primary focus:ring-primary" type="checkbox"/></td>
+<td class="p-3 font-medium">SEL-10492</td>
+<td class="p-3 text-on-surface font-semibold">$4,250.00</td>
+<td class="p-3 text-on-surface-variant">$12,400.50</td>
+<td class="p-3 text-on-surface-variant">2023-10-24 14:30</td>
+<td class="p-3 text-right flex justify-end gap-2">
+<button class="p-1 text-primary hover:bg-surface-variant rounded" title="Review Details"><span class="material-symbols-outlined text-[18px]">visibility</span></button>
+</td>
+</tr>
+<tr class="hover:bg-surface-variant/30 transition-colors">
+<td class="p-3"><input class="rounded border-outline-variant text-primary focus:ring-primary" type="checkbox"/></td>
+<td class="p-3 font-medium">SEL-88321</td>
+<td class="p-3 text-on-surface font-semibold">$890.00</td>
+<td class="p-3 text-on-surface-variant">$950.00</td>
+<td class="p-3 text-on-surface-variant">2023-10-24 11:15</td>
+<td class="p-3 text-right flex justify-end gap-2">
+<button class="p-1 text-primary hover:bg-surface-variant rounded" title="Review Details"><span class="material-symbols-outlined text-[18px]">visibility</span></button>
+</td>
+</tr>
+<tr class="hover:bg-surface-variant/30 transition-colors">
+<td class="p-3"><input class="rounded border-outline-variant text-primary focus:ring-primary" type="checkbox"/></td>
+<td class="p-3 font-medium border-l-2 border-error">SEL-99210</td>
+<td class="p-3 text-error font-semibold">$15,000.00</td>
+<td class="p-3 text-on-surface-variant flex items-center gap-1">
+                                        $2,000.00 <span class="material-symbols-outlined text-[14px] text-error" title="Insufficient Funds Alert">warning</span>
+</td>
+<td class="p-3 text-on-surface-variant">2023-10-23 09:45</td>
+<td class="p-3 text-right flex justify-end gap-2">
+<button class="p-1 text-primary hover:bg-surface-variant rounded" title="Review Details"><span class="material-symbols-outlined text-[18px]">visibility</span></button>
+</td>
+</tr>
+<tr class="hover:bg-surface-variant/30 transition-colors">
+<td class="p-3"><input class="rounded border-outline-variant text-primary focus:ring-primary" type="checkbox"/></td>
+<td class="p-3 font-medium">SEL-44123</td>
+<td class="p-3 text-on-surface font-semibold">$3,100.25</td>
+<td class="p-3 text-on-surface-variant">$8,450.00</td>
+<td class="p-3 text-on-surface-variant">2023-10-23 08:20</td>
+<td class="p-3 text-right flex justify-end gap-2">
+<button class="p-1 text-primary hover:bg-surface-variant rounded" title="Review Details"><span class="material-symbols-outlined text-[18px]">visibility</span></button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- Immutable Audit Ledger -->
+<div class="bg-surface-container-lowest rounded-xl p-stack-default soft-card-shadow border border-outline-variant/30">
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-headline-md text-headline-md text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-dim-grey">history</span>
+                        Immutable Audit Ledger
+                    </h3>
+<div class="flex gap-2">
+<select class="bg-surface-variant/50 border border-outline-variant rounded-lg px-3 py-1.5 text-body-sm focus:border-primary focus:ring-1 focus:ring-primary outline-none text-on-surface-variant">
+<option>All Types</option>
+<option>Manual Credits</option>
+<option>Manual Debits</option>
+<option>System Corrections</option>
+</select>
+</div>
+</div>
+<div class="overflow-x-auto rounded-lg border border-outline-variant/50">
+<table class="w-full text-left border-collapse">
+<thead class="bg-surface-container-low font-label-md text-label-md text-on-surface-variant">
+<tr>
+<th class="p-3">Audit ID</th>
+<th class="p-3">Timestamp</th>
+<th class="p-3">Admin Executing</th>
+<th class="p-3">Target Account</th>
+<th class="p-3">Type</th>
+<th class="p-3">Amount</th>
+<th class="p-3 w-1/3">Reason / Justification</th>
+</tr>
+</thead>
+<tbody class="font-mono-sm text-mono-sm text-on-surface divide-y divide-outline-variant/30">
+<tr class="hover:bg-surface-variant/30 transition-colors">
+<td class="p-3 text-dim-grey">#AUD-992831</td>
+<td class="p-3 text-on-surface-variant">2023-10-24 15:42:11</td>
+<td class="p-3 font-medium text-primary">Admin_Sarah</td>
+<td class="p-3">USR-4521</td>
+<td class="p-3"><span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-lime-green/20 text-lime-green border border-lime-green/30">Credit</span></td>
+<td class="p-3 font-semibold text-lime-green">+$50.00</td>
+<td class="p-3 text-on-surface-variant truncate max-w-xs" title="Customer compensation for lost package TKT-8821">Customer compensation for lost package TKT-8821</td>
+</tr>
+<tr class="hover:bg-surface-variant/30 transition-colors">
+<td class="p-3 text-dim-grey">#AUD-992830</td>
+<td class="p-3 text-on-surface-variant">2023-10-24 14:10:05</td>
+<td class="p-3 font-medium text-primary">System_Auto</td>
+<td class="p-3">SEL-10492</td>
+<td class="p-3"><span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-error/20 text-error border border-error/30">Debit</span></td>
+<td class="p-3 font-semibold text-error">-$120.00</td>
+<td class="p-3 text-on-surface-variant truncate max-w-xs" title="Chargeback reversal from order ORD-99211">Chargeback reversal from order ORD-99211</td>
+</tr>
+<tr class="hover:bg-surface-variant/30 transition-colors">
+<td class="p-3 text-dim-grey">#AUD-992829</td>
+<td class="p-3 text-on-surface-variant">2023-10-24 11:22:45</td>
+<td class="p-3 font-medium text-primary">Admin_Mike</td>
+<td class="p-3">SEL-88321</td>
+<td class="p-3"><span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-lime-green/20 text-lime-green border border-lime-green/30">Credit</span></td>
+<td class="p-3 font-semibold text-lime-green">+$500.00</td>
+<td class="p-3 text-on-surface-variant truncate max-w-xs" title="Promotional seller bonus applied manually (Campaign Q4)">Promotional seller bonus applied manually (Campaign Q4)</td>
+</tr>
+<tr class="hover:bg-surface-variant/30 transition-colors bg-surface-variant/20">
+<td class="p-3 text-dim-grey">#AUD-992828</td>
+<td class="p-3 text-on-surface-variant">2023-10-23 18:05:12</td>
+<td class="p-3 font-medium text-primary">SuperAdmin_J</td>
+<td class="p-3">SYS-FEE-POOL</td>
+<td class="p-3"><span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-electric-blue/20 text-electric-blue border border-electric-blue/30">Transfer</span></td>
+<td class="p-3 font-semibold text-electric-blue">-$10,000.00</td>
+<td class="p-3 text-on-surface-variant truncate max-w-xs" title="Monthly sweep to cold storage wallet">Monthly sweep to cold storage wallet</td>
+</tr>
+<tr class="hover:bg-surface-variant/30 transition-colors">
+<td class="p-3 text-dim-grey">#AUD-992827</td>
+<td class="p-3 text-on-surface-variant">2023-10-23 09:15:30</td>
+<td class="p-3 font-medium text-primary">Admin_Sarah</td>
+<td class="p-3">USR-1122</td>
+<td class="p-3"><span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-error/20 text-error border border-error/30">Debit</span></td>
+<td class="p-3 font-semibold text-error">-$25.00</td>
+<td class="p-3 text-on-surface-variant truncate max-w-xs" title="Correction: Accidental double-credit on previous ticket">Correction: Accidental double-credit on previous ticket</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="mt-4 flex items-center justify-between text-body-sm text-on-surface-variant">
+<span>Showing 1 to 5 of 1,248 entries</span>
+<div class="flex gap-1">
+<button class="px-3 py-1 border border-outline-variant rounded hover:bg-surface-variant transition-colors disabled:opacity-50">Prev</button>
+<button class="px-3 py-1 bg-primary text-on-primary rounded">1</button>
+<button class="px-3 py-1 border border-outline-variant rounded hover:bg-surface-variant transition-colors">2</button>
+<button class="px-3 py-1 border border-outline-variant rounded hover:bg-surface-variant transition-colors">3</button>
+<button class="px-3 py-1 border border-outline-variant rounded hover:bg-surface-variant transition-colors">Next</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="fixed bottom-0 w-full z-50 rounded-t-xl bg-surface/80 dark:bg-surface-dark/80 backdrop-blur-xl border-t border-outline-variant shadow-[0_-4px_10px_rgba(0,0,0,0.05)] flex justify-around items-center h-16 md:hidden px-2 pb-safe">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 active:scale-90 transition-transform w-full h-full font-label-md text-label-md-mobile" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="mt-1">Dash</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 active:scale-90 transition-transform w-full h-full font-label-md text-label-md-mobile" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="mt-1">Users</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container dark:bg-tertiary-container text-on-secondary-container dark:text-on-tertiary-container rounded-full px-4 py-1 active:scale-90 transition-transform font-label-md text-label-md-mobile" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+<span class="mt-1">Audit</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 active:scale-90 transition-transform w-full h-full font-label-md text-label-md-mobile" href="#">
+<span class="material-symbols-outlined">receipt_long</span>
+<span class="mt-1">Txns</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 active:scale-90 transition-transform w-full h-full font-label-md text-label-md-mobile" href="#">
+<span class="material-symbols-outlined">more_horiz</span>
+<span class="mt-1">More</span>
+</a>
+</nav>
+</body></html>

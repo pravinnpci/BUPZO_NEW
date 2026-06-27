@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Seller Escrow &amp; Wallet - BUPZO Pro Merchant</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Plus+Jakarta+Sans:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#3f3b4c",
+                        "on-background": "#1e1b19",
+                        "error": "#ba1a1a",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-variant": "#e8e1dd",
+                        "tertiary-container": "#61514a",
+                        "on-surface": "#1e1b19",
+                        "on-secondary-fixed": "#2d141d",
+                        "on-primary-fixed-variant": "#484456",
+                        "on-secondary-container": "#795763",
+                        "tertiary-fixed-dim": "#d8c2b9",
+                        "electric-blue": "#007AFF",
+                        "inverse-primary": "#cac3d9",
+                        "surface-bright": "#fff8f4",
+                        "on-primary": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "on-secondary": "#ffffff",
+                        "on-secondary-fixed-variant": "#5d3e49",
+                        "on-error": "#ffffff",
+                        "surface-container-high": "#eee7e3",
+                        "on-tertiary-fixed": "#251913",
+                        "surface-container-highest": "#e8e1dd",
+                        "surface-tint": "#605c6e",
+                        "on-primary-container": "#ccc6dc",
+                        "on-error-container": "#93000a",
+                        "tertiary": "#493a34",
+                        "tertiary-fixed": "#f5ded4",
+                        "background": "#fff8f4",
+                        "primary-fixed-dim": "#cac3d9",
+                        "primary-fixed": "#e6dff5",
+                        "outline-variant": "#c9c5cc",
+                        "secondary-container": "#fed1de",
+                        "dim-grey": "#706677",
+                        "surface-dark": "#1A191E",
+                        "on-primary-fixed": "#1c1929",
+                        "outline": "#79767c",
+                        "on-tertiary": "#ffffff",
+                        "on-surface-variant": "#48464c",
+                        "inverse-surface": "#33302d",
+                        "surface": "#fff8f4",
+                        "secondary-fixed-dim": "#e6bbc8",
+                        "primary-container": "#565264",
+                        "surface-dim": "#e0d9d5",
+                        "secondary-fixed": "#ffd9e4",
+                        "lime-green": "#32D74B",
+                        "on-tertiary-fixed-variant": "#53443d",
+                        "secondary": "#775560",
+                        "surface-container-low": "#faf2ee",
+                        "surface-container": "#f4ece8",
+                        "inverse-on-surface": "#f7efeb",
+                        "on-tertiary-container": "#dac5bc"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "stack-default": "1.5rem",
+                        "sidebar-width": "280px",
+                        "sidebar-collapsed": "80px",
+                        "stack-compact": "0.75rem",
+                        "gutter": "1.5rem",
+                        "container-max": "1440px",
+                        "margin-edge": "2rem"
+                    },
+                    "fontFamily": {
+                        "label-md": ["Inter"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "display-lg": ["Plus Jakarta Sans"],
+                        "body-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "mono-sm": ["Inter"],
+                        "headline-md": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "label-md": ["12px", { "lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "display-lg": ["48px", { "lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "body-sm": ["14px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "mono-sm": ["13px", { "lineHeight": "1.4", "fontWeight": "500" }],
+                        "headline-md": ["24px", { "lineHeight": "1.4", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .inner-shadow { box-shadow: inset 0 2px 4px rgba(0,0,0,0.06); }
+        .skeuomorphic-card { box-shadow: 0 2px 4px rgba(86, 82, 100, 0.05); }
+        .skeuomorphic-card-hover:hover { box-shadow: 0 10px 15px -3px rgba(86, 82, 100, 0.1); transform: translateY(-1px); transition: all 0.2s ease; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body-md min-h-screen flex flex-col md:flex-row antialiased dark:bg-surface-dark dark:text-on-surface-variant">
+<!-- TopNavBar (Mobile Only) -->
+<header class="md:hidden flex justify-between items-center w-full px-margin-edge py-4 max-w-container-max mx-auto bg-surface-bright dark:bg-surface-dark shadow-[0_2px_4px_rgba(86,82,100,0.05)] shadow-sm docked full-width top-0 sticky z-50">
+<div class="font-display-lg text-display-lg text-primary dark:text-primary-fixed cursor-pointer active:scale-95">BUPZO</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary dark:text-primary-fixed-dim hover:text-primary transition-colors duration-200 cursor-pointer" data-icon="account_balance_wallet">account_balance_wallet</span>
+<span class="material-symbols-outlined text-on-surface-variant dark:text-outline-variant hover:text-primary transition-colors duration-200 cursor-pointer" data-icon="menu">menu</span>
+</div>
+</header>
+<!-- SideNavBar (Desktop) -->
+<nav class="hidden md:flex flex-col h-full py-stack-default bg-surface-container-low dark:bg-surface-dark border-r border-outline-variant h-screen w-sidebar-width fixed left-0 top-0 z-40 shadow-none">
+<div class="px-6 mb-8 flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-on-primary font-headline-md font-bold">B</div>
+<div>
+<h2 class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed">BUPZO Seller</h2>
+<p class="font-label-md text-label-md text-on-surface-variant">Pro Merchant</p>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto">
+<ul class="space-y-1 font-label-md text-label-md">
+<li><a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:inner-shadow duration-150" href="#"><span class="material-symbols-outlined" data-icon="dashboard">dashboard</span> Dashboard</a></li>
+<li><a class="flex items-center gap-3 bg-primary/5 text-primary border-l-4 border-primary px-4 py-3 active:inner-shadow duration-150" href="#"><span class="material-symbols-outlined" data-icon="account_balance_wallet">account_balance_wallet</span> Wallet</a></li>
+<li><a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:inner-shadow duration-150" href="#"><span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span> Inventory</a></li>
+<li><a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:inner-shadow duration-150" href="#"><span class="material-symbols-outlined" data-icon="shopping_cart">shopping_cart</span> Orders</a></li>
+<li><a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:inner-shadow duration-150" href="#"><span class="material-symbols-outlined" data-icon="insights">insights</span> Analytics</a></li>
+<li><a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all active:inner-shadow duration-150" href="#"><span class="material-symbols-outlined" data-icon="settings">settings</span> Settings</a></li>
+</ul>
+</div>
+<div class="p-4 mt-auto">
+<button class="w-full bg-primary text-on-primary py-2 rounded-lg font-label-md text-label-md hover:bg-primary/90 transition-colors shadow-sm active:inner-shadow">Upgrade Plan</button>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="flex-1 md:ml-sidebar-width min-h-screen bg-surface dark:bg-surface-dark flex flex-col">
+<!-- Desktop TopAppBar Area -->
+<header class="hidden md:flex justify-between items-center px-8 py-6 border-b border-outline-variant bg-surface-container-lowest dark:bg-surface-dark z-30 sticky top-0">
+<div class="flex items-center gap-2 text-on-surface-variant font-label-md text-label-md">
+<span>Dashboard</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+<span class="text-primary font-bold">Wallet</span>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined" data-icon="notifications">notifications</span></button>
+<img alt="Seller Brand Logo" class="w-8 h-8 rounded-full border border-outline-variant object-cover" data-alt="A professional headshot of a business merchant in a modern office, sharp focus, natural lighting, wearing a smart casual blazer, conveying trust and reliability." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAbg4I1TEV6AQaQjZvKwZSEVtB2IgW4AOP7PhFgNPalhS0bd0Ldg6IzqBRxlGy_a06-LudkiX6RacKwysHKYf5YrYdHuvzQNl1UUA20uCVpgccAwvz1eEp4GXkOR1lSP_wkCjFYblf6kPRzzkPFiPcS6YpjEHSdnvfKqJ6IvI8Td_dPD_fecf-IUZ8rAPvD70ycmDdaWpQZf-cPN-443XLacLW9Wb2Aq57WCySwCDAeRBVS2J92B-SAQGSik29Omyu01GQuArU_7g"/>
+</div>
+</header>
+<div class="p-4 md:p-8 space-y-8 flex-1 max-w-[1200px] w-full mx-auto">
+<!-- Section 1: Financial Overview -->
+<section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<!-- Available Settlement Balance -->
+<div class="bg-surface-container-lowest dark:bg-surface-container-low rounded-xl p-6 skeuomorphic-card skeuomorphic-card-hover border border-outline-variant/30 flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-start mb-2">
+<h3 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Available Settlement</h3>
+<span class="material-symbols-outlined text-lime-green" data-icon="trending_up">trending_up</span>
+</div>
+<div class="font-display-lg text-display-lg text-primary dark:text-primary-fixed mb-1">$45,231.00</div>
+<div class="flex items-center gap-2 font-body-sm text-body-sm">
+<span class="text-lime-green font-medium">+12.4%</span>
+<span class="text-on-surface-variant">vs last month</span>
+</div>
+</div>
+<div class="mt-6 pt-4 border-t border-outline-variant/50 flex justify-between items-center">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Next payout: <span class="font-medium text-primary">Oct 24</span></span>
+<div class="flex gap-2">
+<button class="px-3 py-1.5 bg-surface-variant text-primary rounded-lg font-label-md text-label-md hover:bg-surface-variant/80 transition-colors">Statement</button>
+<button class="px-3 py-1.5 bg-secondary text-on-secondary rounded-lg font-label-md text-label-md hover:bg-secondary/90 transition-colors shadow-sm">Withdraw</button>
+</div>
+</div>
+</div>
+<!-- Escrow Holdings -->
+<div class="bg-surface-container-lowest dark:bg-surface-container-low rounded-xl p-6 skeuomorphic-card border border-outline-variant/30 flex flex-col justify-between col-span-1 lg:col-span-2">
+<div class="flex justify-between items-start mb-4">
+<h3 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">lock</span> Escrow Holdings
+                        </h3>
+</div>
+<div class="flex flex-col md:flex-row items-end justify-between gap-6">
+<div>
+<div class="font-headline-lg text-headline-lg text-on-surface mb-1">$18,742.50</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant max-w-sm">Funds locked pending delivery confirmation or dispute resolution. Automatically released upon clearance.</p>
+</div>
+<!-- Settlement Progress -->
+<div class="w-full md:w-1/2 flex flex-col gap-3">
+<div class="flex justify-between font-label-md text-label-md">
+<span class="text-primary font-bold">75% Clearing Soon</span>
+<span class="text-on-surface-variant">Releasing Today: $14,056.87</span>
+</div>
+<div class="w-full h-3 bg-surface-variant rounded-full overflow-hidden flex">
+<div class="h-full bg-secondary w-[75%]"></div>
+<div class="h-full bg-error w-[5%] ml-1"></div>
+</div>
+<div class="flex justify-between font-body-sm text-body-sm text-on-surface-variant">
+<span>In Transit</span>
+<span class="flex items-center gap-1 text-error"><span class="material-symbols-outlined text-[14px]">warning</span> In Dispute (5%)</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 3: Transaction Ledger -->
+<section class="bg-surface-container-lowest dark:bg-surface-container-low rounded-xl skeuomorphic-card border border-outline-variant/30 overflow-hidden flex flex-col h-full">
+<div class="p-6 border-b border-outline-variant/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+<h3 class="font-headline-md text-headline-md text-primary font-bold">Transaction Ledger</h3>
+<div class="flex gap-3 w-full sm:w-auto">
+<div class="relative w-full sm:w-64">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface dark:bg-surface-dark border border-outline-variant rounded-lg font-body-sm text-body-sm focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary inner-shadow" placeholder="Search ID..." type="text"/>
+</div>
+<button class="p-2 border border-outline-variant rounded-lg text-on-surface-variant hover:bg-surface-variant/50 transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined">filter_list</span>
+</button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container border-b border-outline-variant/50 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">
+<th class="p-4 font-medium">Date</th>
+<th class="p-4 font-medium">Transaction ID</th>
+<th class="p-4 font-medium">Type</th>
+<th class="p-4 font-medium">Status</th>
+<th class="p-4 font-medium text-right">Amount</th>
+</tr>
+</thead>
+<tbody class="font-mono-sm text-mono-sm text-on-surface divide-y divide-outline-variant/30">
+<tr class="hover:bg-surface-variant/20 transition-colors">
+<td class="p-4 text-on-surface-variant">Oct 23, 2024</td>
+<td class="p-4 text-electric-blue">TXN-8923-AB</td>
+<td class="p-4">Escrow Release</td>
+<td class="p-4"><span class="px-2 py-1 bg-lime-green/10 text-lime-green rounded font-label-md text-[10px]">Settled</span></td>
+<td class="p-4 text-right font-medium text-lime-green">+$450.00</td>
+</tr>
+<tr class="hover:bg-surface-variant/20 transition-colors">
+<td class="p-4 text-on-surface-variant">Oct 23, 2024</td>
+<td class="p-4 text-electric-blue">ORD-7712-XY</td>
+<td class="p-4">Order Sale</td>
+<td class="p-4"><span class="px-2 py-1 bg-surface-variant text-on-surface-variant rounded font-label-md text-[10px]">Escrowed</span></td>
+<td class="p-4 text-right font-medium text-on-surface">+$125.50</td>
+</tr>
+<tr class="hover:bg-surface-variant/20 transition-colors">
+<td class="p-4 text-on-surface-variant">Oct 22, 2024</td>
+<td class="p-4 text-electric-blue">REF-3390-PL</td>
+<td class="p-4">Refund</td>
+<td class="p-4"><span class="px-2 py-1 bg-error/10 text-error rounded font-label-md text-[10px]">Processing</span></td>
+<td class="p-4 text-right font-medium text-error">-$89.99</td>
+</tr>
+<tr class="hover:bg-surface-variant/20 transition-colors">
+<td class="p-4 text-on-surface-variant">Oct 21, 2024</td>
+<td class="p-4 text-electric-blue">TXN-8811-ZZ</td>
+<td class="p-4">Platform Fee</td>
+<td class="p-4"><span class="px-2 py-1 bg-lime-green/10 text-lime-green rounded font-label-md text-[10px]">Settled</span></td>
+<td class="p-4 text-right font-medium text-on-surface-variant">-$12.00</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-4 bg-surface-container-lowest border-t border-outline-variant/50 text-center">
+<a class="font-label-md text-label-md text-secondary hover:text-secondary/80 transition-colors" href="#">View All Transactions</a>
+</div>
+</section>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 rounded-t-xl bg-surface/80 dark:bg-surface-dark/80 backdrop-blur-xl border-t border-outline-variant shadow-[0_-4px_10px_rgba(0,0,0,0.05)] flex justify-around items-center h-16 px-2 pb-safe">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 active:scale-90 transition-transform p-2 rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-md text-[10px] mt-1">Dash</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container dark:bg-tertiary-container text-on-secondary-container dark:text-on-tertiary-container rounded-full px-4 py-1 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="account_balance_wallet">account_balance_wallet</span>
+<span class="font-label-md text-[10px] mt-1">Wallet</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 active:scale-90 transition-transform p-2 rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="shopping_cart">shopping_cart</span>
+<span class="font-label-md text-[10px] mt-1">Orders</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 active:scale-90 transition-transform p-2 rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="font-label-md text-[10px] mt-1">Settings</span>
+</a>
+</nav>
+</body></html>

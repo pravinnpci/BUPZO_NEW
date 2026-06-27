@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>BUPZO Loyalty Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed-variant": "#484456",
+                        "secondary-fixed": "#ffd9e4",
+                        "on-secondary": "#ffffff",
+                        "inverse-primary": "#cac3d9",
+                        "on-surface": "#1e1b19",
+                        "on-surface-variant": "#48464c",
+                        "secondary-container": "#fed1de",
+                        "inverse-surface": "#33302d",
+                        "secondary-fixed-dim": "#e6bbc8",
+                        "on-tertiary-fixed-variant": "#53443d",
+                        "surface-dim": "#e0d9d5",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-fixed-dim": "#cac3d9",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed-dim": "#d8c2b9",
+                        "lime-green": "#32D74B",
+                        "secondary": "#775560",
+                        "surface-container-low": "#faf2ee",
+                        "primary-fixed": "#e6dff5",
+                        "background": "#fff8f4",
+                        "tertiary-container": "#61514a",
+                        "inverse-on-surface": "#f7efeb",
+                        "surface-dark": "#1A191E",
+                        "dim-grey": "#706677",
+                        "on-tertiary-fixed": "#251913",
+                        "on-background": "#1e1b19",
+                        "surface-container": "#f4ece8",
+                        "surface-bright": "#fff8f4",
+                        "surface-tint": "#605c6e",
+                        "on-primary-fixed": "#1c1929",
+                        "outline-variant": "#c9c5cc",
+                        "on-error-container": "#93000a",
+                        "surface-container-highest": "#e8e1dd",
+                        "error": "#ba1a1a",
+                        "surface-container-high": "#eee7e3",
+                        "tertiary": "#493a34",
+                        "on-tertiary-container": "#dac5bc",
+                        "on-secondary-container": "#795763",
+                        "electric-blue": "#007AFF",
+                        "error-container": "#ffdad6",
+                        "on-secondary-fixed-variant": "#5d3e49",
+                        "outline": "#79767c",
+                        "on-secondary-fixed": "#2d141d",
+                        "on-tertiary": "#ffffff",
+                        "primary-container": "#565264",
+                        "primary": "#3f3b4c",
+                        "tertiary-fixed": "#f5ded4",
+                        "surface": "#fff8f4",
+                        "surface-variant": "#e8e1dd",
+                        "on-primary-container": "#ccc6dc",
+                        "on-error": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "stack-default": "1.5rem",
+                        "stack-compact": "0.75rem",
+                        "container-max": "1440px",
+                        "gutter": "1.5rem",
+                        "sidebar-width": "280px",
+                        "sidebar-collapsed": "80px",
+                        "margin-edge": "2rem"
+                    },
+                    "fontFamily": {
+                        "mono-sm": ["Inter"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "body-md": ["Inter"],
+                        "display-lg": ["Plus Jakarta Sans"],
+                        "body-sm": ["Inter"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "label-md": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "mono-sm": ["13px", { "lineHeight": "1.4", "fontWeight": "500" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "display-lg": ["48px", { "lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-sm": ["14px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "1.4", "fontWeight": "600" }],
+                        "label-md": ["12px", { "lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .inner-shadow { box-shadow: inset 0 2px 4px rgba(0,0,0,0.06); }
+        .glass-panel { background: rgba(255,248,244,0.8); backdrop-filter: blur(12px); }
+        .dark .glass-panel { background: rgba(26,25,30,0.8); }
+        .animate-pulse-slow { animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    </style>
+</head>
+<body class="bg-background dark:bg-surface-dark text-on-surface dark:text-on-surface-variant font-body-md text-body-md antialiased min-h-screen flex flex-col md:flex-row">
+<!-- TopNavBar (Mobile First, visible on desktop too) -->
+<header class="bg-surface-bright dark:bg-surface-dark font-body-md text-body-md docked full-width top-0 sticky z-50 bg-surface-bright dark:bg-surface-dark shadow-[0_2px_4px_rgba(86,82,100,0.05)] shadow-sm cursor-pointer active:scale-95 flex justify-between items-center w-full px-margin-edge py-4 max-w-container-max mx-auto md:hidden">
+<div class="font-display-lg text-display-lg text-primary dark:text-primary-fixed">BUPZO</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant dark:text-outline-variant hover:text-primary transition-colors duration-200">search</span>
+<span class="material-symbols-outlined text-on-surface-variant dark:text-outline-variant hover:text-primary transition-colors duration-200" id="theme-toggle-mobile">light_mode</span>
+<img alt="User profile" class="w-8 h-8 rounded-full border border-outline-variant object-cover" data-alt="A small, circular avatar portrait of a modern professional in a clean, brightly lit setting. The lighting is soft and flattering, typical of a high-end corporate headshot. The color palette aligns with a premium UI design featuring subtle warm tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBG6l0v3Pol66i2Ejc9-Da9PB-iC9LfmEOX_BNHXzF1lFxUOjZrxqEgg1V4lWb70YAfIgEDPenD6bvpzgLr_J8zGogqfEOeib9a43E7lp8LxkdmeP3B0NnaeO-vzf_N2vV90lAPm7BSAuGSaxnBtTJH31gz9Rx6TVgSDs54vhDh29qvsrqKy__NqYxz4yw4qgB8RLvM70bcxUleQo7-ohgD6TKwuZ5XqfOiVH-gv11sPU90NgJiWxpcoVO7qb2NX9vMb0zPvUcqaw"/>
+</div>
+</header>
+<!-- SideNavBar (Desktop) -->
+<aside class="hidden md:flex flex-col h-full py-stack-default bg-surface-container-low dark:bg-surface-dark text-primary dark:text-primary-fixed font-label-md text-label-md h-screen w-sidebar-width fixed left-0 top-0 z-40 bg-surface-container-low dark:bg-surface-dark border-r border-outline-variant shadow-none active:inner-shadow duration-150">
+<div class="px-6 mb-8 flex items-center gap-3">
+<div class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed">BUPZO</div>
+</div>
+<nav class="flex-1 flex flex-col gap-2">
+<a class="flex items-center gap-3 bg-primary/5 text-primary border-l-4 border-primary px-4 py-3" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+<span>Wallet</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all" href="#">
+<span class="material-symbols-outlined">explore</span>
+<span>Explore</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all" href="#">
+<span class="material-symbols-outlined">local_shipping</span>
+<span>Orders</span>
+</a>
+</nav>
+<div class="px-6 mt-auto flex items-center gap-4">
+<img alt="User profile" class="w-10 h-10 rounded-full border border-outline-variant object-cover" data-alt="A small, circular avatar portrait of a modern professional in a clean, brightly lit setting. The lighting is soft and flattering, typical of a high-end corporate headshot. The color palette aligns with a premium UI design featuring subtle warm tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA60PJyunaeti3pPvjwUabc7cGvtF3djs0AiLk6qOwZ6y69ggo8-oMbIVPNhV6eWlnmcrsKOu5zy2n8x1BqqcCnwSqjLKRCn2aG7Z8TEGMG-2D4iUORAQR3UK8AP6YLLF0fKdv_gMEyFQNB9LSPrAT8-umX3w0Pw_oORGc_xfHMRjUzYngtZs5b6hVpkmDgovx9Jo-jHGdhh1AUbiKQGsaw1f5V1zj9WQ_FFYb7a01l9Vfrx0bKJRm-k1S8_Dr04DHsmd7Lejttag"/>
+<div>
+<p class="font-body-sm text-body-sm text-on-surface font-semibold">User Account</p>
+<p class="font-label-md text-label-md text-on-surface-variant">View Profile</p>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 md:ml-[280px] p-stack-default md:p-margin-edge w-full max-w-container-max mx-auto relative pb-24 md:pb-stack-default">
+<!-- Desktop Header -->
+<div class="hidden md:flex justify-between items-center mb-gutter">
+<h1 class="font-headline-lg text-headline-lg text-primary dark:text-primary-fixed">Loyalty &amp; Rewards</h1>
+<div class="flex items-center gap-4">
+<button class="bg-surface-container text-on-surface px-4 py-2 rounded-full font-label-md text-label-md hover:bg-surface-variant transition-colors inner-shadow flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">auto_awesome</span> AI Assistant
+                 </button>
+<span class="material-symbols-outlined cursor-pointer hover:text-primary transition-colors p-2 rounded-full hover:bg-surface-variant" id="theme-toggle-desktop">light_mode</span>
+</div>
+</div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-primary dark:text-primary-fixed mb-stack-default md:hidden">Loyalty &amp; Rewards</h1>
+<!-- Dashboard Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
+<!-- Column 1 & 2: Wallet and Progress -->
+<div class="lg:col-span-2 flex flex-col gap-gutter">
+<!-- Wallet Card (Mauve Serenity Skeuomorphic) -->
+<div class="bg-white dark:bg-surface-dark rounded-xl p-6 shadow-[0_2px_4px_rgba(86,82,100,0.05)] border border-surface-variant relative overflow-hidden">
+<div class="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -mr-32 -mt-32"></div>
+<div class="flex justify-between items-start mb-6 relative z-10">
+<div>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-1">Cashback Balance</p>
+<h2 class="font-display-lg text-display-lg text-primary dark:text-primary-fixed">₹1,240.50</h2>
+</div>
+<div class="bg-primary text-on-primary w-12 h-12 rounded-full flex items-center justify-center shadow-[0_10px_15px_-3px_rgba(86,82,100,0.1)]">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+</div>
+</div>
+<div class="flex items-center gap-4 mb-8 relative z-10">
+<div class="flex flex-col">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Lifetime Earnings</span>
+<span class="font-body-md text-body-md text-lime-green font-semibold">₹5,400.00</span>
+</div>
+<div class="h-8 w-px bg-outline-variant"></div>
+<div class="flex flex-col">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Pending</span>
+<span class="font-body-md text-body-md text-on-surface">₹45.00</span>
+</div>
+</div>
+<div class="flex gap-4 relative z-10">
+<button class="bg-primary text-on-primary px-6 py-3 rounded-lg font-body-md text-body-md hover:bg-primary-container hover:text-on-primary-container transition-all shadow-[0_2px_4px_rgba(86,82,100,0.05)] active:inner-shadow border-t border-white/20">Redeem Now</button>
+<button class="bg-surface-container text-on-surface px-6 py-3 rounded-lg font-body-md text-body-md hover:bg-surface-variant transition-all border border-outline-variant">History</button>
+</div>
+</div>
+<!-- Tier Progress Card -->
+<div class="bg-white dark:bg-surface-dark rounded-xl p-6 shadow-[0_2px_4px_rgba(86,82,100,0.05)] border border-surface-variant">
+<div class="flex justify-between items-center mb-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">workspace_premium</span>
+<h3 class="font-headline-md text-headline-md text-on-surface">Silver Tier</h3>
+</div>
+<span class="font-body-sm text-body-sm bg-surface-container px-3 py-1 rounded-full text-on-surface-variant">Current</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-6">Earn 450 more points to reach Gold Tier. Enjoy 5% more cashback and free priority shipping.</p>
+<div class="relative w-full h-3 bg-surface-container rounded-full overflow-hidden inner-shadow mb-2">
+<div class="absolute top-0 left-0 h-full bg-secondary rounded-full" style="width: 65%;"></div>
+</div>
+<div class="flex justify-between font-mono-sm text-mono-sm text-on-surface-variant">
+<span>1,550 pts</span>
+<span>2,000 pts (Gold)</span>
+</div>
+</div>
+</div>
+<!-- Column 3: Recent Activity & AI Copilot -->
+<div class="flex flex-col gap-gutter">
+<!-- Recent Earnings Feed -->
+<div class="bg-white dark:bg-surface-dark rounded-xl p-6 shadow-[0_2px_4px_rgba(86,82,100,0.05)] border border-surface-variant flex-1">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-6">Recent Activity</h3>
+<div class="flex flex-col gap-6">
+<!-- Activity Item -->
+<div class="flex items-start gap-4">
+<div class="bg-surface-container w-10 h-10 rounded-full flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined text-[20px]">shopping_bag</span>
+</div>
+<div class="flex-1">
+<p class="font-body-md text-body-md text-on-surface font-medium">Order #BUP-8492</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">2% Cashback on Electronics</p>
+<p class="font-label-md text-label-md text-outline mt-1">2 hours ago</p>
+</div>
+<span class="font-body-md text-body-md text-lime-green font-semibold">+₹120</span>
+</div>
+<!-- Activity Item -->
+<div class="flex items-start gap-4">
+<div class="bg-surface-container w-10 h-10 rounded-full flex items-center justify-center text-electric-blue shrink-0">
+<span class="material-symbols-outlined text-[20px]">person_add</span>
+</div>
+<div class="flex-1">
+<p class="font-body-md text-body-md text-on-surface font-medium">Referral Bonus</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Invited Rahul K.</p>
+<p class="font-label-md text-label-md text-outline mt-1">Yesterday</p>
+</div>
+<span class="font-body-md text-body-md text-lime-green font-semibold">+₹500</span>
+</div>
+<!-- Skeleton Loader Example -->
+<div class="flex items-start gap-4 animate-pulse-slow opacity-60">
+<div class="bg-surface-container w-10 h-10 rounded-full shrink-0"></div>
+<div class="flex-1 flex flex-col gap-2 pt-1">
+<div class="h-4 bg-surface-container rounded w-3/4"></div>
+<div class="h-3 bg-surface-container rounded w-1/2"></div>
+</div>
+<div class="h-5 bg-surface-container rounded w-12 mt-1"></div>
+</div>
+</div>
+<button class="w-full mt-6 text-center font-body-sm text-body-sm text-primary hover:underline">View All Activity</button>
+</div>
+</div>
+</div>
+<!-- Rewards Catalog Grid -->
+<div class="mt-stack-default">
+<h2 class="font-headline-lg text-headline-lg text-primary dark:text-primary-fixed mb-6">Exclusive Rewards</h2>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+<!-- Reward Item 1 -->
+<div class="bg-white dark:bg-surface-dark rounded-xl p-4 shadow-[0_2px_4px_rgba(86,82,100,0.05)] border border-surface-variant hover:shadow-[0_10px_15px_-3px_rgba(86,82,100,0.1)] transition-shadow cursor-pointer group">
+<div class="h-32 bg-surface-container rounded-lg mb-4 flex items-center justify-center overflow-hidden">
+<img alt="Reward image" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="A stylized graphic showing a generic gift card design with the text '₹500 Off' in bold typography. The style is modern e-commerce, using a soft mauve and cream palette." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAg3b5zBjGp55IsxajMCqD048edf_DkTUQ1Nz0FlYhemQ8e1yRHdwqv_Jj9v86_0ISBristwwCAbFkM2u3_1X7E1LCzPpaJbC7lgOmVVq2dyPJi_D3bLU1uoE0rfr1dyIgKvUYAYknNmQ_YLx5y6E_X6KvW22z5kBloko98l7DzRzSV2qLMMWyfmiARSbhXuKwSpId1fmyfsU8U99e8HHwKjBO9sI_BSeLiWA8JDC7dibKSr0GA0jl1XjGO84y8I9EiYnBy-sKK_w"/>
+</div>
+<h4 class="font-body-md text-body-md text-on-surface font-semibold mb-1">₹500 Store Voucher</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-4">Valid on all electronics</p>
+<div class="flex justify-between items-center">
+<span class="font-label-md text-label-md text-primary bg-primary/10 px-2 py-1 rounded">2,000 pts</span>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors">arrow_forward</span>
+</div>
+</div>
+<!-- Reward Item 2 -->
+<div class="bg-white dark:bg-surface-dark rounded-xl p-4 shadow-[0_2px_4px_rgba(86,82,100,0.05)] border border-surface-variant hover:shadow-[0_10px_15px_-3px_rgba(86,82,100,0.1)] transition-shadow cursor-pointer group">
+<div class="h-32 bg-surface-container rounded-lg mb-4 flex items-center justify-center overflow-hidden">
+<img alt="Reward image" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" data-alt="A clean, minimalist illustration of a delivery truck icon with a 'Free' tag. The aesthetic is flat design with subtle gradients, fitting a modern app interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCSVEr8eWvfD7APHxhelhDMWbB-37RQEHX91E8ELfiHtKBWmYbZbX8UjboS6x_iBzasS9g2NsXEXqjpvR51Se-ifDnO73ztadXFWU56AESbhrQLhPZtUCVUrn1aADx_yH-Db9q04_FrjQAVJGUDIsStZd8u-l7orLW2YCBuDfJqTFdMMnFjNpf-osbNrTou0IsEyOiWrWcstWEFpj-MKbOEHnZKIDo_bX2fvJ5OCgWjavRNWWZXCDQhbMvFpVz5jHFSGdyFXLW0vA"/>
+</div>
+<h4 class="font-body-md text-body-md text-on-surface font-semibold mb-1">Free Shipping Pass</h4>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-4">Next 5 orders</p>
+<div class="flex justify-between items-center">
+<span class="font-label-md text-label-md text-primary bg-primary/10 px-2 py-1 rounded">800 pts</span>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors">arrow_forward</span>
+</div>
+</div>
+<!-- Skeleton Rewards -->
+<div class="bg-white dark:bg-surface-dark rounded-xl p-4 border border-surface-variant animate-pulse-slow opacity-60">
+<div class="h-32 bg-surface-container rounded-lg mb-4"></div>
+<div class="h-5 bg-surface-container rounded w-3/4 mb-2"></div>
+<div class="h-4 bg-surface-container rounded w-1/2 mb-4"></div>
+<div class="flex justify-between">
+<div class="h-6 bg-surface-container rounded w-16"></div>
+<div class="h-6 bg-surface-container rounded w-6"></div>
+</div>
+</div>
+<div class="bg-white dark:bg-surface-dark rounded-xl p-4 border border-surface-variant animate-pulse-slow opacity-60">
+<div class="h-32 bg-surface-container rounded-lg mb-4"></div>
+<div class="h-5 bg-surface-container rounded w-3/4 mb-2"></div>
+<div class="h-4 bg-surface-container rounded w-1/2 mb-4"></div>
+<div class="flex justify-between">
+<div class="h-6 bg-surface-container rounded w-16"></div>
+<div class="h-6 bg-surface-container rounded w-6"></div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="bg-surface/80 dark:bg-surface-dark/80 backdrop-blur-xl text-primary dark:text-primary-fixed font-label-md text-label-md-mobile fixed bottom-0 w-full z-50 rounded-t-xl bg-surface dark:bg-surface-dark border-t border-outline-variant shadow-[0_-4px_10px_rgba(0,0,0,0.05)] flex justify-around items-center h-16 md:hidden px-2 pb-safe">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 active:scale-90 transition-transform w-16" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="mt-1 text-[10px]">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 active:scale-90 transition-transform w-16" href="#">
+<span class="material-symbols-outlined">search</span>
+<span class="mt-1 text-[10px]">Explore</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container dark:bg-tertiary-container text-on-secondary-container dark:text-on-tertiary-container rounded-full px-4 py-1 hover:bg-surface-variant/20 active:scale-90 transition-transform w-16" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+<span class="mt-1 text-[10px] font-bold">Wallet</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 active:scale-90 transition-transform w-16" href="#">
+<span class="material-symbols-outlined">local_shipping</span>
+<span class="mt-1 text-[10px]">Orders</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 active:scale-90 transition-transform w-16" href="#">
+<span class="material-symbols-outlined">auto_awesome</span>
+<span class="mt-1 text-[10px]">AI Assistant</span>
+</a>
+</nav>
+<script>
+        // Simple Theme Toggle Logic
+        const toggleBtnMobile = document.getElementById('theme-toggle-mobile');
+        const toggleBtnDesktop = document.getElementById('theme-toggle-desktop');
+        
+        function toggleTheme() {
+            document.documentElement.classList.toggle('dark');
+            const isDark = document.documentElement.classList.contains('dark');
+            const icon = isDark ? 'dark_mode' : 'light_mode';
+            if(toggleBtnMobile) toggleBtnMobile.textContent = icon;
+            if(toggleBtnDesktop) toggleBtnDesktop.textContent = icon;
+        }
+
+        if(toggleBtnMobile) toggleBtnMobile.addEventListener('click', toggleTheme);
+        if(toggleBtnDesktop) toggleBtnDesktop.addEventListener('click', toggleTheme);
+    </script>
+</body></html>

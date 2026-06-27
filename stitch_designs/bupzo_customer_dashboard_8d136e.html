@@ -1,0 +1,359 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>BUPZO Customer Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Plus+Jakarta+Sans:wght@600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-dark": "#1A191E",
+                        "tertiary": "#493a34",
+                        "on-secondary-container": "#795763",
+                        "surface-bright": "#fff8f4",
+                        "error-container": "#ffdad6",
+                        "secondary-container": "#fed1de",
+                        "on-surface": "#1e1b19",
+                        "surface-variant": "#e8e1dd",
+                        "surface-container-highest": "#e8e1dd",
+                        "inverse-on-surface": "#f7efeb",
+                        "surface-container-lowest": "#ffffff",
+                        "error": "#ba1a1a",
+                        "on-secondary": "#ffffff",
+                        "on-primary-fixed-variant": "#484456",
+                        "dim-grey": "#706677",
+                        "surface-dim": "#e0d9d5",
+                        "on-error": "#ffffff",
+                        "surface-container-high": "#eee7e3",
+                        "background": "#fff8f4",
+                        "secondary-fixed": "#ffd9e4",
+                        "on-primary-fixed": "#1c1929",
+                        "on-tertiary": "#ffffff",
+                        "primary-fixed-dim": "#cac3d9",
+                        "on-primary-container": "#ccc6dc",
+                        "secondary": "#775560",
+                        "on-tertiary-fixed-variant": "#53443d",
+                        "on-tertiary-fixed": "#251913",
+                        "on-background": "#1e1b19",
+                        "tertiary-fixed-dim": "#d8c2b9",
+                        "electric-blue": "#007AFF",
+                        "on-surface-variant": "#48464c",
+                        "primary-fixed": "#e6dff5",
+                        "on-error-container": "#93000a",
+                        "tertiary-fixed": "#f5ded4",
+                        "surface-tint": "#605c6e",
+                        "surface-container": "#f4ece8",
+                        "inverse-primary": "#cac3d9",
+                        "lime-green": "#32D74B",
+                        "surface-container-low": "#faf2ee",
+                        "outline-variant": "#c9c5cc",
+                        "on-secondary-fixed-variant": "#5d3e49",
+                        "primary-container": "#565264",
+                        "secondary-fixed-dim": "#e6bbc8",
+                        "surface": "#fff8f4",
+                        "on-secondary-fixed": "#2d141d",
+                        "inverse-surface": "#33302d",
+                        "primary": "#3f3b4c",
+                        "on-tertiary-container": "#dac5bc",
+                        "outline": "#79767c",
+                        "tertiary-container": "#61514a",
+                        "on-primary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "container-max": "1440px",
+                        "margin-edge": "2rem",
+                        "gutter": "1.5rem",
+                        "stack-default": "1.5rem",
+                        "stack-compact": "0.75rem",
+                        "sidebar-width": "280px",
+                        "sidebar-collapsed": "80px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "label-md": ["Inter"],
+                        "mono-sm": ["Inter"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "display-lg": ["Plus Jakarta Sans"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "body-sm": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "label-md": ["12px", { "lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "mono-sm": ["13px", { "lineHeight": "1.4", "fontWeight": "500" }],
+                        "headline-lg": ["32px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "display-lg": ["48px", { "lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "1.4", "fontWeight": "600" }],
+                        "body-sm": ["14px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .inner-shadow {
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.06);
+        }
+        .soft-shadow {
+            box-shadow: 0 2px 4px rgba(86, 82, 100, 0.05);
+        }
+        .hover-shadow:hover {
+            box-shadow: 0 10px 15px -3px rgba(86, 82, 100, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-surface font-body-md text-on-surface antialiased min-h-screen flex flex-col md:flex-row">
+<!-- TopNavBar (Mobile Only) -->
+<header class="md:hidden flex justify-between items-center w-full px-4 py-4 bg-surface-bright shadow-[0_2px_4px_rgba(86,82,100,0.05)] sticky top-0 z-50">
+<div class="font-display-lg text-headline-lg-mobile text-primary">BUPZO</div>
+<div class="flex gap-4">
+<span class="material-symbols-outlined cursor-pointer hover:text-primary transition-colors duration-200">notifications</span>
+<span class="material-symbols-outlined cursor-pointer hover:text-primary transition-colors duration-200">account_balance_wallet</span>
+<span class="material-symbols-outlined cursor-pointer hover:text-primary transition-colors duration-200">smart_toy</span>
+</div>
+</header>
+<!-- SideNavBar (Desktop) -->
+<nav class="hidden md:flex flex-col h-screen w-sidebar-width fixed left-0 top-0 z-40 bg-surface-container-low border-r border-outline-variant py-stack-default">
+<div class="px-margin-edge mb-8">
+<div class="font-headline-md text-headline-md font-bold text-primary">BUPZO Seller</div>
+<div class="text-body-sm text-on-surface-variant">Pro Merchant</div>
+</div>
+<div class="flex flex-col gap-2 flex-grow">
+<!-- Simplified Sidebar for Customer Context to map intent (Customer view usually doesn't have the seller sidebar, but following instructions to map intent, assuming a unified account structure where 'Settings' or 'Dashboard' might map, or using a generic layout if Seller JSON was strictly provided. Adapting to Customer Dashboard intent based on JSON rules). -->
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant transition-all cursor-pointer" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Overview</span>
+</a>
+<a class="flex items-center gap-3 bg-primary/5 text-primary border-l-4 border-primary px-4 py-3 active:inner-shadow duration-150 cursor-pointer" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-label-md text-label-md">My Account</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant transition-all cursor-pointer" href="#">
+<span class="material-symbols-outlined">shopping_cart</span>
+<span class="font-label-md text-label-md">Orders</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant transition-all cursor-pointer" href="#">
+<span class="material-symbols-outlined">favorite</span>
+<span class="font-label-md text-label-md">Wishlist</span>
+</a>
+</div>
+<div class="px-margin-edge mt-auto flex flex-col gap-2">
+<button class="bg-primary text-on-primary py-2 px-4 rounded-lg w-full font-label-md hover:bg-primary/90 transition-colors soft-shadow">Upgrade Plan</button>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant transition-all cursor-pointer" href="#">
+<span class="material-symbols-outlined">logout</span>
+<span class="font-label-md text-label-md">Logout</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="flex-grow md:ml-[280px] p-4 md:p-margin-edge max-w-container-max mx-auto w-full pb-24 md:pb-margin-edge">
+<!-- Header -->
+<div class="mb-8 flex justify-between items-end">
+<div>
+<h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary mb-1">Welcome back, Alex.</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Manage your orders, rewards, and AI preferences.</p>
+</div>
+<div class="hidden md:flex gap-4">
+<button class="bg-surface-container-low text-primary py-2 px-4 rounded-lg border border-outline-variant font-label-md hover:bg-surface-variant transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">settings</span> Settings
+                </button>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter">
+<!-- Profile Overview Widget -->
+<div class="md:col-span-4 bg-surface-container-lowest rounded-xl soft-shadow hover-shadow p-6 transition-shadow relative overflow-hidden border border-outline-variant/30">
+<div class="absolute top-0 right-0 p-4">
+<span class="bg-secondary-container text-on-secondary-container text-xs px-2 py-1 rounded-full font-label-md flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">star</span> Premium User
+                    </span>
+</div>
+<div class="flex items-center gap-4 mb-6">
+<div class="w-16 h-16 rounded-full overflow-hidden border-2 border-primary-container p-0.5">
+<img alt="User Avatar" class="w-full h-full object-cover rounded-full" data-alt="A high-quality, professional headshot of a smiling young adult in a modern, brightly lit interior setting. The lighting is soft and natural, emphasizing a clean, approachable, and premium lifestyle aesthetic consistent with an upscale digital platform." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA59phW4oiNbq9qJPvaerRqusNGI4gL6Xew6HxGn_JigtsWc8zwIuwzHLvzWnEKRF70s3Sl-3nfG_KhScYS5GcmFx9wiW6l3HmJWkigO69xE6Pyk-h4x1x92R6Mn3fx-vGM06CBXqgQcq6yRLwqRgkyHo9fnHbis_bTmj9isVVsMJ0jFUslbLD_Yd_mGreJtdBEFVA2OtEMwNGaNjYOxqNlYU1ptmEs4QAspfJNQCOE4pY6zyBFQE5OCkdcHwYgLKDWV3MHSvoz9g">
+</div>
+<div>
+<h2 class="font-headline-md text-headline-md text-on-surface">Alex Mercer</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">alex.m@example.com</p>
+</div>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between items-center py-2 border-b border-surface-variant">
+<span class="font-body-sm text-on-surface-variant">Member Since</span>
+<span class="font-mono-sm text-on-surface">2022</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-surface-variant">
+<span class="font-body-sm text-on-surface-variant">Saved Addresses</span>
+<span class="font-mono-sm text-on-surface">3</span>
+</div>
+<div class="flex justify-between items-center py-2">
+<span class="font-body-sm text-on-surface-variant">Payment Methods</span>
+<span class="font-mono-sm text-on-surface">2</span>
+</div>
+</div>
+</div>
+<!-- Wallet Balance Widget -->
+<div class="md:col-span-8 bg-surface-container-lowest rounded-xl soft-shadow hover-shadow p-6 transition-shadow flex flex-col justify-between border border-outline-variant/30 relative overflow-hidden">
+<div class="absolute -right-10 -top-10 w-40 h-40 bg-electric-blue/5 rounded-full blur-3xl pointer-events-none"></div>
+<div class="flex justify-between items-start mb-4 relative z-10">
+<div>
+<h3 class="font-label-md text-label-md text-on-surface-variant mb-1 uppercase tracking-wider">BUPZO Wallet</h3>
+<div class="font-display-lg text-display-lg text-primary">$450.00</div>
+</div>
+<span class="material-symbols-outlined text-electric-blue text-4xl">account_balance_wallet</span>
+</div>
+<div class="grid grid-cols-2 gap-4 mt-6 relative z-10">
+<div class="bg-surface-container-low p-4 rounded-lg inner-shadow">
+<div class="text-sm text-on-surface-variant mb-1">Available Cashback</div>
+<div class="font-headline-md text-headline-md text-lime-green">+$24.50</div>
+</div>
+<div class="flex items-center gap-3">
+<button class="flex-1 bg-primary text-on-primary py-3 rounded-lg font-label-md hover:bg-primary/90 transition-colors soft-shadow text-center">Add Money</button>
+<button class="flex-1 bg-surface-container border border-outline-variant text-on-surface py-3 rounded-lg font-label-md hover:bg-surface-variant transition-colors text-center">History</button>
+</div>
+</div>
+</div>
+<!-- Recent Orders Timeline -->
+<div class="md:col-span-7 bg-surface-container-lowest rounded-xl soft-shadow p-6 border border-outline-variant/30">
+<div class="flex justify-between items-center mb-6">
+<h3 class="font-headline-md text-headline-md text-on-surface">Recent Orders</h3>
+<a class="font-label-md text-label-md text-electric-blue hover:underline" href="#">View All</a>
+</div>
+<div class="space-y-6">
+<!-- Order Item 1 -->
+<div class="flex gap-4">
+<div class="w-16 h-16 rounded-lg bg-surface-variant flex-shrink-0 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A sleek, modern pair of wireless noise-canceling headphones resting on a clean, minimalist white surface. The product features matte black textures with subtle metallic accents, professionally lit to highlight its premium industrial design within an e-commerce context." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC7UuJc6BT9_zTE6ulc-DfGURrgaaA8oyYkBVGBbDhjZO8qCPkAmZxXM3raN0OFwhADtNI5DHiXclZDPlQ0IvOPaKQm1tZ4a-JMW-lkmggDDFQr8D4y1cAR10JLgmAF8Q1IB0sirTRcfwCav8kc0dFL_wK_Dh4SlBOXwunQsDBT-zES25hE3ZUTyq3nUJiu9Esl99ogvoqfbrx9OlsueDzrdkA3g_oh61W5U-cM2GYNSpuMWzzoiUesBiNnfBTKpqE5c07LYqmLrw">
+</div>
+<div class="flex-grow">
+<div class="flex justify-between mb-1">
+<h4 class="font-body-md text-body-md font-semibold text-on-surface">Sony WH-1000XM5</h4>
+<span class="font-mono-sm text-primary">$348.00</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-2">Order #BUP-8829</p>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-electric-blue"></span>
+<span class="font-label-md text-label-md text-electric-blue">In Transit (Arrives Tomorrow)</span>
+</div>
+<div class="mt-2 w-full bg-surface-variant h-1.5 rounded-full overflow-hidden">
+<div class="bg-electric-blue h-full w-3/4"></div>
+</div>
+</div>
+</div>
+<!-- Order Item 2 -->
+<div class="flex gap-4">
+<div class="w-16 h-16 rounded-lg bg-surface-variant flex-shrink-0 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A minimalist, high-end ceramic coffee dripper set, featuring a matte black finish and natural wood accents. It sits elegantly on a clean marble countertop, softly lit to evoke a calm, artisanal morning aesthetic suitable for a premium marketplace." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCCiCl_CzZIdjeiQA-5WpP3w5T1rkb1IN3iwwFMySfFicy8221_aA2TNCSnR7cvYzhwf6TPLNm4OOwd-3ptpLPCzQiadDqxrhjsn27ZCtKoLN_YSDcv7REcTgPy18cz13CZy2YjA6Bq2PL0LS0HJ50H_KkdfA4GChUD02Um0q8GL5I71fYS_5FzCVEuAZcppX1KEObrBayv65CKuD0LiFrzi_kRXDX8Vd5KVH96so6CcTV2WSdfXdod4eo5XO6YRC4GFaVakyqUNA">
+</div>
+<div class="flex-grow">
+<div class="flex justify-between mb-1">
+<h4 class="font-body-md text-body-md font-semibold text-on-surface">Artisan Pour-Over Set</h4>
+<span class="font-mono-sm text-primary">$85.00</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-2">Order #BUP-8710</p>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-lime-green"></span>
+<span class="font-label-md text-label-md text-lime-green">Delivered</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Digi-Rewards & Quick Links -->
+<div class="md:col-span-5 flex flex-col gap-gutter">
+<!-- Rewards Summary -->
+<div class="bg-surface-container-lowest rounded-xl soft-shadow p-6 border border-outline-variant/30 flex-1">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-4">Digi-Rewards</h3>
+<div class="bg-surface-container-low p-4 rounded-lg flex items-center justify-between mb-4 inner-shadow border border-outline-variant/50">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined">stars</span>
+</div>
+<div>
+<div class="font-body-sm text-on-surface-variant">Total Points</div>
+<div class="font-headline-md text-primary">1,250</div>
+</div>
+</div>
+<button class="text-secondary font-label-md hover:underline">Redeem</button>
+</div>
+<p class="font-body-sm text-on-surface-variant mb-4">Refer a friend and earn 500 points on their first purchase.</p>
+<button class="w-full bg-secondary text-on-secondary py-2 rounded-lg font-label-md hover:bg-secondary/90 transition-colors">Copy Referral Link</button>
+</div>
+<!-- Quick Navigation Grid -->
+<div class="grid grid-cols-2 gap-4 flex-1">
+<a class="bg-surface-container-lowest p-4 rounded-xl soft-shadow hover-shadow transition-all border border-outline-variant/30 flex flex-col items-center justify-center text-center gap-2 group" href="#">
+<span class="material-symbols-outlined text-3xl text-dim-grey group-hover:text-primary transition-colors">favorite</span>
+<span class="font-label-md text-label-md text-on-surface">Wishlist</span>
+</a>
+<a class="bg-surface-container-lowest p-4 rounded-xl soft-shadow hover-shadow transition-all border border-outline-variant/30 flex flex-col items-center justify-center text-center gap-2 group" href="#">
+<span class="material-symbols-outlined text-3xl text-dim-grey group-hover:text-primary transition-colors">assignment_return</span>
+<span class="font-label-md text-label-md text-on-surface">Returns</span>
+</a>
+</div>
+</div>
+<!-- AI Shopper Banner -->
+<div class="md:col-span-12 bg-surface-dark text-on-tertiary rounded-xl p-8 relative overflow-hidden flex items-center justify-between mt-4">
+<!-- Abstract Shader Background Placeholder -->
+<div class="absolute inset-0 opacity-40 mix-blend-screen pointer-events-none">
+<div class="bg-cover bg-center w-full h-full" data-alt="An abstract, subtly animated digital background featuring soft, flowing waves of deep mauve and electric blue light. The aesthetic is highly technical yet serene, suggesting advanced artificial intelligence operating seamlessly in the background of a premium platform." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDhD4VmhPnOETXowqvigKBDlEjo9PmIsyXcs6wzfpe5VCrqiln9xGNtgpCh5mMgxSTv57W4XJjqxZXRO4EtL1keNh3O947fmJfBJ4eDsAIww6gyvb4HucpjimqkhTxhVJ8BND64VC_oRA3t6ZJ8JPsZUzmPFqpjJZDWpRm2b7WQAW7Tq3PCG9WA3HhANcBKSqdCX97skhrjOzjliTr2god5uIvdU1HpPA_xlMEpU2E1Jq5AXOZUKIjC22fFbaPtLVEuXodLes8_8w')"></div>
+</div>
+<div class="relative z-10 max-w-lg">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-electric-blue">auto_awesome</span>
+<span class="font-label-md text-electric-blue uppercase tracking-widest">MCP AI Agent</span>
+</div>
+<h2 class="font-headline-lg text-headline-lg text-on-tertiary mb-2">Your Personal AI Shopper</h2>
+<p class="font-body-md text-inverse-on-surface/80 mb-6">Let our AI find the perfect products based on your style, past purchases, and current trends.</p>
+<button class="bg-electric-blue text-white px-6 py-3 rounded-lg font-label-md hover:bg-electric-blue/90 transition-colors soft-shadow flex items-center gap-2">
+                        Start Chat <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+<div class="hidden md:block relative z-10 pr-8">
+<span class="material-symbols-outlined text-[120px] text-primary-fixed/20">smart_toy</span>
+</div>
+</div>
+</div>
+</main>
+<!-- Floating MCP AI Agent Button (Global Contextual) -->
+<button class="fixed bottom-24 md:bottom-8 right-4 md:right-8 w-14 h-14 bg-electric-blue text-white rounded-full shadow-[0_10px_15px_-3px_rgba(0,122,255,0.3)] flex items-center justify-center hover:scale-105 transition-transform z-50">
+<span class="material-symbols-outlined">auto_awesome</span>
+</button>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 rounded-t-xl bg-surface/80 dark:bg-surface-dark/80 backdrop-blur-xl border-t border-outline-variant shadow-[0_-4px_10px_rgba(0,0,0,0.05)] flex justify-around items-center h-16 px-2 pb-safe">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 active:scale-90 transition-transform w-16 h-12 rounded-lg" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-md text-label-md-mobile mt-1">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 active:scale-90 transition-transform w-16 h-12 rounded-lg" href="#">
+<span class="material-symbols-outlined">search</span>
+<span class="font-label-md text-label-md-mobile mt-1">Explore</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-secondary-container dark:bg-tertiary-container text-on-secondary-container dark:text-on-tertiary-container rounded-full px-4 py-1 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+<span class="font-label-md text-label-md-mobile mt-1">Wallet</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 active:scale-90 transition-transform w-16 h-12 rounded-lg" href="#">
+<span class="material-symbols-outlined">local_shipping</span>
+<span class="font-label-md text-label-md-mobile mt-1">Orders</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/20 active:scale-90 transition-transform w-16 h-12 rounded-lg" href="#">
+<span class="material-symbols-outlined">auto_awesome</span>
+<span class="font-label-md text-label-md-mobile mt-1">AI Assistant</span>
+</a>
+</nav>
+</body></html>

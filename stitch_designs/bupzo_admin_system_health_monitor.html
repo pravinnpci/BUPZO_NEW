@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>BUPZO Admin - System Health Monitor</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Plus+Jakarta+Sans:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-low": "#faf2ee",
+                        "on-primary-container": "#ccc6dc",
+                        "on-error-container": "#93000a",
+                        "inverse-on-surface": "#f7efeb",
+                        "error": "#ba1a1a",
+                        "secondary-fixed-dim": "#e6bbc8",
+                        "on-primary-fixed": "#1c1929",
+                        "on-secondary": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "secondary-container": "#fed1de",
+                        "outline-variant": "#c9c5cc",
+                        "error-container": "#ffdad6",
+                        "electric-blue": "#007AFF",
+                        "on-tertiary-fixed": "#251913",
+                        "primary": "#3f3b4c",
+                        "on-secondary-container": "#795763",
+                        "tertiary-fixed-dim": "#d8c2b9",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-container": "#dac5bc",
+                        "surface-container-highest": "#e8e1dd",
+                        "background": "#fff8f4",
+                        "on-primary-fixed-variant": "#484456",
+                        "inverse-primary": "#cac3d9",
+                        "surface": "#fff8f4",
+                        "surface-bright": "#fff8f4",
+                        "on-surface-variant": "#48464c",
+                        "surface-variant": "#e8e1dd",
+                        "on-secondary-fixed-variant": "#5d3e49",
+                        "on-error": "#ffffff",
+                        "secondary-fixed": "#ffd9e4",
+                        "on-secondary-fixed": "#2d141d",
+                        "surface-tint": "#605c6e",
+                        "primary-fixed": "#e6dff5",
+                        "on-tertiary": "#ffffff",
+                        "primary-fixed-dim": "#cac3d9",
+                        "primary-container": "#565264",
+                        "on-surface": "#1e1b19",
+                        "secondary": "#775560",
+                        "surface-dark": "#1A191E",
+                        "dim-grey": "#706677",
+                        "surface-dim": "#e0d9d5",
+                        "inverse-surface": "#33302d",
+                        "outline": "#79767c",
+                        "lime-green": "#32D74B",
+                        "tertiary-container": "#61514a",
+                        "on-background": "#1e1b19",
+                        "on-tertiary-fixed-variant": "#53443d",
+                        "surface-container-high": "#eee7e3",
+                        "tertiary-fixed": "#f5ded4",
+                        "tertiary": "#493a34",
+                        "surface-container": "#f4ece8"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "stack-compact": "0.75rem",
+                        "stack-default": "1.5rem",
+                        "sidebar-width": "280px",
+                        "sidebar-collapsed": "80px",
+                        "container-max": "1440px",
+                        "gutter": "1.5rem",
+                        "margin-edge": "2rem"
+                    },
+                    "fontFamily": {
+                        "label-md": ["Inter"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "display-lg": ["Plus Jakarta Sans"],
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "mono-sm": ["Inter"] /* Treating Inter as monospace for clean alignment if real mono unavailable, but normally would use a true mono */
+                    },
+                    "fontSize": {
+                        "label-md": ["12px", { "lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "display-lg": ["48px", { "lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "body-sm": ["14px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "1.4", "fontWeight": "600" }],
+                        "mono-sm": ["13px", { "lineHeight": "1.4", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined.filled {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        /* Terminal Scrollbar */
+        .terminal-scroll::-webkit-scrollbar {
+            width: 8px;
+        }
+        .terminal-scroll::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .terminal-scroll::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+        .terminal-scroll::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md text-body-md flex min-h-screen antialiased">
+<!-- SideNavBar (Admin View) -->
+<nav class="h-screen w-sidebar-width fixed left-0 top-0 z-40 bg-surface-container-low dark:bg-surface-dark border-r border-outline-variant flex flex-col py-stack-default shadow-none hidden md:flex">
+<!-- Header -->
+<div class="px-margin-edge mb-stack-default">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-primary text-on-primary flex items-center justify-center font-bold font-headline-md text-headline-md shadow-[inset_0_2px_4px_rgba(255,255,255,0.2)]">
+                    B
+                </div>
+<div>
+<h2 class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed">BUPZO Seller</h2>
+<p class="font-label-md text-label-md text-on-surface-variant">Pro Merchant</p>
+</div>
+</div>
+</div>
+<!-- Navigation Links -->
+<div class="flex-1 flex flex-col gap-1 overflow-y-auto px-2">
+<!-- Active state explicitly mapped to Dashboard per requirements for system health -->
+<a class="flex items-center gap-3 bg-primary/5 text-primary border-l-4 border-primary px-4 py-3 rounded-r-lg" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all rounded-lg active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)] duration-150 border-l-4 border-transparent" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="font-label-md text-label-md">Inventory</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all rounded-lg active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)] duration-150 border-l-4 border-transparent" href="#">
+<span class="material-symbols-outlined">shopping_cart</span>
+<span class="font-label-md text-label-md">Orders</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all rounded-lg active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)] duration-150 border-l-4 border-transparent" href="#">
+<span class="material-symbols-outlined">insights</span>
+<span class="font-label-md text-label-md">Analytics</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all rounded-lg active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)] duration-150 border-l-4 border-transparent" href="#">
+<span class="material-symbols-outlined">campaign</span>
+<span class="font-label-md text-label-md">Marketing</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all rounded-lg active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)] duration-150 border-l-4 border-transparent" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-label-md text-label-md">Customers</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all rounded-lg active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)] duration-150 border-l-4 border-transparent" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-3 hover:bg-surface-variant/50 hover:bg-surface-variant dark:hover:bg-surface-container-highest transition-all rounded-lg active:shadow-[inset_0_2px_4px_rgba(0,0,0,0.06)] duration-150 border-l-4 border-transparent" href="#">
+<span class="material-symbols-outlined">help</span>
+<span class="font-label-md text-label-md">Help</span>
+</a>
+</div>
+<!-- CTA & Footer Links -->
+<div class="px-4 mt-auto pt-4 border-t border-outline-variant/50">
+<button class="w-full bg-surface-container-highest text-on-surface font-label-md text-label-md py-2 rounded-lg mb-4 hover:bg-outline-variant/30 transition-colors shadow-[0_2px_4px_rgba(86,82,100,0.05)]">
+                Upgrade Plan
+            </button>
+<div class="flex flex-col gap-1">
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-2 hover:bg-surface-variant/50 rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined text-[20px]">logout</span>
+<span class="font-label-md text-label-md">Logout</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant px-4 py-2 hover:bg-surface-variant/50 rounded-lg transition-all" href="#">
+<span class="material-symbols-outlined text-[20px]">support_agent</span>
+<span class="font-label-md text-label-md">Support</span>
+</a>
+</div>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="flex-1 md:ml-sidebar-width min-h-screen p-margin-edge lg:px-[3rem] py-8 max-w-container-max mx-auto w-full">
+<!-- Header Section -->
+<div class="flex flex-col md:flex-row md:items-end justify-between mb-stack-default gap-4">
+<div>
+<h1 class="font-display-lg text-display-lg text-primary tracking-tight">System Health</h1>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Real-time infrastructure monitoring &amp; diagnostics.</p>
+</div>
+<div class="flex items-center gap-3 bg-surface-container-lowest px-4 py-2 rounded-full shadow-[0_2px_4px_rgba(86,82,100,0.05)] border border-outline-variant/30">
+<span class="relative flex h-3 w-3">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-lime-green opacity-75"></span>
+<span class="relative inline-flex rounded-full h-3 w-3 bg-lime-green"></span>
+</span>
+<span class="font-label-md text-label-md text-primary uppercase tracking-wider">All Systems Operational</span>
+</div>
+</div>
+<!-- Bento Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- 8-Container Live Status (Span 8) -->
+<div class="lg:col-span-8 bg-surface-container-lowest rounded-xl p-stack-default shadow-[0_2px_4px_rgba(86,82,100,0.05)] border border-outline-variant/30 flex flex-col">
+<div class="flex items-center justify-between mb-4">
+<h2 class="font-headline-md text-headline-md text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-dim-grey">dns</span>
+                        Microservices Status
+                    </h2>
+<span class="font-mono-sm text-mono-sm text-dim-grey bg-surface-container-low px-2 py-1 rounded">Auto-refresh: 5s</span>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-stack-compact flex-1">
+<!-- Container 1 -->
+<div class="bg-surface-container-low border border-outline-variant/40 rounded-lg p-3 flex flex-col justify-between shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
+<div class="flex items-start justify-between mb-2">
+<span class="font-label-md text-label-md text-on-surface">API Gateway</span>
+<div class="w-2.5 h-2.5 rounded-full bg-lime-green shadow-[0_0_8px_rgba(50,215,75,0.4)]"></div>
+</div>
+<div class="font-mono-sm text-mono-sm text-dim-grey text-xs">Uptime: 99.9%</div>
+</div>
+<!-- Container 2 -->
+<div class="bg-surface-container-low border border-outline-variant/40 rounded-lg p-3 flex flex-col justify-between shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
+<div class="flex items-start justify-between mb-2">
+<span class="font-label-md text-label-md text-on-surface">Auth Service</span>
+<div class="w-2.5 h-2.5 rounded-full bg-lime-green shadow-[0_0_8px_rgba(50,215,75,0.4)]"></div>
+</div>
+<div class="font-mono-sm text-mono-sm text-dim-grey text-xs">Latency: 12ms</div>
+</div>
+<!-- Container 3 -->
+<div class="bg-surface-container-low border border-outline-variant/40 rounded-lg p-3 flex flex-col justify-between shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
+<div class="flex items-start justify-between mb-2">
+<span class="font-label-md text-label-md text-on-surface">FastAPI Core</span>
+<div class="w-2.5 h-2.5 rounded-full bg-lime-green shadow-[0_0_8px_rgba(50,215,75,0.4)]"></div>
+</div>
+<div class="font-mono-sm text-mono-sm text-dim-grey text-xs">Req/s: 1,240</div>
+</div>
+<!-- Container 4 -->
+<div class="bg-surface-container-low border border-outline-variant/40 rounded-lg p-3 flex flex-col justify-between shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] relative overflow-hidden">
+<div class="absolute inset-0 bg-error/5 pointer-events-none"></div>
+<div class="flex items-start justify-between mb-2 relative z-10">
+<span class="font-label-md text-label-md text-on-surface">Order Engine</span>
+<div class="w-2.5 h-2.5 rounded-full bg-error shadow-[0_0_8px_rgba(186,26,26,0.4)] animate-pulse"></div>
+</div>
+<div class="font-mono-sm text-mono-sm text-error text-xs relative z-10">Queue Delay</div>
+</div>
+<!-- Container 5 -->
+<div class="bg-surface-container-low border border-outline-variant/40 rounded-lg p-3 flex flex-col justify-between shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
+<div class="flex items-start justify-between mb-2">
+<span class="font-label-md text-label-md text-on-surface">PostgreSQL DB</span>
+<div class="w-2.5 h-2.5 rounded-full bg-lime-green shadow-[0_0_8px_rgba(50,215,75,0.4)]"></div>
+</div>
+<div class="font-mono-sm text-mono-sm text-dim-grey text-xs">Conn: 45/100</div>
+</div>
+<!-- Container 6 -->
+<div class="bg-surface-container-low border border-outline-variant/40 rounded-lg p-3 flex flex-col justify-between shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
+<div class="flex items-start justify-between mb-2">
+<span class="font-label-md text-label-md text-on-surface">Redis Cache</span>
+<div class="w-2.5 h-2.5 rounded-full bg-lime-green shadow-[0_0_8px_rgba(50,215,75,0.4)]"></div>
+</div>
+<div class="font-mono-sm text-mono-sm text-dim-grey text-xs">Hit Rate: 94%</div>
+</div>
+<!-- Container 7 -->
+<div class="bg-surface-container-low border border-outline-variant/40 rounded-lg p-3 flex flex-col justify-between shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
+<div class="flex items-start justify-between mb-2">
+<span class="font-label-md text-label-md text-on-surface">Search Worker</span>
+<div class="w-2.5 h-2.5 rounded-full bg-lime-green shadow-[0_0_8px_rgba(50,215,75,0.4)]"></div>
+</div>
+<div class="font-mono-sm text-mono-sm text-dim-grey text-xs">Idle</div>
+</div>
+<!-- Container 8 -->
+<div class="bg-surface-container-low border border-outline-variant/40 rounded-lg p-3 flex flex-col justify-between shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
+<div class="flex items-start justify-between mb-2">
+<span class="font-label-md text-label-md text-on-surface">Web Frontend</span>
+<div class="w-2.5 h-2.5 rounded-full bg-lime-green shadow-[0_0_8px_rgba(50,215,75,0.4)]"></div>
+</div>
+<div class="font-mono-sm text-mono-sm text-dim-grey text-xs">Build: v2.4.1</div>
+</div>
+</div>
+</div>
+<!-- DB Load Meter (Span 4) -->
+<div class="lg:col-span-4 bg-surface-container-lowest rounded-xl p-stack-default shadow-[0_2px_4px_rgba(86,82,100,0.05)] border border-outline-variant/30 flex flex-col items-center justify-center relative overflow-hidden">
+<!-- Abstract visual background for gauge -->
+<div class="absolute -top-10 -right-10 w-40 h-40 bg-surface-container-low rounded-full opacity-50"></div>
+<div class="absolute -bottom-10 -left-10 w-32 h-32 bg-primary-fixed/20 rounded-full opacity-50"></div>
+<h2 class="font-headline-md text-headline-md text-primary w-full text-left mb-auto relative z-10">DB Latency</h2>
+<div class="flex flex-col items-center justify-center py-6 relative z-10">
+<div class="flex items-baseline gap-1">
+<span class="font-display-lg text-display-lg text-primary tracking-tighter" id="latency-meter">24</span>
+<span class="font-label-md text-label-md text-dim-grey">ms</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-2">P95 Response Time</p>
+<!-- Fake Sparkline -->
+<div class="w-full h-12 mt-4 flex items-end gap-1 px-4">
+<div class="w-full bg-outline-variant/30 rounded-t-sm h-[30%]"></div>
+<div class="w-full bg-outline-variant/30 rounded-t-sm h-[40%]"></div>
+<div class="w-full bg-outline-variant/30 rounded-t-sm h-[25%]"></div>
+<div class="w-full bg-outline-variant/30 rounded-t-sm h-[50%]"></div>
+<div class="w-full bg-primary/40 rounded-t-sm h-[70%]"></div>
+<div class="w-full bg-primary/60 rounded-t-sm h-[45%]"></div>
+<div class="w-full bg-primary/80 rounded-t-sm h-[60%]"></div>
+<div class="w-full bg-primary rounded-t-sm h-[80%]"></div>
+</div>
+</div>
+</div>
+<!-- Server Logs Terminal (Span 12) -->
+<div class="lg:col-span-12 rounded-xl shadow-[0_10px_15px_-3px_rgba(86,82,100,0.1)] overflow-hidden flex flex-col border border-outline-variant/50">
+<!-- Terminal Header -->
+<div class="bg-surface-dark text-on-primary px-4 py-3 flex items-center justify-between border-b border-white/10">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-outline">terminal</span>
+<span class="font-label-md text-label-md tracking-widest text-on-primary/80">LIVE SERVER LOGS</span>
+</div>
+<div class="flex gap-1.5">
+<div class="w-3 h-3 rounded-full bg-outline-variant/30"></div>
+<div class="w-3 h-3 rounded-full bg-outline-variant/30"></div>
+<div class="w-3 h-3 rounded-full bg-outline-variant/30"></div>
+</div>
+</div>
+<!-- Terminal Body -->
+<div class="bg-surface-dark p-4 h-80 overflow-y-auto terminal-scroll font-mono-sm text-mono-sm flex flex-col gap-1.5" id="log-window">
+<div class="text-dim-grey">System starting...</div>
+<div class="text-dim-grey">Connecting to log stream... Connected.</div>
+<div class="text-on-primary/70"><span class="text-lime-green">[INFO]</span> 2024-05-24T14:32:01Z - API Gateway initialized successfully.</div>
+<div class="text-on-primary/70"><span class="text-lime-green">[INFO]</span> 2024-05-24T14:32:05Z - Database connection pool established (max=100).</div>
+<div class="text-on-primary/70"><span class="text-lime-green">[INFO]</span> 2024-05-24T14:32:12Z - Worker node wk-us-east-1a registered.</div>
+<div class="text-on-primary/70"><span class="text-electric-blue">[DEBUG]</span> 2024-05-24T14:33:45Z - Cache miss for key user:9482, fetching from DB.</div>
+<div class="text-on-primary/70"><span class="text-lime-green">[INFO]</span> 2024-05-24T14:34:02Z - Checkout process completed for cart_id=8831.</div>
+<div class="text-on-primary/70"><span class="text-error">[WARN]</span> 2024-05-24T14:35:18Z - Order Engine queue depth exceeds threshold (Current: 450).</div>
+<div class="text-on-primary/70"><span class="text-lime-green">[INFO]</span> 2024-05-24T14:35:22Z - Scaling up Order Engine workers automatically.</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Lightweight Script for interaction simulation -->
+<script>
+        // Simulate DB Latency fluctuation
+        const latencyMeter = document.getElementById('latency-meter');
+        setInterval(() => {
+            const current = parseInt(latencyMeter.innerText);
+            // Fluctuate between -3 and +5
+            const change = Math.floor(Math.random() * 9) - 3; 
+            let next = current + change;
+            if(next < 15) next = 15;
+            if(next > 85) next = 85;
+            latencyMeter.innerText = next;
+        }, 2000);
+
+        // Simulate streaming logs
+        const logWindow = document.getElementById('log-window');
+        const logMessages = [
+            '<span class="text-lime-green">[INFO]</span> - User auth token refreshed successfully.',
+            '<span class="text-electric-blue">[DEBUG]</span> - Rendering catalog page 2 (cached).',
+            '<span class="text-lime-green">[INFO]</span> - Payment webhook received from provider.',
+            '<span class="text-lime-green">[INFO]</span> - Background task [Image Processing] completed.',
+            '<span class="text-error">[WARN]</span> - High CPU usage detected on node wk-us-east-2b.',
+            '<span class="text-lime-green">[INFO]</span> - DB Query optimized: execution time dropped by 14ms.',
+        ];
+
+        setInterval(() => {
+            if(Math.random() > 0.4) {
+                const now = new Date().toISOString().replace(/\..+/, 'Z');
+                const msg = logMessages[Math.floor(Math.random() * logMessages.length)];
+                const logLine = document.createElement('div');
+                logLine.className = 'text-on-primary/70';
+                logLine.innerHTML = `${msg.split(']</span>')[0]}]</span> ${now} ${msg.split(']</span>')[1]}`;
+                
+                logWindow.appendChild(logLine);
+                
+                // Keep scroll at bottom
+                logWindow.scrollTop = logWindow.scrollHeight;
+                
+                // Prune old logs to avoid memory bloat
+                if(logWindow.children.length > 50) {
+                    logWindow.removeChild(logWindow.children[2]); // Keep top 2 static lines
+                }
+            }
+        }, 1500);
+    </script>
+</body></html>

@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>BUPZO Admin - WhatsApp Marketing Blaster</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary-fixed": "#2d141d",
+                    "inverse-primary": "#cac3d9",
+                    "surface-container": "#f4ece8",
+                    "lime-green": "#32D74B",
+                    "primary-container": "#565264",
+                    "on-secondary": "#ffffff",
+                    "on-error-container": "#93000a",
+                    "outline": "#79767c",
+                    "on-secondary-fixed-variant": "#5d3e49",
+                    "on-surface-variant": "#48464c",
+                    "surface-dim": "#e0d9d5",
+                    "electric-blue": "#007AFF",
+                    "tertiary-fixed": "#f5ded4",
+                    "tertiary-container": "#61514a",
+                    "on-primary-fixed": "#1c1929",
+                    "background": "#fff8f4",
+                    "secondary": "#775560",
+                    "primary": "#3f3b4c",
+                    "on-background": "#1e1b19",
+                    "tertiary": "#493a34",
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary": "#ffffff",
+                    "primary-fixed": "#e6dff5",
+                    "surface-container-low": "#faf2ee",
+                    "surface-dark": "#1A191E",
+                    "primary-fixed-dim": "#cac3d9",
+                    "on-primary": "#ffffff",
+                    "surface-container-high": "#eee7e3",
+                    "on-error": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "on-primary-fixed-variant": "#484456",
+                    "surface-container-highest": "#e8e1dd",
+                    "secondary-container": "#fed1de",
+                    "on-tertiary-container": "#dac5bc",
+                    "surface": "#fff8f4",
+                    "on-tertiary-fixed": "#251913",
+                    "inverse-on-surface": "#f7efeb",
+                    "on-secondary-container": "#795763",
+                    "dim-grey": "#706677",
+                    "surface-variant": "#e8e1dd",
+                    "tertiary-fixed-dim": "#d8c2b9",
+                    "outline-variant": "#c9c5cc",
+                    "on-primary-container": "#ccc6dc",
+                    "error": "#ba1a1a",
+                    "surface-tint": "#605c6e",
+                    "surface-bright": "#fff8f4",
+                    "inverse-surface": "#33302d",
+                    "secondary-fixed": "#ffd9e4",
+                    "on-surface": "#1e1b19",
+                    "on-tertiary-fixed-variant": "#53443d",
+                    "secondary-fixed-dim": "#e6bbc8"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "sidebar-width": "280px",
+                    "stack-default": "1.5rem",
+                    "stack-compact": "0.75rem",
+                    "sidebar-collapsed": "80px",
+                    "gutter": "1.5rem",
+                    "container-max": "1440px",
+                    "margin-edge": "2rem"
+            },
+            "fontFamily": {
+                    "mono-sm": ["Inter"],
+                    "headline-md": ["Plus Jakarta Sans"],
+                    "label-md": ["Inter"],
+                    "headline-lg": ["Plus Jakarta Sans"],
+                    "body-sm": ["Inter"],
+                    "body-md": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "display-lg": ["Plus Jakarta Sans"],
+                    "headline-lg-mobile": ["Plus Jakarta Sans"]
+            },
+            "fontSize": {
+                    "mono-sm": ["13px", {"lineHeight": "1.4", "fontWeight": "500"}],
+                    "headline-md": ["24px", {"lineHeight": "1.4", "fontWeight": "600"}],
+                    "label-md": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "headline-lg": ["32px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                    "body-sm": ["14px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                    "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                    "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                    "display-lg": ["48px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        .inner-shadow-sunk { box-shadow: inset 0 2px 4px rgba(0,0,0,0.06); }
+        .elevated-card { box-shadow: 0 2px 4px rgba(86, 82, 100, 0.05); }
+        .interactive-hover:hover { box-shadow: 0 10px 15px -3px rgba(86, 82, 100, 0.1); transform: translateY(-1px); transition: all 0.2s ease; }
+        .glass-panel { backdrop-filter: blur(12px); background-color: rgba(255, 248, 244, 0.8); }
+        .dark .glass-panel { background-color: rgba(26, 25, 30, 0.8); }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen selection:bg-primary-fixed selection:text-on-primary-fixed">
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 left-sidebar-width h-16 z-40 bg-surface/80 dark:bg-surface-dark/80 backdrop-blur-xl border-b border-outline-variant dark:border-outline shadow-sm flex items-center justify-between px-margin-edge w-[calc(100%-280px)] md:w-[calc(100%-280px)] md:left-sidebar-width hidden md:flex">
+<div class="flex items-center gap-4">
+<h1 class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed-dim">BUPZO</h1>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 rounded-full text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed transition-colors active:opacity-80">
+<span class="material-symbols-outlined">dark_mode</span>
+</button>
+<button class="p-2 rounded-full text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed transition-colors active:opacity-80">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 rounded-full text-on-surface-variant hover:text-primary dark:hover:text-primary-fixed transition-colors active:opacity-80">
+<span class="material-symbols-outlined">help</span>
+</button>
+<div class="h-8 w-8 rounded-full bg-surface-variant overflow-hidden ml-2 border border-outline-variant">
+<img alt="User Profile Avatar" class="w-full h-full object-cover" data-alt="A small, professional avatar portrait of a business user, corporate style, high quality, soft lighting, Mauve Serenity aesthetic, light mode." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCFlb_bqCpouMFcWuFhmCDWydZT21LmyVXhIb7V8x7-MIKYwdv1H43QDpcDt2Nnw0eajBJJANN8-t8tl_kP40_D7_OSVQAsxItCa_vwDY5XpPb6Nh7p1MRIIyh03DGbjfdAf1S3LQfUhGd8DCEn1n31mfxsAoCE6fFKosuIDcenagDmpSioc2-BGkX25dgP-plopXOqJhn4VjRJQSlplz5vqT_USnalZ8WFuipSqFM1qig0dRSQ2Nb-9mW6HAtsgSG5g4QC0IkTig"/>
+</div>
+</div>
+</header>
+<!-- SideNavBar -->
+<nav class="w-sidebar-width h-screen fixed left-0 top-0 bg-surface dark:bg-surface-dark border-r border-outline-variant dark:border-outline shadow-sm z-50 flex flex-col py-gutter px-4 hidden md:flex">
+<div class="flex items-center gap-3 mb-8 px-4">
+<div class="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-surface-container flex items-center justify-center">
+<img alt="Organization Logo" class="w-full h-auto object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB3frvSs_kELhMPHhtzoQwlUVOm6Nl_O1CzQzpIUj-CKeM3p43W3TcAUPbGRsfVN0klvXusI-EZ65wDmvE_i0XsnKvqdYP3TmPdd9ilMvWd_Vrt8bnkR0jcdo07uv59fFPcWhSiG51wVpuuMax_tD4GAkpnCT4GoflfvU0ql2lCzTK4u6En8Hspz3pstrJbDeiS3IB3XwSSLMkZKpSqDOt7Kw2AVPaYUuBUgO8F3OOo7G5ZUqxlVP6c3o2RaIZtA999QGH8FOBFHg"/>
+</div>
+<div>
+<div class="font-display-lg text-headline-md font-bold text-primary dark:text-primary-fixed-dim leading-none">BUPZO</div>
+<div class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mt-1">Phoenix Pro</div>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant dark:hover:bg-primary-container/20 transition-all duration-200 active:scale-95 group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary dark:group-hover:text-primary-fixed transition-colors">dashboard</span>
+<span class="font-body-sm text-body-sm group-hover:text-primary dark:group-hover:text-primary-fixed transition-colors">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg border-l-4 border-primary dark:border-primary-fixed bg-primary/5 text-primary dark:text-primary-fixed font-bold hover:bg-surface-variant dark:hover:bg-primary-container/20 transition-all duration-200 active:scale-95" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">campaign</span>
+<span class="font-body-sm text-body-sm">Marketing</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant dark:hover:bg-primary-container/20 transition-all duration-200 active:scale-95 group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary dark:group-hover:text-primary-fixed transition-colors">inventory_2</span>
+<span class="font-body-sm text-body-sm group-hover:text-primary dark:group-hover:text-primary-fixed transition-colors">Inventory</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant dark:hover:bg-primary-container/20 transition-all duration-200 active:scale-95 group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary dark:group-hover:text-primary-fixed transition-colors">shopping_cart</span>
+<span class="font-body-sm text-body-sm group-hover:text-primary dark:group-hover:text-primary-fixed transition-colors">Orders</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant dark:hover:bg-primary-container/20 transition-all duration-200 active:scale-95 group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary dark:group-hover:text-primary-fixed transition-colors">leaderboard</span>
+<span class="font-body-sm text-body-sm group-hover:text-primary dark:group-hover:text-primary-fixed transition-colors">Analytics</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant dark:hover:bg-primary-container/20 transition-all duration-200 active:scale-95 group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary dark:group-hover:text-primary-fixed transition-colors">group</span>
+<span class="font-body-sm text-body-sm group-hover:text-primary dark:group-hover:text-primary-fixed transition-colors">Vendors</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-variant dark:hover:bg-primary-container/20 transition-all duration-200 active:scale-95 group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary dark:group-hover:text-primary-fixed transition-colors">settings</span>
+<span class="font-body-sm text-body-sm group-hover:text-primary dark:group-hover:text-primary-fixed transition-colors">Settings</span>
+</a>
+</div>
+<div class="mt-auto pt-4 border-t border-outline-variant space-y-1">
+<button class="w-full flex items-center justify-center gap-2 bg-electric-blue/10 text-electric-blue rounded-lg py-2.5 px-4 font-label-md text-label-md hover:bg-electric-blue/20 transition-colors mb-4 border border-electric-blue/20 interactive-hover">
+<span class="material-symbols-outlined text-[18px]">auto_awesome</span>
+                AI Insights
+            </button>
+<a class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-variant transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary">help</span>
+<span class="font-body-sm text-body-sm group-hover:text-primary">Support</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-variant transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-error">logout</span>
+<span class="font-body-sm text-body-sm group-hover:text-error">Log Out</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="md:ml-sidebar-width pt-16 min-h-screen p-gutter md:p-8 bg-surface-container-low max-w-container-max mx-auto">
+<!-- Header -->
+<div class="mb-stack-default flex flex-col md:flex-row md:items-end justify-between gap-4">
+<div>
+<h2 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary font-bold mb-1">WhatsApp Marketing Blaster</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Configure and dispatch high-volume campaigns via Meta Cloud API.</p>
+</div>
+<div class="flex items-center gap-3">
+<span class="flex items-center gap-2 bg-lime-green/10 text-lime-green px-3 py-1.5 rounded-full font-mono-sm text-mono-sm border border-lime-green/20">
+<span class="w-2 h-2 rounded-full bg-lime-green animate-pulse"></span> API Connected
+                </span>
+<span class="font-mono-sm text-mono-sm text-on-surface-variant bg-surface-variant px-3 py-1.5 rounded-full border border-outline-variant">Credits: 12,450,000</span>
+</div>
+</div>
+<!-- Dashboard Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-stack-compact md:gap-stack-default">
+<!-- Left Column: Configuration (8 cols) -->
+<div class="lg:col-span-8 flex flex-col gap-stack-compact md:gap-stack-default">
+<!-- Audience Selector -->
+<div class="bg-surface rounded-xl p-6 elevated-card border border-outline-variant/50">
+<div class="flex items-center justify-between mb-4 border-b border-outline-variant/30 pb-3">
+<h3 class="font-headline-md text-[18px] text-primary font-semibold flex items-center gap-2">
+<span class="material-symbols-outlined text-electric-blue">groups</span>
+                            Audience Targeting
+                        </h3>
+<span class="bg-electric-blue/10 text-electric-blue font-mono-sm text-mono-sm px-2 py-1 rounded">Est. Reach: ~8.4Cr</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<!-- Segment Card 1 -->
+<div class="border border-outline-variant rounded-lg p-4 cursor-pointer hover:border-primary transition-colors bg-surface-container-lowest inner-shadow-sunk">
+<div class="flex items-start justify-between mb-2">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase">Inactive Users</span>
+<input checked="" class="rounded border-outline-variant text-primary focus:ring-primary w-4 h-4 mt-0.5" type="checkbox"/>
+</div>
+<div class="font-headline-md text-[20px] text-primary">Last 30 Days</div>
+<div class="font-body-sm text-body-sm text-dim-grey mt-1">4.2Cr Users</div>
+</div>
+<!-- Segment Card 2 -->
+<div class="border border-outline-variant rounded-lg p-4 cursor-pointer hover:border-primary transition-colors bg-surface-container-lowest inner-shadow-sunk">
+<div class="flex items-start justify-between mb-2">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase">Intent High</span>
+<input checked="" class="rounded border-outline-variant text-primary focus:ring-primary w-4 h-4 mt-0.5" type="checkbox"/>
+</div>
+<div class="font-headline-md text-[20px] text-primary">Cart Abandoners</div>
+<div class="font-body-sm text-body-sm text-dim-grey mt-1">1.8Cr Users</div>
+</div>
+<!-- Segment Card 3 -->
+<div class="border border-outline-variant rounded-lg p-4 cursor-pointer hover:border-primary transition-colors bg-surface-container-lowest inner-shadow-sunk">
+<div class="flex items-start justify-between mb-2">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase">Behavioral</span>
+<input checked="" class="rounded border-outline-variant text-primary focus:ring-primary w-4 h-4 mt-0.5" type="checkbox"/>
+</div>
+<div class="font-headline-md text-[20px] text-primary">Digi-Users</div>
+<div class="font-body-sm text-body-sm text-dim-grey mt-1">2.4Cr Users</div>
+</div>
+</div>
+<div class="mt-4 flex justify-end">
+<button class="text-electric-blue font-label-md text-label-md hover:underline flex items-center gap-1">
+<span class="material-symbols-outlined text-[16px]">add</span> Custom Filter
+                        </button>
+</div>
+</div>
+<!-- Template Builder -->
+<div class="bg-surface rounded-xl p-6 elevated-card border border-outline-variant/50">
+<div class="flex items-center justify-between mb-4 border-b border-outline-variant/30 pb-3">
+<h3 class="font-headline-md text-[18px] text-primary font-semibold flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary">edit_document</span>
+                            Template Builder
+                        </h3>
+<div class="flex gap-2">
+<button class="bg-surface-container text-on-surface-variant px-3 py-1.5 rounded font-label-md text-label-md border border-outline-variant hover:bg-surface-variant transition-colors">Load Template</button>
+<button class="bg-surface-container text-on-surface-variant px-3 py-1.5 rounded font-label-md text-label-md border border-outline-variant hover:bg-surface-variant transition-colors">Save Draft</button>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Editor Area -->
+<div class="space-y-4">
+<div>
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1">Campaign Name</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-md px-3 py-2 font-body-sm text-body-sm focus:border-primary focus:ring-1 focus:ring-primary inner-shadow-sunk outline-none transition-all" type="text" value="Q3 Reactivation Blast"/>
+</div>
+<div>
+<div class="flex justify-between items-end mb-1">
+<label class="block font-label-md text-label-md text-on-surface-variant">Message Body</label>
+<div class="flex gap-1">
+<button class="text-xs bg-surface-variant px-1.5 py-0.5 rounded text-on-surface-variant border border-outline-variant/50 hover:bg-surface-container transition-colors">{{name}}</button>
+<button class="text-xs bg-surface-variant px-1.5 py-0.5 rounded text-on-surface-variant border border-outline-variant/50 hover:bg-surface-container transition-colors">{{product}}</button>
+<button class="text-xs bg-surface-variant px-1.5 py-0.5 rounded text-on-surface-variant border border-outline-variant/50 hover:bg-surface-container transition-colors">{{discount}}</button>
+</div>
+</div>
+<textarea class="w-full bg-surface-container-lowest border border-outline-variant rounded-md px-3 py-2 font-body-sm text-body-sm h-32 focus:border-primary focus:ring-1 focus:ring-primary inner-shadow-sunk outline-none resize-none transition-all">Hi {{name}}! 🌟 We noticed you left some great items in your cart. Complete your purchase of {{product}} today and get an exclusive {{discount}} off! Tap the button below to claim.</textarea>
+</div>
+<div class="flex gap-4">
+<div class="flex-1">
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1">CTA Button Text</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-md px-3 py-2 font-body-sm text-body-sm focus:border-primary focus:ring-1 focus:ring-primary inner-shadow-sunk outline-none" type="text" value="Claim Offer"/>
+</div>
+<div class="flex-1">
+<label class="block font-label-md text-label-md text-on-surface-variant mb-1">Media (Optional)</label>
+<div class="border border-dashed border-outline-variant rounded-md px-3 py-2 text-center bg-surface-container-lowest cursor-pointer hover:bg-surface-container transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-dim-grey text-[18px]">image</span>
+<span class="font-body-sm text-body-sm text-dim-grey">Upload Image</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Preview Area -->
+<div class="bg-surface-container-low rounded-xl p-4 border border-outline-variant flex flex-col">
+<h4 class="font-label-md text-label-md text-on-surface-variant mb-3 uppercase tracking-widest text-center">Preview (Client View)</h4>
+<div class="bg-[#efeae2] flex-1 rounded-lg p-4 shadow-inner relative overflow-hidden">
+<!-- WhatsApp Header Mock -->
+<div class="bg-[#075e54] text-white p-2 flex items-center gap-2 rounded-t-md -mx-4 -mt-4 mb-4">
+<div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+<img alt="BUPZO" class="w-5 h-5 object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB3frvSs_kELhMPHhtzoQwlUVOm6Nl_O1CzQzpIUj-CKeM3p43W3TcAUPbGRsfVN0klvXusI-EZ65wDmvE_i0XsnKvqdYP3TmPdd9ilMvWd_Vrt8bnkR0jcdo07uv59fFPcWhSiG51wVpuuMax_tD4GAkpnCT4GoflfvU0ql2lCzTK4u6En8Hspz3pstrJbDeiS3IB3XwSSLMkZKpSqDOt7Kw2AVPaYUuBUgO8F3OOo7G5ZUqxlVP6c3o2RaIZtA999QGH8FOBFHg"/>
+</div>
+<span class="font-semibold text-sm">BUPZO Official</span>
+</div>
+<!-- Message Bubble -->
+<div class="bg-white rounded-lg p-3 shadow-sm max-w-[90%] relative">
+<p class="font-body-sm text-body-sm text-[#111b21] mb-2 leading-snug">Hi <span class="bg-yellow-100 px-1 rounded">Alex</span>! 🌟 We noticed you left some great items in your cart. Complete your purchase of <span class="bg-yellow-100 px-1 rounded">Premium Headphones</span> today and get an exclusive <span class="bg-yellow-100 px-1 rounded">20%</span> off! Tap the button below to claim.</p>
+<!-- Divider -->
+<div class="border-t border-gray-200 my-2"></div>
+<!-- CTA Button Mock -->
+<div class="text-center text-[#00a884] font-semibold text-sm flex items-center justify-center gap-1 cursor-pointer">
+<span class="material-symbols-outlined text-[16px]">open_in_new</span> Claim Offer
+                                    </div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Action & Analytics (4 cols) -->
+<div class="lg:col-span-4 flex flex-col gap-stack-compact md:gap-stack-default">
+<!-- Live Blast Console -->
+<div class="bg-surface rounded-xl p-6 elevated-card border border-primary/20 bg-gradient-to-b from-surface to-surface-container-low relative overflow-hidden">
+<!-- Subtle AI Glow background -->
+<div class="absolute -top-10 -right-10 w-32 h-32 bg-electric-blue/10 rounded-full blur-3xl pointer-events-none"></div>
+<h3 class="font-headline-md text-[18px] text-primary font-semibold flex items-center gap-2 mb-6">
+<span class="material-symbols-outlined text-error">rocket_launch</span>
+                        Live Console
+                    </h3>
+<!-- Massive Action Button -->
+<button class="w-full bg-primary hover:bg-primary/90 text-on-primary rounded-xl py-4 flex flex-col items-center justify-center gap-1 interactive-hover shadow-lg shadow-primary/20 transition-all active:scale-95 border-t border-white/10 mb-6 group relative overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
+<span class="font-headline-md text-[20px] font-bold tracking-wide z-10">SEND VIA MCB</span>
+<span class="font-mono-sm text-mono-sm text-on-primary/70 z-10">Dispatch to ~8.4Cr Targets</span>
+</button>
+<!-- Real-time Progress (Mock active state) -->
+<div class="space-y-4 border-t border-outline-variant/30 pt-4">
+<div class="flex justify-between items-center mb-1">
+<span class="font-label-md text-label-md text-on-surface-variant">Current Batch Progress</span>
+<span class="font-mono-sm text-mono-sm text-electric-blue font-bold">45%</span>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden inner-shadow-sunk">
+<div class="h-full bg-electric-blue rounded-full w-[45%] relative">
+<div class="absolute inset-0 bg-white/20 animate-pulse"></div>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-2 text-center pt-2">
+<div class="bg-surface-container-lowest rounded p-2 border border-outline-variant/50">
+<div class="font-mono-sm text-[11px] text-on-surface-variant uppercase mb-1">Sent</div>
+<div class="font-headline-md text-[16px] text-primary">3.8Cr</div>
+</div>
+<div class="bg-surface-container-lowest rounded p-2 border border-outline-variant/50">
+<div class="font-mono-sm text-[11px] text-on-surface-variant uppercase mb-1">Delivered</div>
+<div class="font-headline-md text-[16px] text-lime-green">3.6Cr</div>
+</div>
+<div class="bg-surface-container-lowest rounded p-2 border border-outline-variant/50">
+<div class="font-mono-sm text-[11px] text-on-surface-variant uppercase mb-1">Read</div>
+<div class="font-headline-md text-[16px] text-electric-blue">1.2Cr</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Analytics Overview -->
+<div class="bg-surface rounded-xl p-6 elevated-card border border-outline-variant/50 flex-1 flex flex-col">
+<h3 class="font-headline-md text-[18px] text-primary font-semibold flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-secondary">monitoring</span>
+                        Campaign ROI
+                    </h3>
+<!-- Stats Grid -->
+<div class="grid grid-cols-2 gap-4 mb-6">
+<div>
+<div class="font-label-md text-label-md text-on-surface-variant mb-1">Avg. Open Rate</div>
+<div class="font-headline-md text-[24px] text-primary flex items-end gap-2">
+                                42.5%
+                                <span class="font-body-sm text-sm text-lime-green flex items-center mb-1"><span class="material-symbols-outlined text-[14px]">trending_up</span> 2.1%</span>
+</div>
+</div>
+<div>
+<div class="font-label-md text-label-md text-on-surface-variant mb-1">Conv. Rate</div>
+<div class="font-headline-md text-[24px] text-primary flex items-end gap-2">
+                                3.8%
+                                <span class="font-body-sm text-sm text-lime-green flex items-center mb-1"><span class="material-symbols-outlined text-[14px]">trending_up</span> 0.4%</span>
+</div>
+</div>
+</div>
+<!-- Chart Placeholder (Bento Style) -->
+<div class="bg-surface-container-lowest rounded-lg border border-outline-variant p-4 flex-1 flex flex-col justify-end min-h-[150px] relative inner-shadow-sunk">
+<div class="absolute top-3 left-3 font-label-md text-label-md text-dim-grey">Engagement 24h</div>
+<!-- CSS Bar Chart Mockup -->
+<div class="flex items-end justify-between h-24 gap-1 px-2 mt-8">
+<div class="w-full bg-primary/20 rounded-t hover:bg-primary/40 transition-colors" style="height: 30%"></div>
+<div class="w-full bg-primary/20 rounded-t hover:bg-primary/40 transition-colors" style="height: 50%"></div>
+<div class="w-full bg-primary/30 rounded-t hover:bg-primary/50 transition-colors" style="height: 40%"></div>
+<div class="w-full bg-electric-blue/60 rounded-t hover:bg-electric-blue/80 transition-colors" style="height: 80%"></div>
+<div class="w-full bg-primary/40 rounded-t hover:bg-primary/60 transition-colors" style="height: 65%"></div>
+<div class="w-full bg-primary/20 rounded-t hover:bg-primary/40 transition-colors" style="height: 45%"></div>
+<div class="w-full bg-primary/20 rounded-t hover:bg-primary/40 transition-colors" style="height: 35%"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="fixed bottom-0 left-0 w-full h-16 bg-surface dark:bg-surface-dark border-t border-outline-variant dark:border-outline shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-50 flex justify-around items-center md:hidden px-2">
+<a class="flex flex-col items-center justify-center w-16 h-full text-on-surface-variant hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-[24px]">dashboard</span>
+<span class="font-label-md text-[10px] mt-1">Dash</span>
+</a>
+<a class="flex flex-col items-center justify-center w-16 h-full text-primary font-bold" href="#">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1;">campaign</span>
+<span class="font-label-md text-[10px] mt-1">Blaster</span>
+</a>
+<a class="flex flex-col items-center justify-center w-16 h-full text-on-surface-variant hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-[24px]">leaderboard</span>
+<span class="font-label-md text-[10px] mt-1">Stats</span>
+</a>
+<a class="flex flex-col items-center justify-center w-16 h-full text-on-surface-variant hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-[24px]">menu</span>
+<span class="font-label-md text-[10px] mt-1">More</span>
+</a>
+</nav>
+<!-- Floating Action Button (Copilot) -->
+<button class="fixed bottom-20 md:bottom-8 right-8 rounded-full h-14 w-14 z-50 bg-primary dark:bg-primary-container text-on-primary dark:text-on-primary-container shadow-lg shadow-primary/20 dark:shadow-primary-container/40 flex items-center justify-center hover:scale-110 hover:shadow-xl transition-all duration-300 active:scale-90 border border-white/10 group">
+<span class="material-symbols-outlined group-hover:animate-pulse">smart_toy</span>
+</button>
+</body></html>

@@ -1,0 +1,11 @@
+https://chat.brandmark.io/generate#logoid=logo-096827109870c650d7204b778966f18f502efa4172357f42c02457af7ac53152
+
+BO
+
+#ffe45a  -- backgrrond
+#d70505 -- text colour
+#2bb184 -- U colour
+{"type":"brandmark-editor-objects","version":"1.0","objects":[{"cropX":0,"cropY":0,"id":"5413073","class":"logo-icon fill0","objectCaching":true,"left":512,"top":286.9438,"width":512,"height":512,"scaleX":0.64,"scaleY":0.64,"angle":0,"flipX":false,"flipY":false,"opacity":1,"fill":"#d70505","stroke":null,"strokeWidth":0,"quickEditTransforms":{"icon-above":{"scale":0.64,"top":0,"left":0}},"type":"Image","version":"6.5.1","originX":"center","originY":"center","strokeDashArray":null,"strokeLineCap":"butt","strokeDashOffset":0,"strokeLineJoin":"miter","strokeUniform":false,"strokeMiterLimit":4,"shadow":null,"visible":true,"backgroundColor":"","fillRule":"nonzero","paintFirst":"fill","globalCompositeOperation":"source-over","skewX":0,"skewY":0,"src":"https://chat.brandmark.io/noun512/5413073.png","crossOrigin":"anonymous","filters":[{"type":"BlendColor","color":"#d70505","mode":"tint","alpha":1}]}],"timestamp":1780993929669}
+
+
+https://1drv.ms/w/c/0aa14b393b4ea02b/IQByzMyD3xZNSpLg8jMimwfSAVZO6lOhTNrB4wqymay34hs?e=YfIpZK
