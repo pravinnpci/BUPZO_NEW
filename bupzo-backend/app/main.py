@@ -126,14 +126,45 @@ class OrderCreate(BaseModel):
     currency: str = "ZAR"
     exchange_rate: float = 1.000000
 
+class SellerResponse(BaseModel):
+    id: UUID
+    user_id: UUID
+    business_name: str
+    commission_rate: float
+    status: str
+    kyc_details: dict
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class PayoutResponse(BaseModel):
+    id: UUID
+    seller_id: UUID
+    amount: float
+    status: str
+    request_date: datetime
+    processed_date: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+class WalletAdjustmentRequest(BaseModel):
+    amount: float
+    type: str  # 'Credit' or 'Debit'
+    reason: Optional[str] = None
+
 # Helper functions for database execution
 async def execute_query(query: str, *args):
     async with pool.acquire() as conn:
-        return await conn.fetch(query, *args)
+        rows = await conn.fetch(query, *args)
+        return [dict(row) for row in rows]
 
 async def execute_query_one(query: str, *args):
     async with pool.acquire() as conn:
-        return await conn.fetchrow(query, *args)
+        row = await conn.fetchrow(query, *args)
+        return dict(row) if row is not None else None
 
 async def execute_query_val(query: str, *args):
     async with pool.acquire() as conn:
@@ -675,4 +706,73 @@ async def ai_fraud_check(payload: FraudAnalysisRequest):
         "risk_score_percent": risk_score,
         "reasons": reasons
     }
+
+# Seller Management
+@app.get("/api/sellers/", response_model=List[SellerResponse])
+async def read_sellers():
+    query = "SELECT id, user_id, business_name, commission_rate, status, kyc_details, created_at, updated_at FROM sellers"
+    return await execute_query(query)
+
+@app.post("/api/sellers/{seller_id}/approve")
+async def approve_seller(seller_id: UUID):
+    query = "UPDATE sellers SET status = 'APPROVED', updated_at = NOW() WHERE id = $1 RETURNING id, status"
+    res = await execute_query_one(query, seller_id)
+    if not res:
+        raise HTTPException(status_code=404, detail="Seller not found")
+    return {"success": True, "seller_id": res['id'], "status": res['status']}
+
+@app.post("/api/sellers/{seller_id}/reject")
+async def reject_seller(seller_id: UUID):
+    query = "UPDATE sellers SET status = 'REJECTED', updated_at = NOW() WHERE id = $1 RETURNING id, status"
+    res = await execute_query_one(query, seller_id)
+    if not res:
+        raise HTTPException(status_code=404, detail="Seller not found")
+    return {"success": True, "seller_id": res['id'], "status": res['status']}
+
+# Payouts Management
+@app.get("/api/payouts/", response_model=List[PayoutResponse])
+async def read_payouts():
+    query = "SELECT id, seller_id, amount, status, request_date, processed_date FROM seller_payouts"
+    return await execute_query(query)
+
+@app.post("/api/payouts/{payout_id}/approve")
+async def approve_payout(payout_id: UUID):
+    query = "UPDATE seller_payouts SET status = 'PROCESSED', processed_date = NOW() WHERE id = $1 RETURNING id, status"
+    res = await execute_query_one(query, payout_id)
+    if not res:
+        raise HTTPException(status_code=404, detail="Payout request not found")
+    return {"success": True, "payout_id": res['id'], "status": res['status']}
+
+# Manual Wallet Overwrite
+@app.post("/api/users/{user_id}/wallet/adjust")
+async def adjust_wallet(user_id: UUID, payload: WalletAdjustmentRequest):
+    # Verify user
+    u_check = await execute_query_one("SELECT id, wallet_balance FROM users WHERE id = $1", user_id)
+    if not u_check:
+        # Check if the ID matches a seller's ID, and if so, adjust the associated user_id's wallet
+        s_check = await execute_query_one("SELECT user_id FROM sellers WHERE id = $1", user_id)
+        if s_check:
+            user_id = s_check['user_id']
+            u_check = await execute_query_one("SELECT id, wallet_balance FROM users WHERE id = $1", user_id)
+        else:
+            raise HTTPException(status_code=404, detail="User or Seller not found")
+
+    change = payload.amount if payload.type == "Credit" else -payload.amount
+    
+    # Calculate new balance and verify it's not negative
+    new_balance = float(u_check['wallet_balance']) + change
+    if new_balance < 0:
+        raise HTTPException(status_code=400, detail="Wallet balance cannot go below zero.")
+
+    # Transaction block
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            await conn.execute("UPDATE users SET wallet_balance = wallet_balance + $1 WHERE id = $2", change, user_id)
+            await conn.execute(
+                "INSERT INTO wallet_transactions (id, user_id, amount, type, description) VALUES ($1, $2, $3, 'ADMIN_ADJUSTMENT', $4)",
+                uuid4(), user_id, change, payload.reason or "Manual Admin Overwrite"
+            )
+
+    return {"success": True, "user_id": user_id, "new_balance": new_balance}
+
 

@@ -33,42 +33,12 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [darkMode, setDarkMode] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasMounted, setHasMounted] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const loggedIn = localStorage.getItem('isAdminLoggedIn');
-      if (!loggedIn) {
-        router.push('/login');
-      } else {
-        setIsLoading(false);
-      }
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
 
-      const savedTheme = localStorage.getItem('adminDarkMode') === 'true';
-      setDarkMode(savedTheme);
-    }
-  }, [router]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('adminDarkMode', darkMode.toString());
-    }
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [darkMode]);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[#fff8f4] dark:bg-[#0c0b11] flex items-center justify-center font-sans text-xs font-bold text-[#A6808C] dark:text-[#ccc6dc]">
-        Verifying Security Authority...
-      </div>
-    );
-  }
-  
-  // Data states
+  // Data states (fallback to mock)
   const [users, setUsers] = useState(initialUsers);
   const [sellers, setSellers] = useState(initialSellers);
   const [payouts, setPayouts] = useState(initialPayouts);
@@ -97,8 +67,101 @@ export default function AdminDashboard() {
   const [campaignProgress, setCampaignProgress] = useState(0);
   const [isBlasting, setIsBlasting] = useState(false);
 
+  // Set mount state
   useEffect(() => {
-    // Poll telemetry logs every 5 seconds to simulate real-time updates
+    setHasMounted(true);
+  }, []);
+
+  // Check login and theme
+  useEffect(() => {
+    if (!hasMounted) return;
+
+    const loggedIn = localStorage.getItem('isAdminLoggedIn');
+    if (!loggedIn) {
+      router.push('/login');
+    } else {
+      setIsLoading(false);
+    }
+
+    const savedTheme = localStorage.getItem('adminDarkMode') === 'true';
+    setDarkMode(savedTheme);
+  }, [hasMounted, router]);
+
+  // Dark mode classList toggle
+  useEffect(() => {
+    if (!hasMounted) return;
+
+    localStorage.setItem('adminDarkMode', darkMode.toString());
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [darkMode, hasMounted]);
+
+  // Fetch live backend data
+  useEffect(() => {
+    if (!hasMounted || isLoading) return;
+
+    async function loadLiveAdminData() {
+      try {
+        const usersResp = await fetch(`${API_URL}/api/users/`);
+        if (usersResp.ok) {
+          const usersData = await usersResp.json();
+          if (Array.isArray(usersData) && usersData.length > 0) {
+            setUsers(usersData.map((u: any) => ({
+              id: u.id,
+              phone: u.phone,
+              email: u.email || 'N/A',
+              wallet: u.wallet_balance,
+              tier: u.is_premium ? 'Premium' : 'Normal',
+              status: 'Active',
+              risk: parseFloat(u.wallet_balance) > 4000 ? 'Medium' : 'Low'
+            })));
+          }
+        }
+
+        const sellersResp = await fetch(`${API_URL}/api/sellers/`);
+        if (sellersResp.ok) {
+          const sellersData = await sellersResp.json();
+          if (Array.isArray(sellersData) && sellersData.length > 0) {
+            setSellers(sellersData.map((s: any) => ({
+              id: s.id,
+              businessName: s.business_name,
+              owner: `Seller Account`,
+              status: s.status === 'PENDING' ? 'Pending KYC' : s.status === 'APPROVED' ? 'Approved' : 'Rejected',
+              commission: s.commission_rate,
+              date: new Date(s.created_at).toLocaleDateString(),
+              rating: 4.5
+            })));
+          }
+        }
+
+        const payoutsResp = await fetch(`${API_URL}/api/payouts/`);
+        if (payoutsResp.ok) {
+          const payoutsData = await payoutsResp.json();
+          if (Array.isArray(payoutsData) && payoutsData.length > 0) {
+            setPayouts(payoutsData.map((p: any) => ({
+              id: p.id,
+              sellerId: p.seller_id,
+              amount: p.amount,
+              balance: p.amount,
+              date: new Date(p.request_date).toLocaleString(),
+              status: p.status === 'PENDING' ? 'Pending' : 'Approved'
+            })));
+          }
+        }
+      } catch (err) {
+        console.error("Live admin data load error:", err);
+      }
+    }
+
+    loadLiveAdminData();
+  }, [hasMounted, isLoading]);
+
+  // Telemetry log simulation loop
+  useEffect(() => {
+    if (!hasMounted) return;
     const interval = setInterval(() => {
       const timestamp = new Date().toLocaleTimeString();
       const logs = [
@@ -111,9 +174,10 @@ export default function AdminDashboard() {
       setTelemetryLogs(prev => [randomLog, ...prev.slice(0, 8)]);
     }, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [hasMounted]);
 
-  const handleWalletAdjustment = (e: React.FormEvent) => {
+  // Wallet Overwrite Action
+  const handleWalletAdjustment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!adjustId || !adjustAmount) {
       alert("Please fill in Target ID and Amount.");
@@ -121,31 +185,65 @@ export default function AdminDashboard() {
     }
     
     const amt = parseFloat(adjustAmount);
-    const userIndex = users.findIndex(u => u.id === adjustId);
     
-    if (userIndex !== -1) {
-      const updated = [...users];
-      const change = adjustType === 'Credit' ? amt : -amt;
-      updated[userIndex].wallet += change;
-      setUsers(updated);
+    try {
+      const resp = await fetch(`${API_URL}/api/users/${adjustId}/wallet/adjust`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: amt, type: adjustType, reason: adjustReason || 'Manual Admin Overwrite' })
+      });
       
-      const newLog = {
-        time: new Date().toLocaleTimeString(),
-        user: "Super Admin",
-        action: `Wallet ${adjustType}`,
-        details: `${adjustType}ed ${adjustId} with ₹${amt}. Reason: ${adjustReason || 'Manual Overwrite'}`
-      };
-      setAuditLogs(prev => [newLog, ...prev]);
-      alert(`Wallet of ${adjustId} successfully updated by ₹${change}.`);
-    } else {
-      const newLog = {
-        time: new Date().toLocaleTimeString(),
-        user: "Super Admin",
-        action: `Adjustment Failed`,
-        details: `Target ${adjustId} not found in user directory.`
-      };
-      setAuditLogs(prev => [newLog, ...prev]);
-      alert(`User ID ${adjustId} not found in directory. Action logged.`);
+      if (resp.ok) {
+        const data = await resp.json();
+        alert(`Wallet successfully updated. New Balance: ₹${data.new_balance}`);
+        
+        // Refresh users
+        const usersResp = await fetch(`${API_URL}/api/users/`);
+        if (usersResp.ok) {
+          const usersData = await usersResp.json();
+          setUsers(usersData.map((u: any) => ({
+            id: u.id,
+            phone: u.phone,
+            email: u.email || 'N/A',
+            wallet: u.wallet_balance,
+            tier: u.is_premium ? 'Premium' : 'Normal',
+            status: 'Active',
+            risk: parseFloat(u.wallet_balance) > 4000 ? 'Medium' : 'Low'
+          })));
+        }
+
+        const newLog = {
+          time: new Date().toLocaleTimeString(),
+          user: "Super Admin",
+          action: `Wallet ${adjustType}`,
+          details: `${adjustType}ed ${adjustId} with ₹${amt}. Reason: ${adjustReason || 'Manual Overwrite'}`
+        };
+        setAuditLogs(prev => [newLog, ...prev]);
+      } else {
+        const errData = await resp.json();
+        alert(`Error: ${errData.detail || 'Failed to update wallet'}`);
+      }
+    } catch (err) {
+      console.error(err);
+      // Fallback local logic
+      const userIndex = users.findIndex(u => u.id === adjustId);
+      if (userIndex !== -1) {
+        const updated = [...users];
+        const change = adjustType === 'Credit' ? amt : -amt;
+        updated[userIndex].wallet += change;
+        setUsers(updated);
+        
+        const newLog = {
+          time: new Date().toLocaleTimeString(),
+          user: "Super Admin (Offline)",
+          action: `Wallet ${adjustType}`,
+          details: `${adjustType}ed ${adjustId} with ₹${amt}. Reason: ${adjustReason || 'Manual Overwrite'}`
+        };
+        setAuditLogs(prev => [newLog, ...prev]);
+        alert(`Offline Mode: Local wallet updated by ₹${change}.`);
+      } else {
+        alert("Target Account ID not found.");
+      }
     }
 
     setAdjustId('');
@@ -153,29 +251,62 @@ export default function AdminDashboard() {
     setAdjustReason('');
   };
 
-  const handleApproveKYC = (sellerId: string) => {
-    setSellers(prev => prev.map(s => s.id === sellerId ? { ...s, status: 'Approved' } : s));
-    const newLog = {
-      time: new Date().toLocaleTimeString(),
-      user: "Super Admin",
-      action: "KYC Approved",
-      details: `Approved seller profile for ${sellerId}`
-    };
-    setAuditLogs(prev => [newLog, ...prev]);
+  // Merchant KYC approval Action
+  const handleApproveKYC = async (sellerId: string) => {
+    try {
+      const resp = await fetch(`${API_URL}/api/sellers/${sellerId}/approve`, {
+        method: 'POST'
+      });
+      if (resp.ok) {
+        setSellers(prev => prev.map(s => s.id === sellerId ? { ...s, status: 'Approved' } : s));
+        alert("Merchant KYC approved successfully!");
+        
+        const newLog = {
+          time: new Date().toLocaleTimeString(),
+          user: "Super Admin",
+          action: "KYC Approved",
+          details: `Approved seller profile for ${sellerId}`
+        };
+        setAuditLogs(prev => [newLog, ...prev]);
+      } else {
+        alert("Failed to approve merchant.");
+      }
+    } catch (err) {
+      console.error(err);
+      setSellers(prev => prev.map(s => s.id === sellerId ? { ...s, status: 'Approved' } : s));
+      alert("Offline Mode: Seller locally approved.");
+    }
   };
 
-  const handlePayout = (payoutId: string) => {
-    setPayouts(prev => prev.map(p => p.id === payoutId ? { ...p, status: 'Approved' } : p));
-    const payout = payouts.find(p => p.id === payoutId);
-    const newLog = {
-      time: new Date().toLocaleTimeString(),
-      user: "Super Admin",
-      action: "Payout Disbursed",
-      details: `Disbursed ₹${payout?.amount} to seller ${payout?.sellerId} via Connected Wallet Router`
-    };
-    setAuditLogs(prev => [newLog, ...prev]);
+  // Disburse payout Action
+  const handlePayout = async (payoutId: string) => {
+    try {
+      const resp = await fetch(`${API_URL}/api/payouts/${payoutId}/approve`, {
+        method: 'POST'
+      });
+      if (resp.ok) {
+        setPayouts(prev => prev.map(p => p.id === payoutId ? { ...p, status: 'Approved' } : p));
+        alert("Payout processed successfully!");
+        
+        const payout = payouts.find(p => p.id === payoutId);
+        const newLog = {
+          time: new Date().toLocaleTimeString(),
+          user: "Super Admin",
+          action: "Payout Disbursed",
+          details: `Disbursed ₹${payout?.amount} to seller ${payout?.sellerId} via Connected Wallet Router`
+        };
+        setAuditLogs(prev => [newLog, ...prev]);
+      } else {
+        alert("Failed to process payout.");
+      }
+    } catch (err) {
+      console.error(err);
+      setPayouts(prev => prev.map(p => p.id === payoutId ? { ...p, status: 'Approved' } : p));
+      alert("Offline Mode: Payout locally approved.");
+    }
   };
 
+  // Send campaign broadcast Action
   const startWhatsAppBlast = (e: React.FormEvent) => {
     e.preventDefault();
     if (!campaignTitle) {
@@ -206,6 +337,15 @@ export default function AdminDashboard() {
       });
     }, 300);
   };
+
+  // Preloader / SSR Hydration Shield
+  if (!hasMounted || isLoading) {
+    return (
+      <div className="min-h-screen bg-[#fff8f4] dark:bg-[#0c0b11] flex items-center justify-center font-sans text-xs font-bold text-[#A6808C] dark:text-[#ccc6dc]">
+        Verifying Security Authority...
+      </div>
+    );
+  }
 
   return (
     <div className={`${darkMode ? 'dark bg-[#0c0b11]' : 'bg-[#fff8f4]'} min-h-screen text-[#1e1b19] dark:text-zinc-100 font-sans transition-colors duration-300 flex overflow-hidden`}>

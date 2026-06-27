@@ -1,6 +1,7 @@
 # Gitignore for Bupzo Project
 
 # Operating System Files
+.next/
 .DS_Store
 Thumbs.db
 ehthumbs.db
@@ -59,6 +60,7 @@ yarn-error.log
 
 # Other common ignored files
 coverage/
+*.json
 *.pid
 *.sock
 *.sublime-project
