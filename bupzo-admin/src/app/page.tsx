@@ -67,6 +67,45 @@ export default function AdminDashboard() {
   const [campaignProgress, setCampaignProgress] = useState(0);
   const [isBlasting, setIsBlasting] = useState(false);
 
+  // User Management Modals
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+
+  // Forms states
+  const [newUserPhone, setNewUserPhone] = useState('');
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserTier, setNewUserTier] = useState('Normal');
+  const [newUserWallet, setNewUserWallet] = useState('0.00');
+
+  // Coupon/Voucher States
+  const [coupons, setCoupons] = useState<any[]>([]);
+  const [newCouponCode, setNewCouponCode] = useState('');
+  const [newCouponDiscount, setNewCouponDiscount] = useState('');
+  const [newCouponMinSpend, setNewCouponMinSpend] = useState('');
+
+  // Products States
+  const [products, setProducts] = useState<any[]>([]);
+  const [showEditProductModal, setShowEditProductModal] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [editProductName, setEditProductName] = useState('');
+  const [editProductPrice, setEditProductPrice] = useState('');
+  const [editProductQty, setEditProductQty] = useState('');
+  const [editProductDesc, setEditProductDesc] = useState('');
+  const [editProductImage, setEditProductImage] = useState('');
+
+  // Coupon Edit States
+  const [showEditCouponModal, setShowEditCouponModal] = useState(false);
+  const [selectedCoupon, setSelectedCoupon] = useState<any>(null);
+  const [editCouponCode, setEditCouponCode] = useState('');
+  const [editCouponDiscount, setEditCouponDiscount] = useState('');
+  const [editCouponMinSpend, setEditCouponMinSpend] = useState('');
+
+  const [editUserPhone, setEditUserPhone] = useState('');
+  const [editUserEmail, setEditUserEmail] = useState('');
+  const [editUserTier, setEditUserTier] = useState('Normal');
+  const [editUserWallet, setEditUserWallet] = useState('0.00');
+
   // Set mount state
   useEffect(() => {
     setHasMounted(true);
@@ -150,6 +189,28 @@ export default function AdminDashboard() {
               status: p.status === 'PENDING' ? 'Pending' : 'Approved'
             })));
           }
+        }
+
+        // Fetch coupons
+        try {
+          const couponsResp = await fetch(`${API_URL}/api/coupons/`);
+          if (couponsResp.ok) {
+            const couponsData = await couponsResp.json();
+            setCoupons(couponsData);
+          }
+        } catch (e) {
+          console.error("Failed to load coupons in admin:", e);
+        }
+
+        // Fetch products
+        try {
+          const productsResp = await fetch(`${API_URL}/api/products/`);
+          if (productsResp.ok) {
+            const productsData = await productsResp.json();
+            setProducts(productsData);
+          }
+        } catch (e) {
+          console.error("Failed to load products in admin:", e);
         }
       } catch (err) {
         console.error("Live admin data load error:", err);
@@ -245,10 +306,128 @@ export default function AdminDashboard() {
         alert("Target Account ID not found.");
       }
     }
-
     setAdjustId('');
     setAdjustAmount('');
     setAdjustReason('');
+  };
+
+  const handleAddCoupon = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCouponCode || !newCouponDiscount) {
+      alert("Please fill in code and discount percentage.");
+      return;
+    }
+    try {
+      const resp = await fetch(`${API_URL}/api/coupons/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: newCouponCode,
+          discount_percent: parseFloat(newCouponDiscount),
+          is_premium_only: false,
+          min_order_value: parseFloat(newCouponMinSpend) || 100.0,
+          expiry_date: new Date(Date.now() + 86400000 * 30).toISOString()
+        })
+      });
+      if (resp.ok) {
+        const cp = await resp.json();
+        alert(`Voucher "${cp.code}" created successfully!`);
+        setCoupons(prev => [cp, ...prev]);
+        setNewCouponCode('');
+        setNewCouponDiscount('');
+        setNewCouponMinSpend('');
+      } else {
+        alert("Failed to create coupon on backend.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error contacting backend server.");
+    }
+  };
+
+  const handleEditProductSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedProduct) return;
+    try {
+      const resp = await fetch(`${API_URL}/api/products/${selectedProduct.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editProductName,
+          price: parseFloat(editProductPrice),
+          stock_quantity: parseInt(editProductQty),
+          description: editProductDesc,
+          image_url: editProductImage
+        })
+      });
+      if (resp.ok) {
+        const prod = await resp.json();
+        alert(`Product "${prod.name}" updated successfully!`);
+        setProducts(prev => prev.map(p => p.id === prod.id ? prod : p));
+        setShowEditProductModal(false);
+        setSelectedProduct(null);
+      } else {
+        alert("Failed to update product.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error contacting backend server.");
+    }
+  };
+
+  const handleEditCouponSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCoupon) return;
+    try {
+      const resp = await fetch(`${API_URL}/api/coupons/${selectedCoupon.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: editCouponCode,
+          discount_percent: parseFloat(editCouponDiscount),
+          min_order_value: parseFloat(editCouponMinSpend)
+        })
+      });
+      if (resp.ok) {
+        const cp = await resp.json();
+        alert(`Voucher "${cp.code}" updated successfully!`);
+        setCoupons(prev => prev.map(c => c.id === cp.id ? cp : c));
+        setShowEditCouponModal(false);
+        setSelectedCoupon(null);
+      } else {
+        alert("Failed to update coupon.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error contacting backend server.");
+    }
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'product' | 'seller') => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+      const resp = await fetch(`${API_URL}/api/upload/`, {
+        method: 'POST',
+        body: formData
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        alert("Image uploaded to MinIO successfully!");
+        if (type === 'product') {
+          setEditProductImage(data.url);
+        }
+      } else {
+        alert("Failed to upload image to MinIO.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error uploading image.");
+    }
   };
 
   // Merchant KYC approval Action
@@ -338,6 +517,173 @@ export default function AdminDashboard() {
     }, 300);
   };
 
+  // Add User Form Action
+  const handleAddUserSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUserPhone) {
+      alert("Phone number is required.");
+      return;
+    }
+
+    try {
+      const resp = await fetch(`${API_URL}/api/users/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: newUserPhone,
+          email: newUserEmail || null,
+          is_premium: newUserTier === 'Premium',
+          signup_platform: 'WEB',
+          privacy_accepted: true
+        })
+      });
+
+      if (resp.ok) {
+        const newUser = await resp.json();
+        alert("User created successfully!");
+        
+        // Refresh users
+        const usersResp = await fetch(`${API_URL}/api/users/`);
+        if (usersResp.ok) {
+          const usersData = await usersResp.json();
+          setUsers(usersData.map((u: any) => ({
+            id: u.id,
+            phone: u.phone,
+            email: u.email || 'N/A',
+            wallet: u.wallet_balance,
+            tier: u.is_premium ? 'Premium' : 'Normal',
+            status: 'Active',
+            risk: parseFloat(u.wallet_balance) > 4000 ? 'Medium' : 'Low'
+          })));
+        } else {
+          // Local fallback
+          setUsers(prev => [
+            {
+              id: newUser.id,
+              phone: newUser.phone,
+              email: newUser.email || 'N/A',
+              wallet: parseFloat(newUserWallet) || 0,
+              tier: newUser.is_premium ? 'Premium' : 'Normal',
+              status: 'Active',
+              risk: (parseFloat(newUserWallet) || 0) > 4000 ? 'Medium' : 'Low'
+            },
+            ...prev
+          ]);
+        }
+
+        // Reset and close
+        setNewUserPhone('');
+        setNewUserEmail('');
+        setNewUserTier('Normal');
+        setNewUserWallet('0.00');
+        setShowAddUserModal(false);
+      } else {
+        const errData = await resp.json();
+        alert(`Error: ${errData.detail || 'Failed to create user'}`);
+      }
+    } catch (err) {
+      console.error(err);
+      // Local fallback
+      const offlineId = 'USR-' + Math.floor(Math.random() * 900000 + 100000);
+      setUsers(prev => [
+        {
+          id: offlineId,
+          phone: newUserPhone,
+          email: newUserEmail || 'N/A',
+          wallet: parseFloat(newUserWallet) || 0,
+          tier: newUserTier,
+          status: 'Active',
+          risk: (parseFloat(newUserWallet) || 0) > 4000 ? 'Medium' : 'Low'
+        },
+        ...prev
+      ]);
+      alert("Offline Mode: User created locally.");
+      setNewUserPhone('');
+      setNewUserEmail('');
+      setNewUserTier('Normal');
+      setNewUserWallet('0.00');
+      setShowAddUserModal(false);
+    }
+  };
+
+  // Open Edit User Modal
+  const openEditUserModal = (user: any) => {
+    setSelectedUser(user);
+    setEditUserPhone(user.phone);
+    setEditUserEmail(user.email === 'N/A' ? '' : user.email);
+    setEditUserTier(user.tier);
+    setEditUserWallet(user.wallet.toString());
+    setShowEditUserModal(true);
+  };
+
+  // Edit User Form Action
+  const handleEditUserSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUser) return;
+
+    try {
+      const resp = await fetch(`${API_URL}/api/users/${selectedUser.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: editUserPhone,
+          email: editUserEmail || null,
+          is_premium: editUserTier === 'Premium',
+          wallet_balance: parseFloat(editUserWallet) || 0
+        })
+      });
+
+      if (resp.ok) {
+        alert("User updated successfully!");
+        
+        // Refresh users
+        const usersResp = await fetch(`${API_URL}/api/users/`);
+        if (usersResp.ok) {
+          const usersData = await usersResp.json();
+          setUsers(usersData.map((u: any) => ({
+            id: u.id,
+            phone: u.phone,
+            email: u.email || 'N/A',
+            wallet: u.wallet_balance,
+            tier: u.is_premium ? 'Premium' : 'Normal',
+            status: 'Active',
+            risk: parseFloat(u.wallet_balance) > 4000 ? 'Medium' : 'Low'
+          })));
+        } else {
+          // Local fallback
+          setUsers(prev => prev.map(u => u.id === selectedUser.id ? {
+            ...u,
+            phone: editUserPhone,
+            email: editUserEmail || 'N/A',
+            wallet: parseFloat(editUserWallet) || 0,
+            tier: editUserTier,
+            risk: (parseFloat(editUserWallet) || 0) > 4000 ? 'Medium' : 'Low'
+          } : u));
+        }
+
+        setShowEditUserModal(false);
+        setSelectedUser(null);
+      } else {
+        const errData = await resp.json();
+        alert(`Error: ${errData.detail || 'Failed to update user'}`);
+      }
+    } catch (err) {
+      console.error(err);
+      // Local fallback
+      setUsers(prev => prev.map(u => u.id === selectedUser.id ? {
+        ...u,
+        phone: editUserPhone,
+        email: editUserEmail || 'N/A',
+        wallet: parseFloat(editUserWallet) || 0,
+        tier: editUserTier,
+        risk: (parseFloat(editUserWallet) || 0) > 4000 ? 'Medium' : 'Low'
+      } : u));
+      alert("Offline Mode: User profile updated locally.");
+      setShowEditUserModal(false);
+      setSelectedUser(null);
+    }
+  };
+
   // Preloader / SSR Hydration Shield
   if (!hasMounted || isLoading) {
     return (
@@ -376,6 +722,13 @@ export default function AdminDashboard() {
           </button>
 
           <button 
+            onClick={() => setActiveTab('products')} 
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border-l-4 transition-all text-sm font-semibold ${activeTab === 'products' ? 'border-[#3f3b4c] dark:border-[#ccc6dc] bg-zinc-100 dark:bg-zinc-800 text-black dark:text-white' : 'border-transparent text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
+          >
+            Products Catalog
+          </button>
+
+          <button 
             onClick={() => setActiveTab('kyc')} 
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border-l-4 transition-all text-sm font-semibold ${activeTab === 'kyc' ? 'border-[#3f3b4c] dark:border-[#ccc6dc] bg-zinc-100 dark:bg-zinc-800 text-black dark:text-white' : 'border-transparent text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
           >
@@ -408,6 +761,13 @@ export default function AdminDashboard() {
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border-l-4 transition-all text-sm font-semibold ${activeTab === 'whatsapp' ? 'border-[#3f3b4c] dark:border-[#ccc6dc] bg-zinc-100 dark:bg-zinc-800 text-black dark:text-white' : 'border-transparent text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
           >
             Marketing Blaster
+          </button>
+
+          <button 
+            onClick={() => setActiveTab('vouchers')} 
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border-l-4 transition-all text-sm font-semibold ${activeTab === 'vouchers' ? 'border-[#3f3b4c] dark:border-[#ccc6dc] bg-zinc-100 dark:bg-zinc-800 text-black dark:text-white' : 'border-transparent text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
+          >
+            Promo Vouchers
           </button>
 
           <button 
@@ -679,9 +1039,17 @@ export default function AdminDashboard() {
           {/* TAB 2: USER DIRECTORY */}
           {activeTab === 'users' && (
             <div className="space-y-6">
-              <div>
-                <h1 className="text-2xl font-bold font-heading">Platform User Directory</h1>
-                <p className="text-sm text-zinc-500 mt-1">Audit active profiles, wallet balances, and risk scores.</p>
+              <div className="flex justify-between items-center">
+                <div>
+                  <h1 className="text-2xl font-bold font-heading">Platform User Directory</h1>
+                  <p className="text-sm text-zinc-500 mt-1">Audit active profiles, wallet balances, and risk scores.</p>
+                </div>
+                <button 
+                  onClick={() => setShowAddUserModal(true)}
+                  className="bg-charcoal dark:bg-zinc-200 text-white dark:text-zinc-950 px-4 py-2 rounded-lg font-bold text-xs hover:opacity-90 flex items-center gap-1.5 shadow-sm"
+                >
+                  <span className="material-symbols-outlined text-[16px]">person_add</span> Add User
+                </button>
               </div>
 
               <div className="bg-white dark:bg-[#15131b] p-6 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b]">
@@ -695,6 +1063,7 @@ export default function AdminDashboard() {
                       <th className="py-2">Tier</th>
                       <th className="py-2">Status</th>
                       <th className="py-2">Risk</th>
+                      <th className="py-2 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -706,7 +1075,19 @@ export default function AdminDashboard() {
                         <td className="py-3 font-mono font-bold">₹{u.wallet}</td>
                         <td className="py-3">{u.tier}</td>
                         <td className="py-3">{u.status}</td>
-                        <td className="py-3"><span className={`px-2 py-0.5 rounded font-bold ${u.risk === 'Low' ? 'bg-green-100 text-green-700' : u.risk === 'Medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>{u.risk}</span></td>
+                        <td className="py-3">
+                          <span className={`px-2 py-0.5 rounded font-bold ${u.risk === 'Low' ? 'bg-green-100 text-green-700' : u.risk === 'Medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
+                            {u.risk}
+                          </span>
+                        </td>
+                        <td className="py-3 text-right">
+                          <button 
+                            onClick={() => openEditUserModal(u)}
+                            className="bg-[#3f3b4c] hover:bg-opacity-95 text-white dark:bg-zinc-800 dark:hover:bg-zinc-700 px-2 py-1 rounded font-bold text-[10px]"
+                          >
+                            Edit
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -936,10 +1317,470 @@ export default function AdminDashboard() {
               </div>
             </div>
           )}
+          {/* TAB: PRODUCTS CATALOG */}
+          {activeTab === 'products' && (
+            <div className="space-y-6">
+              <header>
+                <h2 className="text-2xl font-bold font-heading">Products Catalog</h2>
+                <p className="text-xs text-zinc-500 mt-1">Audit, edit, and update merchant sweet inventories and catalogs.</p>
+              </header>
+
+              <div className="bg-white dark:bg-[#15131b] border border-[#e8e1dd] dark:border-[#2f2b3b] p-6 rounded-2xl shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-400 font-bold uppercase tracking-wider text-[10px]">
+                        <th className="py-2.5">Image</th>
+                        <th className="py-2.5">Name</th>
+                        <th className="py-2.5">Price</th>
+                        <th className="py-2.5">Stock</th>
+                        <th className="py-2.5">Weight (g)</th>
+                        <th className="py-2.5">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {products.map((p: any) => (
+                        <tr key={p.id} className="border-b border-zinc-100 dark:border-zinc-900">
+                          <td className="py-3">
+                            <img 
+                              src={p.image_url || "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=400&q=80"} 
+                              alt={p.name} 
+                              className="w-10 h-10 object-cover rounded-lg"
+                            />
+                          </td>
+                          <td className="py-3 font-bold text-zinc-800 dark:text-zinc-200">{p.name}</td>
+                          <td className="py-3 font-mono">₹{p.price}</td>
+                          <td className="py-3 font-mono">{p.stock_quantity} units</td>
+                          <td className="py-3 font-mono">{p.weight_grams}g</td>
+                          <td className="py-3">
+                            <button 
+                              onClick={() => {
+                                setSelectedProduct(p);
+                                setEditProductName(p.name);
+                                setEditProductPrice(p.price.toString());
+                                setEditProductQty(p.stock_quantity.toString());
+                                setEditProductDesc(p.description || '');
+                                setEditProductImage(p.image_url || '');
+                                setShowEditProductModal(true);
+                              }}
+                              className="bg-charcoal dark:bg-zinc-800 text-white dark:text-zinc-200 px-2.5 py-1 rounded text-[10px] font-bold hover:opacity-90"
+                            >
+                              Edit
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {products.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="py-6 text-center text-zinc-400">No products found in platform catalog.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: PROMO VOUCHERS */}
+          {activeTab === 'vouchers' && (
+            <div className="space-y-6">
+              <header>
+                <h2 className="text-2xl font-bold font-heading">Promo Vouchers Console</h2>
+                <p className="text-xs text-zinc-500 mt-1">Configure and release sitewide discount vouchers and loyalty coupon rewards.</p>
+              </header>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                {/* Form to create voucher */}
+                <div className="bg-white dark:bg-[#15131b] border border-[#e8e1dd] dark:border-[#2f2b3b] p-6 rounded-2xl shadow-sm h-fit">
+                  <h3 className="text-md font-bold mb-4 font-heading">Generate New Voucher</h3>
+                  <form onSubmit={handleAddCoupon} className="space-y-4 text-xs font-semibold">
+                    <div>
+                      <label className="block text-zinc-500 mb-1">Coupon/Voucher Code</label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. FESTIVE25" 
+                        value={newCouponCode}
+                        onChange={(e) => setNewCouponCode(e.target.value)}
+                        className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-sm uppercase"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-zinc-500 mb-1">Discount Percentage (%)</label>
+                      <input 
+                        type="number" 
+                        min="1"
+                        max="100"
+                        placeholder="25" 
+                        value={newCouponDiscount}
+                        onChange={(e) => setNewCouponDiscount(e.target.value)}
+                        className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-sm font-mono"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-zinc-500 mb-1">Minimum Order Value (₹)</label>
+                      <input 
+                        type="number" 
+                        placeholder="300" 
+                        value={newCouponMinSpend}
+                        onChange={(e) => setNewCouponMinSpend(e.target.value)}
+                        className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-sm font-mono"
+                      />
+                    </div>
+                    <button 
+                      type="submit" 
+                      className="w-full bg-[#3f3b4c] dark:bg-[#ccc6dc] text-white dark:text-zinc-950 py-2.5 rounded-xl font-bold hover:opacity-90 active:scale-95 transition-all text-xs"
+                    >
+                      Issue Voucher
+                    </button>
+                  </form>
+                </div>
+
+                {/* Vouchers directory list */}
+                <div className="lg:col-span-2 bg-white dark:bg-[#15131b] border border-[#e8e1dd] dark:border-[#2f2b3b] p-6 rounded-2xl shadow-sm">
+                  <h3 className="text-md font-bold mb-4 font-heading">Systemwide Active Coupons</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-400 font-bold uppercase tracking-wider text-[10px]">
+                          <th className="py-2.5">Code</th>
+                          <th className="py-2.5">Discount</th>
+                          <th className="py-2.5">Min Order</th>
+                          <th className="py-2.5">Expiry Date</th>
+                          <th className="py-2.5">Premium Only</th>
+                          <th className="py-2.5">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {coupons.map((cp: any) => (
+                          <tr key={cp.id} className="border-b border-zinc-100 dark:border-zinc-905">
+                            <td className="py-3 font-bold font-mono text-sm text-zinc-800 dark:text-zinc-200">{cp.code}</td>
+                            <td className="py-3 font-mono">{cp.discount_percent}%</td>
+                            <td className="py-3 font-mono">₹{cp.min_order_value}</td>
+                            <td className="py-3 text-zinc-500">{new Date(cp.expiry_date).toLocaleDateString()}</td>
+                            <td className="py-3">
+                              <span className={`px-2 py-0.5 rounded font-bold ${cp.is_premium_only ? 'bg-amber-100/10 text-amber-500' : 'bg-green-100/10 text-green-500'}`}>
+                                {cp.is_premium_only ? 'Yes' : 'No'}
+                              </span>
+                            </td>
+                            <td className="py-3">
+                              <button 
+                                onClick={() => {
+                                  setSelectedCoupon(cp);
+                                  setEditCouponCode(cp.code);
+                                  setEditCouponDiscount(cp.discount_percent.toString());
+                                  setEditCouponMinSpend(cp.min_order_value.toString());
+                                  setShowEditCouponModal(true);
+                                }}
+                                className="bg-charcoal dark:bg-zinc-800 text-white dark:text-zinc-200 px-2.5 py-1 rounded text-[10px] font-bold hover:opacity-90"
+                              >
+                                Edit
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                        {coupons.length === 0 && (
+                          <tr>
+                            <td colSpan={6} className="py-6 text-center text-zinc-400">No active systemwide promo vouchers found.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          )}
 
         </main>
       </div>
 
+      {/* ADD USER MODAL */}
+      {showAddUserModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-[#fff8f4] dark:bg-[#15131b] border border-[#e8e1dd] dark:border-[#2f2b3b] rounded-2xl w-full max-w-md p-6 shadow-2xl relative text-zinc-900 dark:text-zinc-100">
+            <h3 className="text-lg font-bold font-heading mb-4">Add Platform User</h3>
+            <form onSubmit={handleAddUserSubmit} className="space-y-4 text-xs font-semibold">
+              <div>
+                <label className="block text-zinc-500 mb-1">Phone Number (Required)</label>
+                <input 
+                  type="text" 
+                  value={newUserPhone} 
+                  onChange={(e) => setNewUserPhone(e.target.value)} 
+                  placeholder="+919876543210"
+                  className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm text-zinc-900 dark:text-zinc-100 outline-none"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-zinc-500 mb-1">Email Address</label>
+                <input 
+                  type="email" 
+                  value={newUserEmail} 
+                  onChange={(e) => setNewUserEmail(e.target.value)} 
+                  placeholder="name@example.com"
+                  className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm text-zinc-900 dark:text-zinc-100 outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-zinc-500 mb-1">Membership Tier</label>
+                <select 
+                  value={newUserTier} 
+                  onChange={(e) => setNewUserTier(e.target.value)}
+                  className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm text-zinc-900 dark:text-zinc-100 outline-none"
+                >
+                  <option value="Normal">Normal Customer</option>
+                  <option value="Premium">Premium Member</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-zinc-500 mb-1">Initial Wallet Balance (₹)</label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  value={newUserWallet} 
+                  onChange={(e) => setNewUserWallet(e.target.value)} 
+                  className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm text-zinc-900 dark:text-zinc-100 outline-none"
+                />
+              </div>
+              <div className="flex gap-3 justify-end pt-4">
+                <button 
+                  type="button" 
+                  onClick={() => setShowAddUserModal(false)}
+                  className="px-4 py-2 border border-zinc-300 dark:border-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="px-4 py-2 bg-charcoal text-white rounded-lg hover:bg-opacity-90 font-bold"
+                >
+                  Create User
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT USER MODAL */}
+      {showEditUserModal && selectedUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-[#fff8f4] dark:bg-[#15131b] border border-[#e8e1dd] dark:border-[#2f2b3b] rounded-2xl w-full max-w-md p-6 shadow-2xl relative text-zinc-900 dark:text-zinc-100">
+            <h3 className="text-lg font-bold font-heading mb-4">Edit Platform User</h3>
+            <form onSubmit={handleEditUserSubmit} className="space-y-4 text-xs font-semibold">
+              <div>
+                <label className="block text-zinc-500 mb-1">User ID</label>
+                <input 
+                  type="text" 
+                  value={selectedUser.id} 
+                  disabled
+                  className="w-full px-3 py-2 bg-zinc-100 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm text-zinc-500 font-mono outline-none cursor-not-allowed"
+                />
+              </div>
+              <div>
+                <label className="block text-zinc-500 mb-1">Phone Number (Required)</label>
+                <input 
+                  type="text" 
+                  value={editUserPhone} 
+                  onChange={(e) => setEditUserPhone(e.target.value)} 
+                  className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm text-zinc-900 dark:text-zinc-100 outline-none"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-zinc-500 mb-1">Email Address</label>
+                <input 
+                  type="email" 
+                  value={editUserEmail} 
+                  onChange={(e) => setEditUserEmail(e.target.value)} 
+                  className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm text-zinc-900 dark:text-zinc-100 outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-zinc-500 mb-1">Membership Tier</label>
+                <select 
+                  value={editUserTier} 
+                  onChange={(e) => setEditUserTier(e.target.value)}
+                  className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm text-zinc-900 dark:text-zinc-100 outline-none"
+                >
+                  <option value="Normal">Normal Customer</option>
+                  <option value="Premium">Premium Member</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-zinc-500 mb-1">Wallet Balance (₹)</label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  value={editUserWallet} 
+                  onChange={(e) => setEditUserWallet(e.target.value)} 
+                  className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm text-zinc-900 dark:text-zinc-100 outline-none"
+                />
+              </div>
+              <div className="flex gap-3 justify-end pt-4">
+                <button 
+                  type="button" 
+                  onClick={() => { setShowEditUserModal(false); setSelectedUser(null); }}
+                  className="px-4 py-2 border border-zinc-300 dark:border-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="px-4 py-2 bg-charcoal text-white rounded-lg hover:bg-opacity-90 font-bold"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* EDIT PRODUCT MODAL */}
+      {showEditProductModal && selectedProduct && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-[#fff8f4] dark:bg-[#15131b] border border-[#e8e1dd] dark:border-[#2f2b3b] rounded-2xl w-full max-w-md p-6 shadow-2xl relative text-zinc-900 dark:text-zinc-100">
+            <h3 className="text-lg font-bold font-heading mb-4">Edit Product Inventory</h3>
+            <form onSubmit={handleEditProductSubmit} className="space-y-4 text-xs font-semibold">
+              <div>
+                <label className="block text-zinc-500 mb-1">Product Name</label>
+                <input 
+                  type="text" 
+                  value={editProductName} 
+                  onChange={(e) => setEditProductName(e.target.value)} 
+                  className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm outline-none"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-zinc-500 mb-1">Price (₹)</label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  value={editProductPrice} 
+                  onChange={(e) => setEditProductPrice(e.target.value)} 
+                  className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm outline-none font-mono"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-zinc-500 mb-1">Stock Quantity</label>
+                <input 
+                  type="number" 
+                  value={editProductQty} 
+                  onChange={(e) => setEditProductQty(e.target.value)} 
+                  className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm outline-none font-mono"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-zinc-500 mb-1">Description</label>
+                <textarea 
+                  value={editProductDesc} 
+                  onChange={(e) => setEditProductDesc(e.target.value)} 
+                  rows={3}
+                  className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-zinc-500 mb-1">Product Image URL (Upload to MinIO)</label>
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  onChange={(e) => handleImageUpload(e, 'product')} 
+                  className="w-full text-xs text-zinc-500 border border-zinc-300 dark:border-zinc-800 rounded-lg p-2 bg-white dark:bg-zinc-950"
+                />
+                {editProductImage && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <img src={editProductImage} alt="Preview" className="w-12 h-12 object-cover rounded-lg border" />
+                    <span className="text-[10px] text-zinc-500 truncate max-w-[200px]">{editProductImage}</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-3 justify-end pt-4">
+                <button 
+                  type="button" 
+                  onClick={() => { setShowEditProductModal(false); setSelectedProduct(null); }}
+                  className="px-4 py-2 border border-zinc-300 dark:border-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="px-4 py-2 bg-charcoal text-white rounded-lg hover:bg-opacity-90 font-bold"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT COUPON MODAL */}
+      {showEditCouponModal && selectedCoupon && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-[#fff8f4] dark:bg-[#15131b] border border-[#e8e1dd] dark:border-[#2f2b3b] rounded-2xl w-full max-w-md p-6 shadow-2xl relative text-zinc-900 dark:text-zinc-100">
+            <h3 className="text-lg font-bold font-heading mb-4">Edit Promo Voucher</h3>
+            <form onSubmit={handleEditCouponSubmit} className="space-y-4 text-xs font-semibold">
+              <div>
+                <label className="block text-zinc-500 mb-1">Coupon/Voucher Code</label>
+                <input 
+                  type="text" 
+                  value={editCouponCode} 
+                  onChange={(e) => setEditCouponCode(e.target.value)} 
+                  className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm outline-none uppercase font-mono font-bold"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-zinc-500 mb-1">Discount Percentage (%)</label>
+                <input 
+                  type="number" 
+                  min="1"
+                  max="100"
+                  value={editCouponDiscount} 
+                  onChange={(e) => setEditCouponDiscount(e.target.value)} 
+                  className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm outline-none font-mono"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-zinc-500 mb-1">Minimum Order Value (₹)</label>
+                <input 
+                  type="number" 
+                  value={editCouponMinSpend} 
+                  onChange={(e) => setEditCouponMinSpend(e.target.value)} 
+                  className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm outline-none font-mono"
+                  required
+                />
+              </div>
+              <div className="flex gap-3 justify-end pt-4">
+                <button 
+                  type="button" 
+                  onClick={() => { setShowEditCouponModal(false); setSelectedCoupon(null); }}
+                  className="px-4 py-2 border border-zinc-300 dark:border-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="px-4 py-2 bg-charcoal text-white rounded-lg hover:bg-opacity-90 font-bold"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT USER MODAL FOOTER */}
     </div>
   );
 }

@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { useTheme } from 'next-themes';
-import { fetchProducts, createCheckout, addToWishlist, getWishlistItems, removeFromWishlist, initiateStitchPayment, generateAICopy, verifyKYC, searchProducts, Product, WishlistItem } from '@/lib/api';
+import { fetchProducts, createCheckout, addToWishlist, getWishlistItems, removeFromWishlist, initiateStitchPayment, generateAICopy, verifyKYC, searchProducts, Product, WishlistItem, fetchCategories, createCategory, createProduct, fetchCoupons, createCoupon, validateCoupon, Category, Coupon, uploadImage } from '@/lib/api';
 import { useWebSocket } from '@/lib/websocket';
 import { useUser } from '@/lib/authStore';
 import AuthModal from '@/components/AuthModal';
 
 export default function Home() {
   const [userRole, setUserRole] = useState<'customer' | 'seller'>('seller');
-  const [sellerTab, setSellerTab] = useState<'overview' | 'products' | 'orders' | 'escrow' | 'kyc' | 'disputes'>('overview');
+  const [sellerTab, setSellerTab] = useState<'overview' | 'products' | 'orders' | 'escrow' | 'kyc' | 'disputes' | 'vouchers'>('overview');
   const { theme, setTheme } = useTheme();
 
   // API Data States
@@ -36,8 +36,32 @@ export default function Home() {
   const [newProductQty, setNewProductQty] = useState('');
   const [newProductCat, setNewProductCat] = useState('');
   const [newProductDesc, setNewProductDesc] = useState('');
+  const [newProductImage, setNewProductImage] = useState('');
   const [sellerId, setSellerId] = useState('c03b1234-5678-abcd-ef01-1234567890ab');
   const [categoryId, setCategoryId] = useState('d04b1234-5678-abcd-ef01-1234567890ab');
+
+  // Categories and Vouchers States
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState('');
+  const [showAddCategoryForm, setShowAddCategoryForm] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
+  const [newCatDesc, setNewCatDesc] = useState('');
+
+  // Voucher Creation States
+  const [newCouponCode, setNewCouponCode] = useState('');
+  const [newCouponDiscount, setNewCouponDiscount] = useState('');
+  const [newCouponMaxAmount, setNewCouponMaxAmount] = useState('');
+  const [newCouponMinOrder, setNewCouponMinOrder] = useState('');
+
+  // Checkout Voucher validation states
+  const [promoCode, setPromoCode] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<any>(null);
+  const [promoError, setPromoError] = useState('');
+
+  // Cart states
+  const [cart, setCart] = useState<{ product: Product; quantity: number }[]>([]);
+  const [showCart, setShowCart] = useState(false);
 
   // AI Product Studio States
   const [aiPrompt, setAiPrompt] = useState('');
@@ -76,6 +100,25 @@ export default function Home() {
         setProducts(prodData);
         const wishData = await getWishlistItems(mockUserId);
         setWishlist(wishData);
+        
+        // Fetch categories
+        try {
+          const cats = await fetchCategories();
+          setCategories(cats);
+          if (cats.length > 0) {
+            setSelectedCategoryId(cats[0].id);
+          }
+        } catch (e) {
+          console.error("Failed to load categories:", e);
+        }
+
+        // Fetch coupons
+        try {
+          const cps = await fetchCoupons();
+          setCoupons(cps);
+        } catch (e) {
+          console.error("Failed to load coupons:", e);
+        }
       } catch (err) {
         console.error("Error loading products/wishlist:", err);
       } finally {
@@ -199,6 +242,190 @@ export default function Home() {
     }
   };
 
+  // Add Category Submit
+  const handleAddCategorySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCatName) return;
+    try {
+      const cat = await createCategory(newCatName, newCatDesc);
+      alert(`Category "${cat.name}" created successfully!`);
+      setCategories(prev => [...prev, cat]);
+      setSelectedCategoryId(cat.id);
+      setNewCatName('');
+      setNewCatDesc('');
+      setShowAddCategoryForm(false);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to create category on backend.");
+    }
+  };
+
+  const handleLocalImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const res = await uploadImage(file);
+      if (res.success) {
+        setNewProductImage(res.url);
+        alert("Image uploaded to MinIO successfully!");
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Failed to upload image.");
+    }
+  };
+
+  // Add Product Submit
+  const handleAddProductSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newProductName || !newProductPrice || !selectedCategoryId) {
+      alert("Please fill in name, price, and category.");
+      return;
+    }
+
+    try {
+      const prod = await createProduct({
+        name: newProductName,
+        category_id: selectedCategoryId,
+        price: parseFloat(newProductPrice),
+        weight_grams: 250, // Default weight
+        image_url: newProductImage || "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=400&q=80",
+        is_combo: false,
+        stock_quantity: parseInt(newProductQty) || 50,
+        seller_id: sellerId,
+        description: newProductDesc
+      });
+      alert(`Product "${prod.name}" successfully added to the catalog!`);
+      setProducts(prev => [prod, ...prev]);
+
+      // Reset fields
+      setNewProductName('');
+      setNewProductPrice('');
+      setNewProductQty('');
+      setNewProductDesc('');
+      setNewProductImage('');
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Failed to add product to backend database.");
+    }
+  };
+
+  // Create Coupon/Voucher Submit
+  const handleAddCouponSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCouponCode || !newCouponDiscount) {
+      alert("Please fill in coupon code and discount percentage.");
+      return;
+    }
+    try {
+      const cp = await createCoupon({
+        code: newCouponCode,
+        discount_percent: parseFloat(newCouponDiscount),
+        is_premium_only: false,
+        min_order_value: parseFloat(newCouponMinOrder) || 100.0,
+        expiry_date: new Date(Date.now() + 86400000 * 30).toISOString() // 30 days default expiry
+      });
+      alert(`Coupon "${cp.code}" created successfully!`);
+      setCoupons(prev => [cp, ...prev]);
+      setNewCouponCode('');
+      setNewCouponDiscount('');
+      setNewCouponMinOrder('');
+    } catch (err) {
+      console.error(err);
+      alert("Failed to create coupon on backend.");
+    }
+  };
+
+  // Apply Coupon at Checkout
+  const handleApplyPromo = async (e: React.FormEvent, cartTotal: number) => {
+    e.preventDefault();
+    if (!promoCode) return;
+    setPromoError('');
+    try {
+      const res = await validateCoupon(promoCode, cartTotal);
+      if (res.success) {
+        setAppliedPromo(res);
+        alert(`Voucher "${res.code}" applied! Discount: ₹${res.discount_amount}`);
+      }
+    } catch (err: any) {
+      console.error(err);
+      setPromoError(err.message || "Failed to validate voucher.");
+      setAppliedPromo(null);
+    }
+  };
+
+  // Add to Cart
+  const handleAddToCart = (product: Product) => {
+    setCart(prev => {
+      const existing = prev.find(item => item.product.id === product.id);
+      if (existing) {
+        return prev.map(item => item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item);
+      }
+      return [...prev, { product, quantity: 1 }];
+    });
+    alert(`"${product.name}" added to cart!`);
+  };
+
+  // Update Cart Qty
+  const updateCartQuantity = (productId: string, amount: number) => {
+    setCart(prev => prev.map(item => {
+      if (item.product.id === productId) {
+        const nextQty = item.quantity + amount;
+        return nextQty > 0 ? { ...item, quantity: nextQty } : null;
+      }
+      return item;
+    }).filter(Boolean) as any);
+  };
+
+  // Submit Checkout
+  const handleCheckoutSubmit = async () => {
+    if (!user) {
+      alert("Please login first to complete your purchase.");
+      setIsAuthModalOpen(true);
+      return;
+    }
+    if (cart.length === 0) {
+      alert("Your cart is empty.");
+      return;
+    }
+
+    const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+    const discount = appliedPromo ? appliedPromo.discount_amount : 0;
+    const finalAmount = Math.max(0, subtotal - discount + 50); // ₹50 shipping
+
+    try {
+      const resp = await createCheckout({
+        user_id: user.id,
+        seller_id: sellerId,
+        items: cart.map(item => ({ product_id: item.product.id, quantity: item.quantity })),
+        total_amount: finalAmount,
+        order_source: 'WEB',
+        shipping_partner: 'Delhivery SLA',
+        payment_gateway: 'Razorpay',
+        trust_donation_amount: 2.00
+      });
+
+      if (resp.success) {
+        alert(`Checkout completed! Order ID: ${resp.order_id}\nTotal Paid: ₹${finalAmount.toFixed(2)}`);
+        
+        // Deduct from local wallet
+        setUser(prev => prev ? {
+          ...prev,
+          walletBalance: Math.max(0, (prev.walletBalance ?? 0) - finalAmount)
+        } : null);
+        
+        // Clear cart
+        setCart([]);
+        setAppliedPromo(null);
+        setPromoCode('');
+        setShowCart(false);
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Failed to submit checkout.");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-dust-grey dark:bg-[#1a191e] text-charcoal dark:text-[#f3f4f6] font-sans transition-colors duration-300 flex">
       
@@ -216,6 +443,14 @@ export default function Home() {
         >
           Portal: {userRole === 'customer' ? 'Customer Site' : 'Seller Dashboard'}
         </button>
+        {userRole === 'customer' && (
+          <button
+            onClick={() => setShowCart(true)}
+            className="px-4 py-2 rounded-full bg-electric-blue text-white font-bold text-xs shadow-md hover:bg-opacity-90 active:scale-95 transition-all flex items-center gap-1.5"
+          >
+            <span>🛒</span> Cart ({cart.reduce((sum, item) => sum + item.quantity, 0)})
+          </button>
+        )}
       </div>
 
       {/* CUSTOMER PORTAL */}
@@ -324,7 +559,7 @@ export default function Home() {
                           <div className="flex justify-between items-center pt-2">
                             <span className="font-bold text-sm">₹{p.price}</span>
                             <button 
-                              onClick={() => alert(`${p.name} added to cart!`)}
+                              onClick={() => handleAddToCart(p)}
                               className="bg-charcoal dark:bg-zinc-800 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-opacity-90 active:scale-95 transition-all"
                             >
                               Add to Cart
@@ -415,6 +650,12 @@ export default function Home() {
                 className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs font-semibold border-l-4 transition-all ${sellerTab === 'disputes' ? 'border-charcoal dark:border-[#f3f4f6] bg-almond-silk/10 text-black dark:text-white' : 'border-transparent text-zinc-400 hover:bg-almond-silk/5'}`}
               >
                 ⚖️ Disputes Center
+              </button>
+              <button 
+                onClick={() => setSellerTab('vouchers')} 
+                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs font-semibold border-l-4 transition-all ${sellerTab === 'vouchers' ? 'border-charcoal dark:border-[#f3f4f6] bg-almond-silk/10 text-black dark:text-white' : 'border-transparent text-zinc-400 hover:bg-almond-silk/5'}`}
+              >
+                🎟️ Promo Vouchers
               </button>
             </nav>
             
@@ -529,7 +770,7 @@ export default function Home() {
                   <div className="lg:col-span-2 space-y-6">
                     <div className="bg-white dark:bg-[#15131b] p-6 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b]">
                       <h3 className="text-sm font-bold uppercase tracking-wider mb-4">Add Sweet/Specialty Product</h3>
-                      <form className="space-y-4 text-xs">
+                      <form onSubmit={handleAddProductSubmit} className="space-y-4 text-xs">
                         <div>
                           <label className="block text-zinc-400 font-bold uppercase mb-1">Product Title</label>
                           <input 
@@ -538,8 +779,64 @@ export default function Home() {
                             onChange={(e) => setNewProductName(e.target.value)}
                             placeholder="e.g. Traditional Nagore Wheat Sweet Halwa" 
                             className="w-full bg-zinc-50 dark:bg-zinc-800 border border-[#e8e1dd] dark:border-[#2f2b3b] rounded-lg px-3 py-2 outline-none" 
+                            required
                           />
                         </div>
+
+                        <div>
+                          <label className="block text-zinc-400 font-bold uppercase mb-1">Product Category</label>
+                          <div className="flex gap-2">
+                            <select 
+                              value={selectedCategoryId}
+                              onChange={(e) => setSelectedCategoryId(e.target.value)}
+                              className="flex-1 bg-zinc-50 dark:bg-zinc-800 border border-[#e8e1dd] dark:border-[#2f2b3b] rounded-lg px-3 py-2 outline-none"
+                              required
+                            >
+                              <option value="">-- Select Category --</option>
+                              {categories.map(cat => (
+                                <option key={cat.id} value={cat.id}>{cat.name}</option>
+                              ))}
+                            </select>
+                            <button 
+                              type="button" 
+                              onClick={() => setShowAddCategoryForm(!showAddCategoryForm)}
+                              className="bg-zinc-200 dark:bg-zinc-800 text-charcoal dark:text-zinc-300 px-3 py-2 rounded-lg font-bold hover:bg-opacity-90"
+                            >
+                              {showAddCategoryForm ? "Close" : "+ New"}
+                            </button>
+                          </div>
+                        </div>
+
+                        {showAddCategoryForm && (
+                          <div className="p-4 bg-zinc-50 dark:bg-zinc-900 border border-dashed border-[#e8e1dd] dark:border-[#2f2b3b] rounded-lg space-y-3">
+                            <h4 className="font-bold text-xs">Create Inline Specialty Category</h4>
+                            <div>
+                              <input 
+                                type="text"
+                                placeholder="Category Name (e.g. Traditional Sweets)"
+                                value={newCatName}
+                                onChange={(e) => setNewCatName(e.target.value)}
+                                className="w-full bg-white dark:bg-zinc-950 border border-[#e8e1dd] dark:border-[#2f2b3b] rounded px-2 py-1 outline-none text-xs"
+                              />
+                            </div>
+                            <div>
+                              <input 
+                                type="text"
+                                placeholder="Short Description"
+                                value={newCatDesc}
+                                onChange={(e) => setNewCatDesc(e.target.value)}
+                                className="w-full bg-white dark:bg-zinc-950 border border-[#e8e1dd] dark:border-[#2f2b3b] rounded px-2 py-1 outline-none text-xs"
+                              />
+                            </div>
+                            <button 
+                              type="button"
+                              onClick={handleAddCategorySubmit}
+                              className="bg-charcoal text-white px-3 py-1.5 rounded font-bold text-[10px] hover:opacity-90"
+                            >
+                              Create Category
+                            </button>
+                          </div>
+                        )}
 
                         <div>
                           <label className="block text-zinc-400 font-bold uppercase mb-1">Regular Price (INR)</label>
@@ -549,6 +846,7 @@ export default function Home() {
                             onChange={(e) => setNewProductPrice(e.target.value)}
                             placeholder="299" 
                             className="w-full bg-zinc-50 dark:bg-zinc-800 border border-[#e8e1dd] dark:border-[#2f2b3b] rounded-lg px-3 py-2 outline-none font-mono" 
+                            required
                           />
                         </div>
 
@@ -560,6 +858,7 @@ export default function Home() {
                             onChange={(e) => setNewProductQty(e.target.value)}
                             placeholder="50" 
                             className="w-full bg-zinc-50 dark:bg-zinc-800 border border-[#e8e1dd] dark:border-[#2f2b3b] rounded-lg px-3 py-2 outline-none font-mono" 
+                            required
                           />
                         </div>
 
@@ -572,6 +871,22 @@ export default function Home() {
                             rows={4}
                             className="w-full bg-zinc-50 dark:bg-zinc-800 border border-[#e8e1dd] dark:border-[#2f2b3b] rounded-lg px-3 py-2 outline-none" 
                           />
+                        </div>
+
+                        <div>
+                          <label className="block text-zinc-400 font-bold uppercase mb-1">Product Image (Upload to MinIO)</label>
+                          <input 
+                            type="file" 
+                            accept="image/*"
+                            onChange={handleLocalImageUpload}
+                            className="w-full text-xs text-zinc-500 border border-[#e8e1dd] dark:border-[#2f2b3b] rounded-lg p-2 bg-zinc-50 dark:bg-zinc-800"
+                          />
+                          {newProductImage && (
+                            <div className="mt-2 flex items-center gap-2">
+                              <img src={newProductImage} alt="Preview" className="w-12 h-12 object-cover rounded-lg border border-[#e8e1dd] dark:border-[#2f2b3b]" />
+                              <span className="text-[10px] text-zinc-500 truncate max-w-[250px]">{newProductImage}</span>
+                            </div>
+                          )}
                         </div>
 
                         <button 
@@ -797,10 +1112,237 @@ export default function Home() {
                 </div>
               )}
 
+              {/* TAB 7: PROMO VOUCHERS */}
+              {sellerTab === 'vouchers' && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Voucher Creator Form */}
+                  <div className="lg:col-span-1 space-y-6">
+                    <div className="bg-white dark:bg-[#15131b] p-6 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b]">
+                      <h3 className="text-sm font-bold uppercase tracking-wider mb-4">Create Promo Voucher</h3>
+                      <form onSubmit={handleAddCouponSubmit} className="space-y-4 text-xs font-semibold">
+                        <div>
+                          <label className="block text-zinc-400 uppercase mb-1">Voucher/Coupon Code</label>
+                          <input 
+                            type="text" 
+                            placeholder="e.g. WELCOME50" 
+                            value={newCouponCode}
+                            onChange={(e) => setNewCouponCode(e.target.value)}
+                            className="w-full bg-zinc-50 dark:bg-zinc-800 border border-[#e8e1dd] dark:border-[#2f2b3b] rounded-lg px-3 py-2 outline-none uppercase" 
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-zinc-400 uppercase mb-1">Discount (%)</label>
+                          <input 
+                            type="number" 
+                            min="0"
+                            max="100"
+                            placeholder="15" 
+                            value={newCouponDiscount}
+                            onChange={(e) => setNewCouponDiscount(e.target.value)}
+                            className="w-full bg-zinc-50 dark:bg-zinc-800 border border-[#e8e1dd] dark:border-[#2f2b3b] rounded-lg px-3 py-2 outline-none font-mono" 
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-zinc-400 uppercase mb-1">Min Order Value (₹)</label>
+                          <input 
+                            type="number" 
+                            placeholder="200" 
+                            value={newCouponMinOrder}
+                            onChange={(e) => setNewCouponMinOrder(e.target.value)}
+                            className="w-full bg-zinc-50 dark:bg-zinc-800 border border-[#e8e1dd] dark:border-[#2f2b3b] rounded-lg px-3 py-2 outline-none font-mono" 
+                          />
+                        </div>
+                        <button 
+                          type="submit" 
+                          className="w-full bg-charcoal text-white py-2.5 rounded-lg font-bold hover:bg-opacity-95"
+                        >
+                          Generate Voucher
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+
+                  {/* Vouchers Directory List */}
+                  <div className="lg:col-span-2 space-y-6">
+                    <div className="bg-white dark:bg-[#15131b] p-6 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b]">
+                      <h3 className="text-sm font-bold uppercase tracking-wider mb-4">Active Shop Vouchers</h3>
+                      
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs">
+                          <thead>
+                            <tr className="border-b border-zinc-200 dark:border-zinc-700 text-zinc-400 font-bold">
+                              <th className="py-2">Code</th>
+                              <th className="py-2">Discount %</th>
+                              <th className="py-2">Min Spend</th>
+                              <th className="py-2">Expires At</th>
+                              <th className="py-2">Premium Only</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {coupons.map(cp => (
+                              <tr key={cp.id} className="border-b border-zinc-100 dark:border-zinc-800/50">
+                                <td className="py-3 font-bold text-zinc-800 dark:text-zinc-200">{cp.code}</td>
+                                <td className="py-3 font-mono">{cp.discount_percent}%</td>
+                                <td className="py-3 font-mono">₹{cp.min_order_value}</td>
+                                <td className="py-3 text-zinc-500">{new Date(cp.expiry_date).toLocaleDateString()}</td>
+                                <td className="py-3">
+                                  <span className={`px-2 py-0.5 rounded font-bold ${cp.is_premium_only ? 'bg-amber-100/10 text-amber-500' : 'bg-green-100/10 text-green-500'}`}>
+                                    {cp.is_premium_only ? 'Yes' : 'No'}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                            {coupons.length === 0 && (
+                              <tr>
+                                <td colSpan={5} className="py-6 text-center text-zinc-400">No promo vouchers generated yet.</td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
             </div>
           </div>
         </div>
         )
+      )}
+
+      {/* Cart Slide-over Panel */}
+      {showCart && (
+        <div className="fixed inset-0 z-50 overflow-hidden">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowCart(false)}></div>
+          <div className="absolute inset-y-0 right-0 max-w-full flex">
+            <div className="w-screen max-w-md bg-white dark:bg-[#15131b] shadow-xl flex flex-col h-full border-l border-[#e8e1dd] dark:border-[#2f2b3b]">
+              
+              {/* Header */}
+              <div className="px-6 py-5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+                <h2 className="text-md font-bold flex items-center gap-2">
+                  <span>🛒</span> Shopping Cart
+                </h2>
+                <button onClick={() => setShowCart(false)} className="text-zinc-400 hover:text-zinc-600 font-bold text-sm">
+                  ✕ Close
+                </button>
+              </div>
+
+              {/* Items List */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                {cart.map(item => (
+                  <div key={item.product.id} className="flex gap-4 items-center bg-zinc-50 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-150 dark:border-zinc-800 text-xs">
+                    <img 
+                      src={item.product.image_url || "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=400&q=80"} 
+                      alt={item.product.name} 
+                      className="w-12 h-12 object-cover rounded-lg"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold truncate">{item.product.name}</h4>
+                      <p className="text-zinc-500 font-semibold mt-0.5">₹{item.product.price}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => updateCartQuantity(item.product.id, -1)}
+                        className="w-6 h-6 rounded bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 flex items-center justify-center font-bold text-sm"
+                      >
+                        -
+                      </button>
+                      <span className="font-bold text-xs w-4 text-center">{item.quantity}</span>
+                      <button 
+                        onClick={() => updateCartQuantity(item.product.id, 1)}
+                        className="w-6 h-6 rounded bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 flex items-center justify-center font-bold text-sm"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {cart.length === 0 && (
+                  <div className="text-center py-20 text-zinc-400 font-medium">
+                    Your cart is empty. Add specialties from the catalog.
+                  </div>
+                )}
+              </div>
+
+              {/* Bottom Calculations & Voucher & Checkout */}
+              {cart.length > 0 && (
+                <div className="p-6 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/20 space-y-4 text-xs font-semibold">
+                  
+                  {/* Applied promo display */}
+                  {appliedPromo && (
+                    <div className="bg-green-500/10 border border-green-500/20 text-green-500 px-3 py-2 rounded-lg flex items-center justify-between">
+                      <span>Voucher <b>{appliedPromo.code}</b> Applied ({appliedPromo.discount_percentage}%)</span>
+                      <span>- ₹{appliedPromo.discount_amount.toFixed(2)}</span>
+                    </div>
+                  )}
+
+                  {/* Promo Input Form */}
+                  <form onSubmit={(e) => handleApplyPromo(e, cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0))} className="flex gap-2">
+                    <input 
+                      type="text" 
+                      placeholder="Enter Voucher Code" 
+                      value={promoCode}
+                      onChange={(e) => setPromoCode(e.target.value)}
+                      className="flex-1 bg-white dark:bg-zinc-900 border border-[#e8e1dd] dark:border-[#2f2b3b] rounded-lg px-3 py-2 outline-none uppercase font-bold text-[11px]"
+                    />
+                    <button 
+                      type="submit" 
+                      className="bg-charcoal text-white px-4 py-2 rounded-lg font-bold hover:bg-opacity-95"
+                    >
+                      Apply
+                    </button>
+                  </form>
+                  {promoError && <p className="text-red-500 text-[10px] mt-1">{promoError}</p>}
+
+                  {/* Pricing Breakdown */}
+                  <div className="space-y-1.5 pt-2">
+                    <div className="flex justify-between text-zinc-500">
+                      <span>Subtotal</span>
+                      <span>₹{cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0).toFixed(2)}</span>
+                    </div>
+                    {appliedPromo && (
+                      <div className="flex justify-between text-green-500">
+                        <span>Voucher Discount</span>
+                        <span>- ₹{appliedPromo.discount_amount.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-zinc-500">
+                      <span>Shipping Delivery</span>
+                      <span>₹50.00</span>
+                    </div>
+                    <div className="flex justify-between text-zinc-500">
+                      <span>Artisan Trust Fund</span>
+                      <span>₹2.00</span>
+                    </div>
+                    <div className="flex justify-between text-sm font-bold text-zinc-800 dark:text-zinc-100 border-t border-zinc-200 dark:border-zinc-800 pt-2">
+                      <span>Total Amount</span>
+                      <span>
+                        ₹{(
+                          Math.max(
+                            0,
+                            cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0) -
+                            (appliedPromo ? appliedPromo.discount_amount : 0) +
+                            52
+                          )
+                        ).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={handleCheckoutSubmit}
+                    className="w-full bg-[#007AFF] text-white py-3 rounded-xl font-bold hover:bg-opacity-90 active:scale-95 transition-all text-center block"
+                  >
+                    Confirm &amp; Place Order
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {isAuthModalOpen && <AuthModal onClose={() => setIsAuthModalOpen(false)} />}

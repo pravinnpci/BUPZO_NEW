@@ -168,3 +168,122 @@ export async function checkFraud(orderId: string, userId: string, amount: number
   }
   return response.json();
 }
+
+export interface Category {
+  id: string;
+  name: string;
+  description?: string;
+  created_at: string;
+}
+
+export interface Coupon {
+  id: string;
+  code: string;
+  discount_percent: number;
+  is_premium_only: boolean;
+  min_order_value: number;
+  expiry_date: string;
+  usage_limit?: number;
+  created_at: string;
+}
+
+export async function fetchCategories(): Promise<Category[]> {
+  const response = await fetch(`${API_BASE_URL}/api/categories/`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch categories');
+  }
+  return response.json();
+}
+
+export async function createCategory(name: string, description?: string): Promise<Category> {
+  const response = await fetch(`${API_BASE_URL}/api/categories/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, description })
+  });
+  if (!response.ok) {
+    throw new Error('Failed to create category');
+  }
+  return response.json();
+}
+
+export async function createProduct(product: {
+  name: string;
+  category_id: string;
+  price: number;
+  weight_grams: number;
+  image_url?: string;
+  is_combo: boolean;
+  stock_quantity: number;
+  seller_id: string;
+  description?: string;
+}): Promise<Product> {
+  const response = await fetch(`${API_BASE_URL}/api/products/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(product)
+  });
+  if (!response.ok) {
+    const errData = await response.json();
+    throw new Error(errData.detail || 'Failed to create product');
+  }
+  return response.json();
+}
+
+export async function fetchCoupons(): Promise<Coupon[]> {
+  const response = await fetch(`${API_BASE_URL}/api/coupons/`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch coupons');
+  }
+  return response.json();
+}
+
+export async function createCoupon(coupon: {
+  code: string;
+  discount_percent: number;
+  is_premium_only: boolean;
+  min_order_value: number;
+  expiry_date: string;
+}): Promise<Coupon> {
+  const response = await fetch(`${API_BASE_URL}/api/coupons/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(coupon)
+  });
+  if (!response.ok) {
+    throw new Error('Failed to create coupon');
+  }
+  return response.json();
+}
+
+export async function validateCoupon(code: string, orderValue: number): Promise<{
+  success: boolean;
+  code: string;
+  discount_amount: number;
+  discount_percentage: number;
+}> {
+  const response = await fetch(`${API_BASE_URL}/api/coupons/validate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code, order_value: orderValue })
+  });
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.detail || 'Failed to validate coupon');
+  }
+  return response.json();
+}
+
+export async function uploadImage(file: File): Promise<{ success: boolean; url: string }> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await fetch(`${API_BASE_URL}/api/upload/`, {
+    method: 'POST',
+    body: formData
+  });
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.detail || 'Image upload failed');
+  }
+  return response.json();
+}
