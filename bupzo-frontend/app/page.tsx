@@ -8,7 +8,7 @@ import { useUser } from '@/lib/authStore';
 import AuthModal from '@/components/AuthModal';
 
 export default function Home() {
-  const [userRole, setUserRole] = useState<'customer' | 'seller'>('seller');
+  const [userRole, setUserRole] = useState<'customer' | 'seller'>('customer');
   const [sellerTab, setSellerTab] = useState<'overview' | 'products' | 'orders' | 'escrow' | 'kyc' | 'disputes' | 'vouchers'>('overview');
   const { theme, setTheme } = useTheme();
 
@@ -53,11 +53,23 @@ export default function Home() {
   const [newCouponDiscount, setNewCouponDiscount] = useState('');
   const [newCouponMaxAmount, setNewCouponMaxAmount] = useState('');
   const [newCouponMinOrder, setNewCouponMinOrder] = useState('');
+  const [newCouponIsPremiumOnly, setNewCouponIsPremiumOnly] = useState(false);
 
   // Checkout Voucher validation states
   const [promoCode, setPromoCode] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<any>(null);
   const [promoError, setPromoError] = useState('');
+
+  // Storefront & Customer States
+  const [customerTab, setCustomerTab] = useState<'home' | 'categories' | 'orders' | 'wallet' | 'wishlist'>('home');
+  const [previewProduct, setPreviewProduct] = useState<Product | null>(null);
+  const [customerOrders, setCustomerOrders] = useState<any[]>([]);
+  const [walletTransactions, setWalletTransactions] = useState<any[]>([]);
+  const [topupAmount, setTopupAmount] = useState('');
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string | null>(null);
+  const [homeCategoryFilter, setHomeCategoryFilter] = useState('all');
+  const [isSeller, setIsSeller] = useState(false);
+  const [sellerOrdersList, setSellerOrdersList] = useState<any[]>([]);
 
   // Cart states
   const [cart, setCart] = useState<{ product: Product; quantity: number }[]>([]);
@@ -128,10 +140,144 @@ export default function Home() {
     loadData();
   }, []);
 
+  // Load Customer Specific Data (Orders, Wallet Transactions & Wishlist)
+  useEffect(() => {
+    if (!user) return;
+
+    const loadUserData = async () => {
+      try {
+        const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+        
+        // Fetch User Orders
+        const ordResp = await fetch(`${API_BASE_URL}/api/orders/user/${user.id}`);
+        if (ordResp.ok) {
+          const ords = await ordResp.json();
+          setCustomerOrders(ords);
+        }
+
+        // Fetch User Wallet Transactions
+        const txResp = await fetch(`${API_BASE_URL}/api/wallet/transactions/${user.id}`);
+        if (txResp.ok) {
+          const txs = await txResp.json();
+          setWalletTransactions(txs);
+        }
+
+        // Fetch Wishlist Items
+        const wishResp = await fetch(`${API_BASE_URL}/api/wishlist/${user.id}`);
+        if (wishResp.ok) {
+          const wishs = await wishResp.json();
+          setWishlist(wishs);
+        }
+      } catch (err) {
+        console.error("Error loading user dynamic orders/wallet/wishlist data:", err);
+      }
+    };
+
+    loadUserData();
+  }, [user, customerTab]);
+
+  // Load Seller Orders dynamically
+  useEffect(() => {
+    if (userRole !== 'seller') return;
+
+    const loadSellerOrders = async () => {
+      try {
+        const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+        const resp = await fetch(`${API_BASE_URL}/api/orders/seller/${sellerId}`);
+        if (resp.ok) {
+          const data = await resp.json();
+          setSellerOrdersList(data);
+        }
+      } catch (err) {
+        console.error("Error fetching seller orders:", err);
+      }
+    };
+    loadSellerOrders();
+  }, [userRole, sellerId]);
+
+  // Determine if current user is registered as a merchant/seller
+  useEffect(() => {
+    if (!user) {
+      setIsSeller(false);
+      setUserRole('customer');
+      return;
+    }
+
+    const checkSellerStatus = async () => {
+      try {
+        const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+        const resp = await fetch(`${API_BASE_URL}/api/sellers/`);
+        if (resp.ok) {
+          const sellersList = await resp.json();
+          const found = sellersList.some((s: any) => s.user_id === user.id || s.id === sellerId);
+          setIsSeller(found);
+          if (found) {
+            setUserRole('seller');
+          } else {
+            setUserRole('customer');
+          }
+        } else {
+          // Local fallback checks
+          if (user.phone === '+919876543211') {
+            setIsSeller(true);
+            setUserRole('seller');
+          } else {
+            setIsSeller(false);
+            setUserRole('customer');
+          }
+        }
+      } catch (err) {
+        console.error("Error evaluating seller role verification status:", err);
+        // Fallback
+        if (user.phone === '+919876543211') {
+          setIsSeller(true);
+          setUserRole('seller');
+        } else {
+          setIsSeller(false);
+          setUserRole('customer');
+        }
+      }
+    };
+
+    checkSellerStatus();
+  }, [user, sellerId]);
+
   // Dispatch Order Action
-  const handleUpdateOrderStatus = (orderId: string, nextStatus: string) => {
+  const handleUpdateOrderStatus = async (orderId: string, nextStatus: string) => {
+    try {
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+      const statusMap: Record<string, string> = {
+        'Processing': 'processing',
+        'Dispatched': 'shipped',
+        'Delivered': 'delivered',
+        'Paid': 'paid',
+        'Pending': 'pending'
+      };
+      const apiStatus = statusMap[nextStatus] || nextStatus;
+
+      const resp = await fetch(`${API_BASE_URL}/api/orders/${orderId}/status?status=${apiStatus}`, {
+        method: 'PUT'
+      });
+      if (resp.ok) {
+        alert(`Order ${orderId} status updated to ${nextStatus} on backend.`);
+        
+        // Refresh seller list
+        const sResp = await fetch(`${API_BASE_URL}/api/orders/seller/${sellerId}`);
+        if (sResp.ok) {
+          const data = await sResp.json();
+          setSellerOrdersList(data);
+        }
+      } else {
+        alert("Failed to update status on backend.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Offline Mode: locally simulating status change.");
+    }
+    
+    // Always fall back to local update
     setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: nextStatus } : o));
-    alert(`Order ${orderId} status updated to ${nextStatus}.`);
+    setSellerOrdersList(prev => prev.map(o => o.id === orderId ? { ...o, status: nextStatus.toLowerCase() } : o));
   };
 
   // Request Payout Action
@@ -182,7 +328,7 @@ export default function Home() {
       return;
     }
     try {
-      const data = await verifyKYC(gstNumber, fssaiNumber);
+      const data = await verifyKYC(gstNumber, fssaiNumber, user?.id || undefined, sellerId || undefined);
       if (data.status === "APPROVED") {
         setKycStatus("Approved");
         alert("KYC Auto-Approved! Score: " + (data.verification_score * 100).toFixed(0) + "%\n" + data.reason);
@@ -260,6 +406,45 @@ export default function Home() {
     }
   };
 
+  // Topup Wallet Action
+  const handleTopupWallet = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !topupAmount) return;
+    
+    const amt = parseFloat(topupAmount);
+    if (isNaN(amt) || amt <= 0) {
+      alert("Please enter a valid top-up amount.");
+      return;
+    }
+
+    try {
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+      const resp = await fetch(`${API_BASE_URL}/api/users/${user.id}/wallet/adjust`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: amt, type: 'Credit', reason: 'User wallet top-up' })
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        alert(`Wallet successfully topped up by ₹${amt}. New balance: ₹${data.new_balance}`);
+        setUser({ ...user, walletBalance: data.new_balance });
+        setTopupAmount('');
+        
+        // Refresh transactions list
+        const txResp = await fetch(`${API_BASE_URL}/api/wallet/transactions/${user.id}`);
+        if (txResp.ok) {
+          const txs = await txResp.json();
+          setWalletTransactions(txs);
+        }
+      } else {
+        alert("Failed to top-up wallet on backend.");
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || "Error performing wallet top-up.");
+    }
+  };
+
   const handleLocalImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -321,15 +506,17 @@ export default function Home() {
       const cp = await createCoupon({
         code: newCouponCode,
         discount_percent: parseFloat(newCouponDiscount),
-        is_premium_only: false,
+        is_premium_only: newCouponIsPremiumOnly,
         min_order_value: parseFloat(newCouponMinOrder) || 100.0,
-        expiry_date: new Date(Date.now() + 86400000 * 30).toISOString() // 30 days default expiry
+        expiry_date: new Date(Date.now() + 86400000 * 30).toISOString(), // 30 days default expiry
+        created_by_seller_id: sellerId || undefined
       });
-      alert(`Coupon "${cp.code}" created successfully!`);
+      alert(`Voucher "${cp.code}" submitted! Pending Admin Approval. status: PENDING.`);
       setCoupons(prev => [cp, ...prev]);
       setNewCouponCode('');
       setNewCouponDiscount('');
       setNewCouponMinOrder('');
+      setNewCouponIsPremiumOnly(false);
     } catch (err) {
       console.error(err);
       alert("Failed to create coupon on backend.");
@@ -356,6 +543,11 @@ export default function Home() {
 
   // Add to Cart
   const handleAddToCart = (product: Product) => {
+    if (!user) {
+      alert("Please login with your Name and Mobile Number to start shopping!");
+      setIsAuthModalOpen(true);
+      return;
+    }
     setCart(prev => {
       const existing = prev.find(item => item.product.id === product.id);
       if (existing) {
@@ -364,6 +556,29 @@ export default function Home() {
       return [...prev, { product, quantity: 1 }];
     });
     alert(`"${product.name}" added to cart!`);
+  };
+
+  // Add to Wishlist
+  const handleAddToWishlist = async (product: Product) => {
+    if (!user) {
+      alert("Please login with your Name and Mobile Number to add items to your wishlist.");
+      setIsAuthModalOpen(true);
+      return;
+    }
+    try {
+      await addToWishlist(product.id, user.id);
+      alert(`"${product.name}" added to wishlist!`);
+      // Reload wishlist
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+      const wishResp = await fetch(`${API_BASE_URL}/api/wishlist/${user.id}`);
+      if (wishResp.ok) {
+        const wishs = await wishResp.json();
+        setWishlist(wishs);
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert("Failed to add item to wishlist.");
+    }
   };
 
   // Update Cart Qty
@@ -409,10 +624,12 @@ export default function Home() {
         alert(`Checkout completed! Order ID: ${resp.order_id}\nTotal Paid: ₹${finalAmount.toFixed(2)}`);
         
         // Deduct from local wallet
-        setUser(prev => prev ? {
-          ...prev,
-          walletBalance: Math.max(0, (prev.walletBalance ?? 0) - finalAmount)
-        } : null);
+        if (user) {
+          setUser({
+            ...user,
+            walletBalance: Math.max(0, (user.walletBalance ?? 0) - finalAmount)
+          });
+        }
         
         // Clear cart
         setCart([]);
@@ -427,26 +644,28 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-dust-grey dark:bg-[#1a191e] text-charcoal dark:text-[#f3f4f6] font-sans transition-colors duration-300 flex">
+    <div className={`${theme === 'dark' ? 'dark bg-[#0f111a] text-[#e3e6ed]' : 'bg-[#f9fbfd] text-[#141824]'} min-h-screen font-sans transition-colors duration-300 flex w-full`}>
       
       {/* Top Controls */}
       <div className="fixed top-4 right-4 z-50 flex space-x-2">
         <button
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-          className="p-2.5 rounded-full bg-charcoal text-white shadow-md hover:bg-opacity-90 active:scale-95 transition-all text-xs"
+          className="p-2.5 rounded-full bg-[#3874ff] text-white shadow-md hover:bg-opacity-95 active:scale-95 transition-all text-xs font-bold"
         >
           {theme === 'dark' ? '☀️' : '🌙'}
         </button>
-        <button
-          onClick={() => setUserRole(userRole === 'customer' ? 'seller' : 'customer')}
-          className="px-4 py-2 rounded-full bg-dusty-mauve text-white font-bold text-xs shadow-md hover:bg-opacity-90 active:scale-95 transition-all"
-        >
-          Portal: {userRole === 'customer' ? 'Customer Site' : 'Seller Dashboard'}
-        </button>
+        {isSeller && (
+          <button
+            onClick={() => setUserRole(userRole === 'customer' ? 'seller' : 'customer')}
+            className="px-4 py-2 rounded-full bg-[#525b75] dark:bg-[#222834] text-white font-bold text-xs shadow-md hover:opacity-95 active:scale-95 transition-all"
+          >
+            Portal: {userRole === 'customer' ? 'Customer Site' : 'Seller Dashboard'}
+          </button>
+        )}
         {userRole === 'customer' && (
           <button
             onClick={() => setShowCart(true)}
-            className="px-4 py-2 rounded-full bg-electric-blue text-white font-bold text-xs shadow-md hover:bg-opacity-90 active:scale-95 transition-all flex items-center gap-1.5"
+            className="px-4 py-2 rounded-full bg-[#3874ff] text-white font-bold text-xs shadow-md hover:bg-opacity-95 active:scale-95 transition-all flex items-center gap-1.5"
           >
             <span>🛒</span> Cart ({cart.reduce((sum, item) => sum + item.quantity, 0)})
           </button>
@@ -457,24 +676,51 @@ export default function Home() {
       {userRole === 'customer' && (
         <div className="flex flex-1">
           {/* Customer Left Sidebar */}
-          <aside className="w-64 bg-charcoal text-white p-6 flex flex-col justify-between h-screen fixed">
+          <aside className={`w-64 ${theme === 'dark' ? 'bg-[#141824] border-[#222834] text-[#e3e6ed]' : 'bg-white border-[#e3e6ed] text-[#141824]'} border-r p-6 flex flex-col justify-between h-screen fixed z-30 transition-colors duration-300`}>
             <div className="space-y-6">
               <div className="flex items-center gap-3">
                 <img src="/Bupzo-logo.png" alt="BUPZO Logo" className="w-8 h-8 object-contain rounded" />
-                <span className="font-extrabold tracking-wider font-heading">BUPZO STORE</span>
+                <span className="font-extrabold tracking-wider font-heading text-[#3874ff]">BUPZO STORE</span>
               </div>
-              <nav className="space-y-2">
-                <a href="#" className="block px-4 py-2 bg-white/10 rounded-lg text-almond-silk font-semibold text-sm">Home</a>
-                <a href="#" className="block px-4 py-2 hover:bg-white/10 rounded-lg text-white text-sm">Shop Categories</a>
-                <a href="#" className="block px-4 py-2 hover:bg-white/10 rounded-lg text-white text-sm">Track Orders</a>
-                <a href="#" className="block px-4 py-2 hover:bg-white/10 rounded-lg text-white text-sm">My Wallet</a>
+              <nav className="space-y-1.5">
+                <button 
+                  onClick={() => setCustomerTab('home')}
+                  className={`w-full text-left px-4 py-2 rounded-lg font-bold text-xs transition-all ${customerTab === 'home' ? 'bg-[#3874ff] text-white font-bold' : 'text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/10 hover:text-[#3874ff]'}`}
+                >
+                  Home
+                </button>
+                <button 
+                  onClick={() => setCustomerTab('categories')}
+                  className={`w-full text-left px-4 py-2 rounded-lg font-bold text-xs transition-all ${customerTab === 'categories' ? 'bg-[#3874ff] text-white font-bold' : 'text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/10 hover:text-[#3874ff]'}`}
+                >
+                  Shop Categories
+                </button>
+                <button 
+                  onClick={() => setCustomerTab('orders')}
+                  className={`w-full text-left px-4 py-2 rounded-lg font-bold text-xs transition-all ${customerTab === 'orders' ? 'bg-[#3874ff] text-white font-bold' : 'text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/10 hover:text-[#3874ff]'}`}
+                >
+                  Track Orders
+                </button>
+                <button 
+                  onClick={() => setCustomerTab('wallet')}
+                  className={`w-full text-left px-4 py-2 rounded-lg font-bold text-xs transition-all ${customerTab === 'wallet' ? 'bg-[#3874ff] text-white font-bold' : 'text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/10 hover:text-[#3874ff]'}`}
+                >
+                  My Wallet
+                </button>
+                <button 
+                  onClick={() => setCustomerTab('wishlist')}
+                  className={`w-full text-left px-4 py-2 rounded-lg font-bold text-xs transition-all ${customerTab === 'wishlist' ? 'bg-[#3874ff] text-white font-bold' : 'text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/10 hover:text-[#3874ff]'}`}
+                >
+                  My Wishlist
+                </button>
               </nav>
               
-              <div className="space-y-4 pt-4 border-t border-white/10">
+              <div className="space-y-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
                 {user ? (
                   <div className="space-y-1.5 text-xs">
                     <p className="text-zinc-400 font-mono text-[9px]">Logged In:</p>
-                    <p className="font-bold text-[11px] truncate">{user.phone}</p>
+                    <p className="font-bold text-[11px] truncate text-[#3874ff]">{user.name || 'Bupzo Patron'}</p>
+                    <p className="text-zinc-500 font-mono text-[9px] truncate">{user.phone}</p>
                     <p className="text-almond-silk font-semibold text-[10px]">Wallet: ₹{user.walletBalance ?? 0}</p>
                     <button 
                       onClick={() => setUser(null)}
@@ -486,7 +732,7 @@ export default function Home() {
                 ) : (
                   <button 
                     onClick={() => setIsAuthModalOpen(true)}
-                    className="w-full bg-almond-silk text-charcoal py-2 rounded-xl text-xs font-bold hover:bg-opacity-90 active:scale-95 transition"
+                    className="w-full bg-[#3874ff] text-white py-2 rounded-xl text-xs font-bold hover:bg-opacity-95 active:scale-95 transition"
                   >
                     Login / Register
                   </button>
@@ -499,78 +745,465 @@ export default function Home() {
           {/* Customer Content */}
           <div className="ml-64 p-8 flex-1">
             <div className="max-w-4xl mx-auto space-y-8">
-              <div className="relative h-64 rounded-2xl overflow-hidden shadow-lg bg-dusty-mauve flex items-center justify-center">
-                <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover z-0 opacity-70">
-                  <source src="/Bupzo-gif.mp4" type="video/mp4" />
-                </video>
-                <div className="absolute inset-0 bg-black/40 z-10"></div>
-                <div className="relative z-20 text-center space-y-2 text-white">
-                  <h1 className="text-4xl font-extrabold font-heading">Discover Nagore Specialties</h1>
-                  <p className="text-sm">Authentic Halwa, premium Dry Fruits, and handcrafted items delivered directly.</p>
-                </div>
-              </div>
+              
+              {/* TAB: HOME */}
+              {customerTab === 'home' && (
+                <div className="space-y-8">
+                  <div className="relative h-64 rounded-2xl overflow-hidden shadow-lg bg-dusty-mauve flex items-center justify-center">
+                    <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover z-0 opacity-70">
+                      <source src="/Bupzo-gif.mp4" type="video/mp4" />
+                    </video>
+                    <div className="absolute inset-0 bg-black/40 z-10"></div>
+                    <div className="relative z-20 text-center space-y-2 text-white">
+                      <h1 className="text-4xl font-extrabold font-heading">Discover Nagore Specialties</h1>
+                      <p className="text-sm">Authentic Halwa, premium Dry Fruits, and handcrafted items delivered directly.</p>
+                    </div>
+                  </div>
 
-              {/* AI Semantic Search bar */}
-              <form onSubmit={handleAISearch} className="flex gap-2">
-                <div className="flex-1 relative">
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search specialties semantically... (e.g. delicious ghee wheat sweets)"
-                    className="w-full px-4 py-3 rounded-xl bg-white dark:bg-[#15131b] border border-zinc-200 dark:border-zinc-800 text-xs outline-none shadow-sm focus:border-dusty-mauve"
-                  />
-                  {isSearching && (
+                  {/* AI Semantic Search bar */}
+                  <form onSubmit={handleAISearch} className="flex gap-2">
+                    <div className="flex-1 relative">
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search specialties semantically... (e.g. delicious ghee wheat sweets)"
+                        className="w-full px-4 py-3 rounded-xl bg-white dark:bg-[#15131b] border border-zinc-200 dark:border-zinc-800 text-xs outline-none shadow-sm focus:border-dusty-mauve"
+                      />
+                      {isSearching && (
+                        <button
+                          type="button"
+                          onClick={handleClearSearch}
+                          className="absolute right-3 top-3 text-[10px] text-zinc-400 hover:text-charcoal font-bold"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
                     <button
-                      type="button"
-                      onClick={handleClearSearch}
-                      className="absolute right-3 top-3 text-[10px] text-zinc-400 hover:text-charcoal font-bold"
+                      type="submit"
+                      className="bg-charcoal text-white px-6 py-3 rounded-xl text-xs font-bold shadow hover:bg-opacity-95 flex items-center gap-1"
                     >
-                      Clear
+                      AI Search
                     </button>
-                  )}
-                </div>
-                <button
-                  type="submit"
-                  className="bg-charcoal text-white px-6 py-3 rounded-xl text-xs font-bold shadow hover:bg-opacity-95 flex items-center gap-1"
-                >
-                  AI Search
-                </button>
-              </form>
+                  </form>
 
-              {/* Products Catalog */}
-              <div className="space-y-4">
-                <h3 className="text-xl font-bold font-heading">Featured New Arrivals</h3>
-                {loading ? (
-                  <div className="text-center py-12 text-zinc-400 font-medium">Loading catalog items...</div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {products.map((p) => (
-                      <div key={p.id} className="bg-white dark:bg-[#15131b] rounded-xl border border-outline-variant/30 overflow-hidden shadow-sm flex flex-col">
-                        <div className="relative h-48 bg-zinc-100">
-                          <img src={p.image_url || "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=400&q=80"} alt={p.name} className="w-full h-full object-cover" />
-                        </div>
-                        <div className="p-4 flex-1 flex flex-col justify-between space-y-2">
-                          <div>
-                            <span className="text-[9px] font-bold uppercase tracking-wider text-dusty-mauve">Nagore Specialties</span>
-                            <h4 className="font-bold text-sm mt-1">{p.name}</h4>
-                            <p className="text-[11px] text-zinc-400 mt-1 line-clamp-2">{p.description}</p>
-                          </div>
-                          <div className="flex justify-between items-center pt-2">
-                            <span className="font-bold text-sm">₹{p.price}</span>
-                            <button 
-                              onClick={() => handleAddToCart(p)}
-                              className="bg-charcoal dark:bg-zinc-800 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-opacity-90 active:scale-95 transition-all"
-                            >
-                              Add to Cart
-                            </button>
-                          </div>
-                        </div>
+                  {/* Products Catalog */}
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center flex-wrap gap-4 border-b border-zinc-150 dark:border-zinc-800 pb-3">
+                      <h3 className="text-xl font-bold font-heading">Featured New Arrivals</h3>
+                      
+                      {/* Category Selector Dropdown */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider">Specialty Filter:</span>
+                        <select
+                          value={homeCategoryFilter}
+                          onChange={(e) => setHomeCategoryFilter(e.target.value)}
+                          className="bg-white dark:bg-[#141824] border border-zinc-200 dark:border-zinc-800 text-[11px] font-bold px-3 py-1.5 rounded-lg outline-none shadow-sm focus:border-[#3874ff] text-zinc-800 dark:text-zinc-200 cursor-pointer"
+                        >
+                          <option value="all">All Specialties</option>
+                          {categories.map((cat) => (
+                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                          ))}
+                        </select>
                       </div>
+                    </div>
+
+                    {loading ? (
+                      <div className="text-center py-12 text-zinc-400 font-medium">Loading catalog items...</div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {products
+                          .filter(p => homeCategoryFilter === 'all' || p.category_id === homeCategoryFilter)
+                          .map((p) => (
+                          <div 
+                            key={p.id} 
+                            onClick={() => setPreviewProduct(p)}
+                            className="bg-white dark:bg-[#15131b] rounded-xl border border-outline-variant/30 overflow-hidden shadow-sm flex flex-col cursor-pointer hover:shadow-md transition-all"
+                          >
+                            <div className="relative h-48 bg-zinc-100 dark:bg-zinc-800">
+                              <img src={p.image_url || "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=400&q=80"} alt={p.name} className="w-full h-full object-cover" />
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAddToWishlist(p);
+                                }}
+                                className="absolute top-2 right-2 p-1.5 rounded-full bg-white/90 dark:bg-zinc-900/90 text-red-500 hover:scale-110 active:scale-95 transition-all shadow-sm font-bold text-xs"
+                                title="Add to Wishlist"
+                              >
+                                ❤️
+                              </button>
+                            </div>
+                            <div className="p-4 flex-1 flex flex-col justify-between space-y-2">
+                              <div>
+                                <span className="text-[9px] font-bold uppercase tracking-wider text-dusty-mauve">Nagore Specialties</span>
+                                <h4 className="font-bold text-sm mt-1">{p.name}</h4>
+                                <p className="text-[11px] text-zinc-400 mt-1 line-clamp-2">{p.description}</p>
+                              </div>
+                              <div className="flex justify-between items-center pt-2" onClick={(e) => e.stopPropagation()}>
+                                <span className="font-bold text-sm">₹{p.price}</span>
+                                <button 
+                                  onClick={() => handleAddToCart(p)}
+                                  className="bg-charcoal dark:bg-zinc-800 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-opacity-90 active:scale-95 transition-all"
+                                >
+                                  Add to Cart
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB: SHOP CATEGORIES */}
+              {customerTab === 'categories' && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-2xl font-bold font-heading">Shop By Category</h2>
+                    <p className="text-xs text-zinc-500 mt-1">Browse and filter traditional sweets, dry fruits, combo offers, and craftsmanship.</p>
+                  </div>
+
+                  {/* Categories Filter Pills */}
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    <button 
+                      onClick={() => setSelectedCategoryFilter(null)}
+                      className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${!selectedCategoryFilter ? 'bg-[#3874ff] text-white' : 'bg-white dark:bg-[#15131b] border border-zinc-200 dark:border-zinc-800 text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/10'}`}
+                    >
+                      All Specialties
+                    </button>
+                    {categories.map((cat) => (
+                      <button 
+                        key={cat.id}
+                        onClick={() => setSelectedCategoryFilter(cat.id)}
+                        className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${selectedCategoryFilter === cat.id ? 'bg-[#3874ff] text-white' : 'bg-white dark:bg-[#15131b] border border-zinc-200 dark:border-zinc-800 text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/10'}`}
+                      >
+                        {cat.name}
+                      </button>
                     ))}
                   </div>
-                )}
-              </div>
+
+                  {/* Filtered Grid */}
+                  <div className="space-y-4 pt-4">
+                    <h3 className="text-md font-bold uppercase tracking-wider">
+                      {selectedCategoryFilter 
+                        ? `${categories.find(c => c.id === selectedCategoryFilter)?.name || 'Filtered'} Selection`
+                        : "Full Platform Catalog"
+                      }
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {products
+                        .filter(p => !selectedCategoryFilter || p.category_id === selectedCategoryFilter)
+                        .map((p) => (
+                          <div 
+                            key={p.id}
+                            onClick={() => setPreviewProduct(p)}
+                            className="bg-white dark:bg-[#15131b] rounded-xl border border-outline-variant/30 overflow-hidden shadow-sm flex flex-col cursor-pointer hover:shadow-md transition-all"
+                          >
+                            <div className="relative h-48 bg-zinc-100 dark:bg-zinc-800">
+                              <img src={p.image_url || "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=400&q=80"} alt={p.name} className="w-full h-full object-cover" />
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAddToWishlist(p);
+                                }}
+                                className="absolute top-2 right-2 p-1.5 rounded-full bg-white/90 dark:bg-zinc-900/90 text-red-500 hover:scale-110 active:scale-95 transition-all shadow-sm font-bold text-xs"
+                                title="Add to Wishlist"
+                              >
+                                ❤️
+                              </button>
+                            </div>
+                            <div className="p-4 flex-1 flex flex-col justify-between space-y-2">
+                              <div>
+                                <span className="text-[9px] font-bold uppercase tracking-wider text-dusty-mauve">Nagore Specialties</span>
+                                <h4 className="font-bold text-sm mt-1">{p.name}</h4>
+                                <p className="text-[11px] text-zinc-400 mt-1 line-clamp-2">{p.description}</p>
+                              </div>
+                              <div className="flex justify-between items-center pt-2" onClick={(e) => e.stopPropagation()}>
+                                <span className="font-bold text-sm">₹{p.price}</span>
+                                <button 
+                                  onClick={() => handleAddToCart(p)}
+                                  className="bg-charcoal dark:bg-zinc-800 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-opacity-90 active:scale-95 transition-all"
+                                >
+                                  Add to Cart
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      {products.filter(p => !selectedCategoryFilter || p.category_id === selectedCategoryFilter).length === 0 && (
+                        <div className="col-span-full py-12 text-center text-zinc-400 font-medium">No specialties listed in this category yet.</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB: TRACK ORDERS */}
+              {customerTab === 'orders' && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-2xl font-bold font-heading">Track Orders</h2>
+                    <p className="text-xs text-zinc-500 mt-1">Monitor real-time delivery timelines, dispatch alerts, and Stitch Sandboxing ledger.</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    {customerOrders.map((ord: any) => {
+                      const stages = ['pending', 'paid', 'processing', 'shipped', 'delivered'];
+                      const currentStageIdx = stages.indexOf(ord.status);
+                      
+                      return (
+                        <div key={ord.id} className="bg-white dark:bg-[#141824] border border-[#e3e6ed] dark:border-[#222834] rounded-2xl p-6 shadow-sm space-y-4 text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                          <div className="flex justify-between items-center border-b border-zinc-150 dark:border-zinc-800 pb-3 flex-wrap gap-2">
+                            <div>
+                              <p className="text-[10px] text-zinc-400 uppercase">Order Reference</p>
+                              <p className="font-bold text-zinc-800 dark:text-zinc-200 font-mono text-sm">{ord.id}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-[10px] text-zinc-400">Total Paid</p>
+                              <p className="font-bold text-sm text-[#3874ff]">₹{ord.total_amount}</p>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-[10px] bg-zinc-50 dark:bg-zinc-900/50 p-3 rounded-lg border">
+                            <div>
+                              <span className="text-zinc-400">Status:</span>
+                              <span className="block font-bold capitalize text-[#3874ff]">{ord.status}</span>
+                            </div>
+                            <div>
+                              <span className="text-zinc-400">Logistics Courier:</span>
+                              <span className="block font-bold">{ord.shipping_partner || 'Delhivery SLA'}</span>
+                            </div>
+                            <div>
+                              <span className="text-zinc-400">Gateway:</span>
+                              <span className="block font-bold">{ord.payment_gateway || 'Razorpay'}</span>
+                            </div>
+                            <div>
+                              <span className="text-zinc-400">Order Date:</span>
+                              <span className="block font-bold">{new Date(ord.created_at).toLocaleDateString()} {new Date(ord.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                            </div>
+                          </div>
+
+                          {/* Tracking Stages Progress Bar */}
+                          <div className="pt-2">
+                            <p className="text-[10px] text-zinc-400 mb-3 uppercase">Delivery Stage</p>
+                            <div className="relative flex items-center justify-between">
+                              <div className="absolute left-0 right-0 h-1 bg-zinc-200 dark:bg-zinc-800 -z-0"></div>
+                              <div 
+                                className="absolute left-0 h-1 bg-[#3874ff] transition-all duration-500" 
+                                style={{ width: `${Math.max(0, currentStageIdx) * 25}%` }}
+                              ></div>
+
+                              {stages.map((stage, idx) => {
+                                const active = idx <= currentStageIdx;
+                                const isCurrent = idx === currentStageIdx;
+                                
+                                return (
+                                  <div key={stage} className="relative z-10 flex flex-col items-center">
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-[9px] border transition-all ${
+                                      isCurrent ? 'bg-[#3874ff] border-[#3874ff] text-white scale-110 shadow-lg' :
+                                      active ? 'bg-[#3874ff]/20 border-[#3874ff] text-[#3874ff]' :
+                                      'bg-white dark:bg-[#15131b] border-zinc-200 dark:border-zinc-800 text-zinc-400'
+                                    }`}>
+                                      {idx + 1}
+                                    </div>
+                                    <span className={`text-[9px] mt-1 capitalize font-bold ${active ? 'text-zinc-800 dark:text-zinc-200' : 'text-zinc-400'}`}>
+                                      {stage}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {customerOrders.length === 0 && (
+                      <div className="bg-white dark:bg-[#141824] border border-[#e3e6ed] dark:border-[#222834] rounded-2xl p-12 text-center text-zinc-400 font-medium">
+                        You have not placed any orders yet. Specialties added to your cart will display here after checkout.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB: MY WALLET */}
+              {customerTab === 'wallet' && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-2xl font-bold font-heading">My Premium Wallet</h2>
+                    <p className="text-xs text-zinc-500 mt-1">Manage platform credits, sign-up bonuses, and top-ups.</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    
+                    {/* Wallet card & Topup */}
+                    <div className="md:col-span-1 space-y-6">
+                      
+                      {/* Skeuomorphic Wallet balance card */}
+                      <div className="relative bg-gradient-to-br from-[#3874ff] to-[#6a38ff] rounded-2xl p-6 text-white shadow-xl overflow-hidden aspect-[1.6/1]">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-xl pointer-events-none"></div>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="text-[10px] text-white/70 uppercase tracking-wider font-semibold">Wallet Account Balance</p>
+                            <p className="text-2xl font-extrabold mt-1">₹{user?.walletBalance ?? 0}</p>
+                          </div>
+                          <span className="text-xl">💰</span>
+                        </div>
+                        <div className="mt-8 flex justify-between items-end text-[10px] font-mono text-white/80">
+                          <p>BUPZO USER LEDGER</p>
+                          <p>ACTIVE SECURE</p>
+                        </div>
+                      </div>
+
+                      {/* Topup Form */}
+                      <div className="bg-white dark:bg-[#141824] border border-[#e3e6ed] dark:border-[#222834] rounded-2xl p-5 shadow-sm">
+                        <h3 className="text-xs font-bold uppercase tracking-wider mb-3">Refill Wallet Funds</h3>
+                        <form onSubmit={handleTopupWallet} className="space-y-3 text-xs font-semibold">
+                          <div>
+                            <label className="block text-zinc-400 mb-1">Deposit Amount (₹)</label>
+                            <input 
+                              type="number"
+                              min="10"
+                              placeholder="500"
+                              value={topupAmount}
+                              onChange={(e) => setTopupAmount(e.target.value)}
+                              className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 outline-none font-mono"
+                              required
+                            />
+                          </div>
+                          <button 
+                            type="submit"
+                            className="w-full bg-[#3874ff] text-white py-2 rounded-xl font-bold hover:bg-opacity-95 active:scale-95 transition-all text-xs"
+                          >
+                            Top-Up Now
+                          </button>
+                        </form>
+                      </div>
+
+                    </div>
+
+                    {/* Transaction history */}
+                    <div className="md:col-span-2 bg-white dark:bg-[#141824] border border-[#e3e6ed] dark:border-[#222834] rounded-2xl p-6 shadow-sm">
+                      <h3 className="text-sm font-bold mb-4 font-heading">Wallet Transactions History</h3>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs">
+                          <thead>
+                            <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-400 font-bold uppercase text-[9px]">
+                              <th className="py-2.5">Type</th>
+                              <th className="py-2.5">Amount</th>
+                              <th className="py-2.5">Description</th>
+                              <th className="py-2.5">Timestamp</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {walletTransactions.map((tx: any) => {
+                              const isDebit = parseFloat(tx.amount) < 0;
+                              return (
+                                <tr key={tx.id} className="border-b border-zinc-100 dark:border-zinc-900">
+                                  <td className="py-3">
+                                    <span className={`px-2 py-0.5 rounded font-bold text-[9px] ${tx.type === 'TOPUP' || tx.type === 'REFERRAL' ? 'bg-green-100/10 text-green-500' : 'bg-red-100/10 text-red-500'}`}>
+                                      {tx.type}
+                                    </span>
+                                  </td>
+                                  <td className={`py-3 font-bold font-mono ${isDebit ? 'text-red-500' : 'text-green-500'}`}>
+                                    {isDebit ? '-' : '+'}₹{Math.abs(parseFloat(tx.amount))}
+                                  </td>
+                                  <td className="py-3 text-zinc-500 font-semibold">{tx.description || 'N/A'}</td>
+                                  <td className="py-3 text-zinc-400 font-mono text-[10px]">{new Date(tx.created_at).toLocaleString()}</td>
+                                </tr>
+                              );
+                            })}
+                            {walletTransactions.length === 0 && (
+                              <tr>
+                                <td colSpan={4} className="py-6 text-center text-zinc-400 font-medium">No transactions recorded in wallet ledger.</td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              )}
+
+              {/* TAB: WISHLIST */}
+              {customerTab === 'wishlist' && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-2xl font-bold font-heading">My Platform Wishlist</h2>
+                    <p className="text-xs text-zinc-500 mt-1">Keep track of your favorite sweets and receive price drop alerts.</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {wishlist.map((item: any) => {
+                      // Find matching product detail from the state catalog
+                      const p = products.find(prod => prod.id === item.product_id) || {
+                        id: item.product_id,
+                        name: item.product_name,
+                        price: item.product_price,
+                        image_url: "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=400&q=80",
+                        description: "Cached wishlist specialty item."
+                      };
+
+                      return (
+                        <div 
+                          key={item.id}
+                          onClick={() => setPreviewProduct(p as any)}
+                          className="bg-white dark:bg-[#15131b] rounded-xl border border-outline-variant/30 overflow-hidden shadow-sm flex flex-col cursor-pointer hover:shadow-md transition-all animate-fade-in"
+                        >
+                          <div className="relative h-48 bg-zinc-100 dark:bg-zinc-800">
+                            <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
+                          </div>
+                          <div className="p-4 flex-1 flex flex-col justify-between space-y-2">
+                            <div>
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-dusty-mauve">Nagore Specialties</span>
+                              <h4 className="font-bold text-sm mt-1">{p.name}</h4>
+                              <p className="text-[11px] text-zinc-400 mt-1 line-clamp-2">{p.description}</p>
+                            </div>
+                            <div className="flex justify-between items-center pt-2" onClick={(e) => e.stopPropagation()}>
+                              <span className="font-bold text-sm">₹{p.price}</span>
+                              <div className="flex gap-2">
+                                <button 
+                                  onClick={() => {
+                                    handleAddToCart(p as any);
+                                    alert("Added to cart!");
+                                  }}
+                                  className="bg-[#3874ff] text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold hover:bg-opacity-95 active:scale-95 transition-all"
+                                >
+                                  Add to Cart
+                                </button>
+                                <button 
+                                  onClick={async () => {
+                                    try {
+                                      await removeFromWishlist(item.id);
+                                      setWishlist(prev => prev.filter(w => w.id !== item.id));
+                                      alert("Removed from wishlist.");
+                                    } catch (err) {
+                                      console.error(err);
+                                    }
+                                  }}
+                                  className="bg-red-500/10 text-red-500 hover:bg-red-500/20 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {wishlist.length === 0 && (
+                      <div className="col-span-full py-12 text-center text-zinc-400 font-medium">Your wishlist is currently empty. Click the heart icon on any product to save it.</div>
+                    )}
+                  </div>
+                </div>
+              )}
+
             </div>
           </div>
         </div>
@@ -899,7 +1532,7 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* AI Copywriting Assistant */}
+                  {/* AI Copywriting Assistant & Inventory Catalog List */}
                   <div className="space-y-6">
                     <div className="bg-white dark:bg-[#15131b] p-6 rounded-xl border border-electric-blue/20 shadow-sm relative overflow-hidden">
                       <div className="absolute top-0 right-0 w-24 h-24 bg-electric-blue/5 rounded-full blur-xl pointer-events-none"></div>
@@ -941,6 +1574,36 @@ export default function Home() {
                         </div>
                       )}
                     </div>
+
+                    {/* Catalog Inventory Card */}
+                    <div className="bg-white dark:bg-[#15131b] p-6 rounded-xl border border-[#e3e6ed] dark:border-[#222834] shadow-sm space-y-4">
+                      <div>
+                        <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-800 dark:text-zinc-200">Your Catalog Inventory</h3>
+                        <p className="text-[10px] text-zinc-400 mt-0.5">List of live specialties active in customer storefront.</p>
+                      </div>
+                      <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
+                        {products
+                          .filter(p => p.seller_id === sellerId)
+                          .map(p => (
+                            <div key={p.id} className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-900/40 p-2.5 rounded-lg border border-[#e3e6ed] dark:border-[#222834] text-xs font-semibold">
+                              <img src={p.image_url || "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=400&q=80"} alt={p.name} className="w-10 h-10 object-cover rounded-lg border border-zinc-250 dark:border-zinc-800" />
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-bold truncate text-zinc-800 dark:text-zinc-200">{p.name}</h4>
+                                <p className="text-zinc-400 text-[10px]">Price: ₹{p.price} | Qty: {p.stock_quantity}</p>
+                              </div>
+                              <button 
+                                onClick={() => setPreviewProduct(p)}
+                                className="px-2.5 py-1 bg-[#3874ff]/10 hover:bg-[#3874ff]/20 text-[#3874ff] rounded font-bold text-[10px] transition-all"
+                              >
+                                👁 Preview
+                              </button>
+                            </div>
+                        ))}
+                        {products.filter(p => p.seller_id === sellerId).length === 0 && (
+                          <div className="text-center py-8 text-zinc-400">No active products found in inventory.</div>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                 </div>
@@ -949,13 +1612,61 @@ export default function Home() {
               {/* TAB 3: ORDERS PIPELINE */}
               {sellerTab === 'orders' && (
                 <div className="space-y-4">
-                  {orders.map((o) => (
-                    <div key={o.id} className="bg-white dark:bg-[#15131b] p-6 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b] flex justify-between items-center text-xs">
+                  
+                  {/* Dynamic Backend Orders List */}
+                  {sellerOrdersList.map((o) => {
+                    const formattedDate = new Date(o.created_at).toLocaleDateString() + ' ' + new Date(o.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                    const displayStatus = o.status.toUpperCase();
+
+                    return (
+                      <div key={o.id} className="bg-white dark:bg-[#141824] p-6 rounded-xl border border-[#e3e6ed] dark:border-[#222834] flex justify-between items-center text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                        <div>
+                          <div className="flex items-center gap-3">
+                            <h4 className="font-bold text-sm font-mono text-zinc-800 dark:text-zinc-100">{o.id}</h4>
+                            <span className="bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded text-zinc-500 font-mono text-[10px]">{formattedDate}</span>
+                            <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${o.status === 'pending' ? 'bg-yellow-100/10 text-yellow-500' : o.status === 'paid' ? 'bg-green-100/10 text-green-500' : o.status === 'processing' ? 'bg-blue-100/10 text-blue-500' : 'bg-green-100/10 text-green-500'}`}>{displayStatus}</span>
+                          </div>
+                          <p className="text-zinc-500 mt-2">BUPZO Specialty Order (Merchant split: {o.shipping_partner || 'Delhivery SLA'})</p>
+                          <p className="text-zinc-400 text-[10px] mt-1 font-mono">Platform Gateway: {o.payment_gateway || 'Razorpay'} | Earnings: ₹{o.total_amount}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          {o.status === 'paid' && (
+                            <button 
+                              onClick={() => handleUpdateOrderStatus(o.id, 'Processing')}
+                              className="bg-[#3874ff] text-white px-3 py-1.5 rounded-lg hover:bg-opacity-90 font-bold"
+                            >
+                              Accept Order
+                            </button>
+                          )}
+                          {o.status === 'processing' && (
+                            <button 
+                              onClick={() => handleUpdateOrderStatus(o.id, 'Dispatched')}
+                              className="bg-[#775560] text-white px-3 py-1.5 rounded-lg hover:bg-opacity-90 font-bold"
+                            >
+                              Ship Courier
+                            </button>
+                          )}
+                          {o.status === 'shipped' && (
+                            <button 
+                              onClick={() => handleUpdateOrderStatus(o.id, 'Delivered')}
+                              className="bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-opacity-90 font-bold"
+                            >
+                              Mark Delivered
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Fallback to Mock Orders if sellerOrdersList is empty */}
+                  {sellerOrdersList.length === 0 && orders.map((o) => (
+                    <div key={o.id} className="bg-white dark:bg-[#141824] p-6 rounded-xl border border-[#e3e6ed] dark:border-[#222834] flex justify-between items-center text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                       <div>
                         <div className="flex items-center gap-3">
-                          <h4 className="font-bold text-sm">{o.id}</h4>
-                          <span className="bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded text-zinc-500 font-mono">{o.date}</span>
-                          <span className={`px-2 py-0.5 rounded font-bold ${o.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' : o.status === 'Processing' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>{o.status}</span>
+                          <h4 className="font-bold text-sm font-mono text-zinc-800 dark:text-zinc-100">{o.id}</h4>
+                          <span className="bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded text-zinc-500 font-mono">{o.date} 12:00:00</span>
+                          <span className={`px-2 py-0.5 rounded font-bold ${o.status === 'Pending' ? 'bg-yellow-100/10 text-yellow-500' : o.status === 'Processing' ? 'bg-blue-100/10 text-blue-500' : 'bg-green-100/10 text-green-500'}`}>{o.status}</span>
                         </div>
                         <p className="text-zinc-500 mt-2">{o.product} (x{o.quantity})</p>
                         <p className="text-zinc-400 text-[10px] mt-1 font-mono">Customer: {o.customer} | Total: ₹{o.total}</p>
@@ -964,7 +1675,7 @@ export default function Home() {
                         {o.status === 'Pending' && (
                           <button 
                             onClick={() => handleUpdateOrderStatus(o.id, 'Processing')}
-                            className="bg-charcoal text-white px-3 py-1.5 rounded hover:bg-opacity-90 font-bold"
+                            className="bg-[#3874ff] text-white px-3 py-1.5 rounded-lg hover:bg-opacity-90 font-bold"
                           >
                             Accept Order
                           </button>
@@ -972,9 +1683,9 @@ export default function Home() {
                         {o.status === 'Processing' && (
                           <button 
                             onClick={() => handleUpdateOrderStatus(o.id, 'Dispatched')}
-                            className="bg-[#775560] text-white px-3 py-1.5 rounded hover:bg-opacity-90 font-bold"
+                            className="bg-[#775560] text-white px-3 py-1.5 rounded-lg hover:bg-opacity-90 font-bold"
                           >
-                            Ship Aggregator
+                            Ship Courier
                           </button>
                         )}
                       </div>
@@ -1154,6 +1865,16 @@ export default function Home() {
                             className="w-full bg-zinc-50 dark:bg-zinc-800 border border-[#e8e1dd] dark:border-[#2f2b3b] rounded-lg px-3 py-2 outline-none font-mono" 
                           />
                         </div>
+                        <div className="flex items-center gap-2 py-1">
+                          <input 
+                            type="checkbox" 
+                            id="newCouponIsPremiumOnly"
+                            checked={newCouponIsPremiumOnly}
+                            onChange={(e) => setNewCouponIsPremiumOnly(e.target.checked)}
+                            className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-800 text-[#3874ff] focus:ring-[#3874ff] cursor-pointer"
+                          />
+                          <label htmlFor="newCouponIsPremiumOnly" className="text-zinc-400 uppercase select-none cursor-pointer">Premium Only Voucher</label>
+                        </div>
                         <button 
                           type="submit" 
                           className="w-full bg-charcoal text-white py-2.5 rounded-lg font-bold hover:bg-opacity-95"
@@ -1170,7 +1891,7 @@ export default function Home() {
                       <h3 className="text-sm font-bold uppercase tracking-wider mb-4">Active Shop Vouchers</h3>
                       
                       <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs">
+                        <table className="w-full text-left text-xs font-semibold">
                           <thead>
                             <tr className="border-b border-zinc-200 dark:border-zinc-700 text-zinc-400 font-bold">
                               <th className="py-2">Code</th>
@@ -1178,6 +1899,7 @@ export default function Home() {
                               <th className="py-2">Min Spend</th>
                               <th className="py-2">Expires At</th>
                               <th className="py-2">Premium Only</th>
+                              <th className="py-2">Status</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -1190,6 +1912,11 @@ export default function Home() {
                                 <td className="py-3">
                                   <span className={`px-2 py-0.5 rounded font-bold ${cp.is_premium_only ? 'bg-amber-100/10 text-amber-500' : 'bg-green-100/10 text-green-500'}`}>
                                     {cp.is_premium_only ? 'Yes' : 'No'}
+                                  </span>
+                                </td>
+                                <td className="py-3">
+                                  <span className={`px-2 py-0.5 rounded font-bold ${cp.status === 'PENDING' ? 'bg-yellow-100/10 text-yellow-500' : cp.status === 'REJECTED' ? 'bg-red-100/10 text-red-500' : 'bg-green-100/10 text-green-500'}`}>
+                                    {cp.status || 'APPROVED'}
                                   </span>
                                 </td>
                               </tr>
@@ -1341,6 +2068,71 @@ export default function Home() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* PRODUCT PREVIEW MODAL */}
+      {previewProduct && (
+        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-[#fff8f4] dark:bg-[#15131b] border border-[#e8e1dd] dark:border-[#2f2b3b] rounded-2xl w-full max-w-2xl p-6 shadow-2xl relative text-zinc-900 dark:text-zinc-100 flex flex-col md:flex-row gap-6">
+            
+            {/* Close Button */}
+            <button 
+              onClick={() => setPreviewProduct(null)} 
+              className="absolute top-4 right-4 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 font-bold text-sm z-10"
+            >
+              ✕ Close
+            </button>
+
+            {/* Left side: Image */}
+            <div className="w-full md:w-1/2 h-64 md:h-auto bg-zinc-100 dark:bg-zinc-800 rounded-xl overflow-hidden relative">
+              <img 
+                src={previewProduct.image_url || "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=400&q=80"} 
+                alt={previewProduct.name} 
+                className="w-full h-full object-cover"
+              />
+            </div>
+
+            {/* Right side: Product details */}
+            <div className="w-full md:w-1/2 flex flex-col justify-between space-y-4">
+              <div>
+                <span className="text-[10px] bg-[#3874ff]/10 text-[#3874ff] px-2 py-0.5 rounded font-bold uppercase">
+                  Nagore Specialties
+                </span>
+                <h3 className="text-xl font-bold font-heading mt-2">{previewProduct.name}</h3>
+                <p className="text-sm font-bold text-[#3874ff] mt-1">₹{previewProduct.price}</p>
+                <div className="text-xs text-zinc-400 dark:text-zinc-500 font-sans mt-3 space-y-1">
+                  <p>Weight: <b>{previewProduct.weight_grams}g</b></p>
+                  <p>Stock Status: <b className={previewProduct.stock_quantity > 0 ? "text-green-500" : "text-red-500"}>{previewProduct.stock_quantity > 0 ? `${previewProduct.stock_quantity} units available` : 'Out of Stock'}</b></p>
+                </div>
+                <p className="text-xs text-zinc-500 mt-4 leading-relaxed bg-zinc-50 dark:bg-zinc-950 p-3 rounded-lg border border-zinc-150 dark:border-zinc-800">
+                  {previewProduct.description || "Traditional wheat specialty sweet loaded with cashews, cardamoms, and pure ghee. Made from heritage recipes in Southern Tamil Nadu."}
+                </p>
+              </div>
+
+              <div className="flex gap-2 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+                <button 
+                  onClick={() => {
+                    handleAddToCart(previewProduct);
+                    setPreviewProduct(null);
+                  }}
+                  className="flex-1 bg-[#3874ff] text-white py-2.5 rounded-xl font-bold text-xs hover:bg-[#2b5fd4] active:scale-95 transition-all text-center"
+                >
+                  🛒 Add to Cart
+                </button>
+                <button 
+                  onClick={() => {
+                    handleAddToWishlist(previewProduct);
+                    setPreviewProduct(null);
+                  }}
+                  className="px-3 bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-charcoal dark:text-zinc-200 rounded-xl font-bold text-xs hover:opacity-90 active:scale-95 transition-all"
+                >
+                  ♥ Wishlist
+                </button>
+              </div>
+            </div>
+
           </div>
         </div>
       )}

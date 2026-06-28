@@ -6,6 +6,7 @@ import { useUser } from '@/lib/authStore';
 
 export default function AuthModal({ onClose }: { onClose: () => void }) {
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [name, setName] = useState('');
   const [otp, setOtp] = useState('');
   const [message, setMessage] = useState('');
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
@@ -21,6 +22,7 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          name: name || 'Bupzo Patron',
           phone: phone,
           email: `${phone.replace(/[^a-zA-Z0-9]/g, '')}@bupzo.com`,
           is_premium: false,
@@ -45,6 +47,7 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
       // Fallback: register mock local user so dev is not blocked
       const mockUser = {
         id: 'mock-user-id',
+        name: name || 'Bupzo Patron',
         phone: phone,
         email: `${phone.replace(/[^a-zA-Z0-9]/g, '')}@bupzo.com`,
         isPremium: false,
@@ -62,6 +65,10 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
   };
 
   const handleSendOtp = async () => {
+    if (!name.trim()) {
+      setMessage('Please enter your Full Name.');
+      return;
+    }
     if (!phoneNumber) {
       setMessage('Please enter a valid phone number.');
       return;
@@ -131,11 +138,20 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
           <div className="space-y-4">
             <div id="recaptcha-container"></div>
             <input
+              type="text"
+              placeholder="Your Name (e.g. Ravi Kumar)"
+              className="w-full p-3 text-xs bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl outline-none focus:border-dusty-mauve"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
+            <input
               type="tel"
               placeholder="+91 98765 43210"
               className="w-full p-3 text-xs bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl outline-none focus:border-dusty-mauve"
               value={phoneNumber}
               onChange={(e) => setPhoneNumber(e.target.value)}
+              required
             />
             <button
               onClick={handleSendOtp}

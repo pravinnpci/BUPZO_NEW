@@ -129,7 +129,7 @@ export async function generateAICopy(prompt: string): Promise<{ success: boolean
   return response.json();
 }
 
-export async function verifyKYC(gstNumber: string, fssaiNumber: string): Promise<{
+export async function verifyKYC(gstNumber: string, fssaiNumber: string, userId?: string, sellerId?: string): Promise<{
   status: string;
   gst_check: string;
   fssai_check: string;
@@ -141,7 +141,12 @@ export async function verifyKYC(gstNumber: string, fssaiNumber: string): Promise
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ gst_number: gstNumber, fssai_number: fssaiNumber }),
+    body: JSON.stringify({ 
+      gst_number: gstNumber, 
+      fssai_number: fssaiNumber,
+      user_id: userId || null,
+      seller_id: sellerId || null
+    }),
   });
 
   if (!response.ok) {
@@ -185,6 +190,8 @@ export interface Coupon {
   expiry_date: string;
   usage_limit?: number;
   created_at: string;
+  created_by_seller_id?: string;
+  status: string;
 }
 
 export async function fetchCategories(): Promise<Category[]> {
@@ -244,6 +251,7 @@ export async function createCoupon(coupon: {
   is_premium_only: boolean;
   min_order_value: number;
   expiry_date: string;
+  created_by_seller_id?: string;
 }): Promise<Coupon> {
   const response = await fetch(`${API_BASE_URL}/api/coupons/`, {
     method: 'POST',

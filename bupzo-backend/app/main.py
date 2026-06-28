@@ -62,6 +62,12 @@ async def init_db_pool():
 @app.on_event("startup")
 async def startup_event():
     await init_db_pool()
+    # Dynamic DB Schema Migration: Ensure columns exist
+    async with pool.acquire() as conn:
+        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS name VARCHAR(100);")
+        await conn.execute("ALTER TABLE coupons ADD COLUMN IF NOT EXISTS created_by_seller_id UUID REFERENCES sellers(id) ON DELETE CASCADE;")
+        await conn.execute("ALTER TABLE coupons ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'PENDING';")
+        await conn.execute("UPDATE coupons SET status = 'APPROVED' WHERE status IS NULL;")
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -70,6 +76,7 @@ async def shutdown_event():
 
 # Pydantic Models for Request/Response
 class UserCreate(BaseModel):
+    name: Optional[str] = None
     phone: str
     email: Optional[EmailStr] = None
     is_premium: bool = False
@@ -79,6 +86,7 @@ class UserCreate(BaseModel):
 
 class UserResponse(BaseModel):
     id: UUID
+    name: Optional[str] = None
     phone: str
     email: Optional[EmailStr] = None
     is_premium: bool
@@ -91,6 +99,7 @@ class UserResponse(BaseModel):
         from_attributes = True
 
 class UserUpdate(BaseModel):
+    name: Optional[str] = None
     phone: Optional[str] = None
     email: Optional[EmailStr] = None
     is_premium: Optional[bool] = None
@@ -116,6 +125,8 @@ class CouponCreate(BaseModel):
     expiry_date: datetime
     usage_limit: Optional[int] = None
     min_order_value: float = 0.0
+    created_by_seller_id: Optional[UUID] = None
+    status: Optional[str] = None
 
 class CouponResponse(BaseModel):
     id: UUID
@@ -126,6 +137,8 @@ class CouponResponse(BaseModel):
     usage_limit: Optional[int]
     min_order_value: float
     created_at: datetime
+    created_by_seller_id: Optional[UUID] = None
+    status: str
 
     class Config:
         from_attributes = True
@@ -141,6 +154,7 @@ class CouponUpdate(BaseModel):
     expiry_date: Optional[datetime] = None
     usage_limit: Optional[int] = None
     min_order_value: Optional[float] = None
+    status: Optional[str] = None
 
 class ProductCreate(BaseModel):
     name: str
@@ -239,6 +253,35 @@ class WalletAdjustmentRequest(BaseModel):
     type: str  # 'Credit' or 'Debit'
     reason: Optional[str] = None
 
+class WalletTransactionResponse(BaseModel):
+    id: UUID
+    user_id: UUID
+    amount: float
+    type: str
+    description: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class OrderResponse(BaseModel):
+    id: UUID
+    user_id: UUID
+    seller_id: UUID
+    total_amount: float
+    status: str
+    tracking_id: Optional[str] = None
+    order_source: str
+    shipping_partner: Optional[str] = None
+    payment_gateway: Optional[str] = None
+    trust_donation_amount: float
+    currency: str
+    exchange_rate: float
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
 # Helper functions for database execution
 async def execute_query(query: str, *args):
     async with pool.acquire() as conn:
@@ -278,12 +321,13 @@ async def create_user(user: UserCreate):
 
     query = """
     INSERT INTO users
-    (id, phone, email, is_premium, signup_platform, referred_by, privacy_accepted)
-    VALUES ($1, $2, $3, $4, $5, $6, $7)
-    RETURNING id, phone, email, is_premium, signup_platform, wallet_balance, privacy_accepted, created_at
+    (id, name, phone, email, is_premium, signup_platform, referred_by, privacy_accepted)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    RETURNING id, name, phone, email, is_premium, signup_platform, wallet_balance, privacy_accepted, created_at
     """
     values = (
         uuid4(),
+        user.name,
         user.phone,
         user.email,
         user.is_premium,
@@ -312,7 +356,7 @@ async def create_user(user: UserCreate):
         return result
     except asyncpg.exceptions.UniqueViolationError:
         existing_user = await execute_query_one(
-            "SELECT id, phone, email, is_premium, signup_platform, wallet_balance, privacy_accepted, created_at FROM users WHERE phone = $1",
+            "SELECT id, name, phone, email, is_premium, signup_platform, wallet_balance, privacy_accepted, created_at FROM users WHERE phone = $1",
             user.phone
         )
         return existing_user
@@ -320,7 +364,7 @@ async def create_user(user: UserCreate):
 @app.get("/api/users/", response_model=List[UserResponse])
 async def read_users():
     query = """
-    SELECT id, phone, email, is_premium, signup_platform, wallet_balance, privacy_accepted, created_at
+    SELECT id, name, phone, email, is_premium, signup_platform, wallet_balance, privacy_accepted, created_at
     FROM users
     """
     results = await execute_query(query)
@@ -338,6 +382,10 @@ async def update_user(user_id: UUID, payload: UserUpdate):
     values = []
     counter = 1
     
+    if payload.name is not None:
+        fields.append(f"name = ${counter}")
+        values.append(payload.name)
+        counter += 1
     if payload.phone is not None:
         fields.append(f"phone = ${counter}")
         values.append(payload.phone)
@@ -359,7 +407,7 @@ async def update_user(user_id: UUID, payload: UserUpdate):
         raise HTTPException(status_code=400, detail="No fields provided to update")
         
     values.append(user_id)
-    query = f"UPDATE users SET {', '.join(fields)} WHERE id = ${counter} RETURNING id, phone, email, is_premium, signup_platform, wallet_balance, privacy_accepted, created_at"
+    query = f"UPDATE users SET {', '.join(fields)} WHERE id = ${counter} RETURNING id, name, phone, email, is_premium, signup_platform, wallet_balance, privacy_accepted, created_at"
     
     res = await execute_query_one(query, *values)
     return res
@@ -367,7 +415,7 @@ async def update_user(user_id: UUID, payload: UserUpdate):
 @app.get("/api/users/{user_id}", response_model=UserResponse)
 async def read_user(user_id: UUID):
     query = """
-    SELECT id, phone, email, is_premium, signup_platform, wallet_balance, privacy_accepted, created_at
+    SELECT id, name, phone, email, is_premium, signup_platform, wallet_balance, privacy_accepted, created_at
     FROM users
     WHERE id = $1
     """
@@ -806,10 +854,13 @@ async def ai_product_copywriter(payload: CopywriterRequest):
 class KYCVerificationRequest(BaseModel):
     gst_number: str
     fssai_number: str
+    seller_id: Optional[UUID] = None
+    user_id: Optional[UUID] = None
 
 @app.post("/api/ai/kyc/")
 async def ai_verify_kyc(payload: KYCVerificationRequest):
     import re
+    import json
     # Validate GST and FSSAI formats
     gst_valid = bool(re.match(r"^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$", payload.gst_number))
     fssai_valid = bool(re.match(r"^[0-9]{14}$", payload.fssai_number))
@@ -817,6 +868,27 @@ async def ai_verify_kyc(payload: KYCVerificationRequest):
     status = "APPROVED" if (gst_valid and fssai_valid) else "REJECTED"
     reason = "All checks passed. Business registration numbers verified against active registry." if status == "APPROVED" else "Invalid GSTIN or FSSAI license format."
     
+    db_status = "APPROVED" if status == "APPROVED" else "REJECTED"
+    kyc_payload = json.dumps({
+        "gstin": payload.gst_number, 
+        "fssai": payload.fssai_number, 
+        "verification_score": 0.98 if status == "APPROVED" else 0.23, 
+        "reason": reason
+    })
+
+    if payload.seller_id:
+        await execute_query_none(
+            "UPDATE sellers SET status = $1, kyc_details = $2, updated_at = NOW() WHERE id = $3",
+            db_status, kyc_payload, payload.seller_id
+        )
+    elif payload.user_id:
+        seller = await execute_query_one("SELECT id FROM sellers WHERE user_id = $1", payload.user_id)
+        if seller:
+            await execute_query_none(
+                "UPDATE sellers SET status = $1, kyc_details = $2, updated_at = NOW() WHERE id = $3",
+                db_status, kyc_payload, seller['id']
+            )
+
     return {
         "status": status,
         "gst_check": "VALID" if gst_valid else "INVALID",
@@ -955,18 +1027,22 @@ async def create_category(payload: CategoryCreate):
         raise HTTPException(status_code=400, detail="Category already exists.")
 
 # Coupon/Voucher Management
+# Coupon/Voucher Management
 @app.get("/api/coupons/", response_model=List[CouponResponse])
 async def read_coupons():
-    query = "SELECT id, code, discount_percent, is_premium_only, expiry_date, usage_limit, min_order_value, created_at FROM coupons"
+    query = "SELECT id, code, discount_percent, is_premium_only, expiry_date, usage_limit, min_order_value, created_at, created_by_seller_id, status FROM coupons ORDER BY created_at DESC"
     return await execute_query(query)
 
 @app.post("/api/coupons/", response_model=CouponResponse)
 async def create_coupon(payload: CouponCreate):
+    # Auto status: PENDING if created by a seller, APPROVED if created by an admin
+    assigned_status = payload.status if payload.status is not None else ('PENDING' if payload.created_by_seller_id else 'APPROVED')
+    
     query = """
     INSERT INTO coupons 
-    (id, code, discount_percent, is_premium_only, expiry_date, usage_limit, min_order_value) 
-    VALUES ($1, $2, $3, $4, $5, $6, $7) 
-    RETURNING id, code, discount_percent, is_premium_only, expiry_date, usage_limit, min_order_value, created_at
+    (id, code, discount_percent, is_premium_only, expiry_date, usage_limit, min_order_value, created_by_seller_id, status) 
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+    RETURNING id, code, discount_percent, is_premium_only, expiry_date, usage_limit, min_order_value, created_at, created_by_seller_id, status
     """
     try:
         res = await execute_query_one(
@@ -977,7 +1053,9 @@ async def create_coupon(payload: CouponCreate):
             payload.is_premium_only, 
             payload.expiry_date, 
             payload.usage_limit, 
-            payload.min_order_value
+            payload.min_order_value,
+            payload.created_by_seller_id,
+            assigned_status
         )
         return res
     except asyncpg.exceptions.UniqueViolationError:
@@ -985,10 +1063,16 @@ async def create_coupon(payload: CouponCreate):
 
 @app.post("/api/coupons/validate")
 async def validate_coupon(payload: CouponValidateRequest):
-    query = "SELECT id, code, discount_percent, is_premium_only, expiry_date, usage_limit, min_order_value FROM coupons WHERE code = $1"
+    query = "SELECT id, code, discount_percent, is_premium_only, expiry_date, usage_limit, min_order_value, status FROM coupons WHERE code = $1"
     res = await execute_query_one(query, payload.code.upper())
     if not res:
         raise HTTPException(status_code=400, detail="Invalid coupon code.")
+    
+    if res['status'] == 'PENDING':
+        raise HTTPException(status_code=400, detail="Voucher is pending admin approval and cannot be used yet.")
+    elif res['status'] == 'REJECTED':
+        raise HTTPException(status_code=400, detail="Voucher has been rejected by administration.")
+
     if datetime.now(res['expiry_date'].tzinfo) > res['expiry_date']:
         raise HTTPException(status_code=400, detail="Coupon has expired.")
     if payload.order_value < float(res['min_order_value']):
@@ -1007,7 +1091,7 @@ async def validate_coupon(payload: CouponValidateRequest):
 @app.put("/api/coupons/{coupon_id}", response_model=CouponResponse)
 async def update_coupon(coupon_id: UUID, payload: CouponUpdate):
     # Retrieve current coupon
-    query_select = "SELECT id, code, discount_percent, is_premium_only, expiry_date, usage_limit, min_order_value, created_at FROM coupons WHERE id = $1"
+    query_select = "SELECT id, code, discount_percent, is_premium_only, expiry_date, usage_limit, min_order_value, created_at, created_by_seller_id, status FROM coupons WHERE id = $1"
     current = await execute_query_one(query_select, coupon_id)
     if not current:
         raise HTTPException(status_code=404, detail="Coupon not found")
@@ -1018,15 +1102,16 @@ async def update_coupon(coupon_id: UUID, payload: CouponUpdate):
     expiry_date = payload.expiry_date if payload.expiry_date is not None else current['expiry_date']
     usage_limit = payload.usage_limit if payload.usage_limit is not None else current['usage_limit']
     min_order_value = payload.min_order_value if payload.min_order_value is not None else float(current['min_order_value'])
+    status = payload.status if payload.status is not None else current['status']
 
     query_update = """
     UPDATE coupons 
-    SET code = $1, discount_percent = $2, is_premium_only = $3, expiry_date = $4, usage_limit = $5, min_order_value = $6 
-    WHERE id = $7 
-    RETURNING id, code, discount_percent, is_premium_only, expiry_date, usage_limit, min_order_value, created_at
+    SET code = $1, discount_percent = $2, is_premium_only = $3, expiry_date = $4, usage_limit = $5, min_order_value = $6, status = $7 
+    WHERE id = $8 
+    RETURNING id, code, discount_percent, is_premium_only, expiry_date, usage_limit, min_order_value, created_at, created_by_seller_id, status
     """
     try:
-        res = await execute_query_one(query_update, code, discount_percent, is_premium_only, expiry_date, usage_limit, min_order_value, coupon_id)
+        res = await execute_query_one(query_update, code, discount_percent, is_premium_only, expiry_date, usage_limit, min_order_value, status, coupon_id)
         return res
     except asyncpg.exceptions.UniqueViolationError:
         raise HTTPException(status_code=400, detail="Coupon code already exists.")
@@ -1077,5 +1162,60 @@ async def upload_image(file: UploadFile = File(...)):
         return {"success": True, "url": url}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"MinIO upload error: {str(e)}")
+
+# Get User Orders
+@app.get("/api/orders/user/{user_id}", response_model=List[OrderResponse])
+async def get_user_orders(user_id: UUID):
+    query = """
+    SELECT id, user_id, seller_id, total_amount, status, tracking_id, order_source, shipping_partner, payment_gateway, trust_donation_amount, currency, exchange_rate, created_at
+    FROM orders WHERE user_id = $1 ORDER BY created_at DESC
+    """
+    res = await execute_query(query, user_id)
+    return res
+
+# Get Seller Orders
+@app.get("/api/orders/seller/{seller_id}", response_model=List[OrderResponse])
+async def get_seller_orders(seller_id: UUID):
+    query = """
+    SELECT id, user_id, seller_id, total_amount, status, tracking_id, order_source, shipping_partner, payment_gateway, trust_donation_amount, currency, exchange_rate, created_at
+    FROM orders WHERE seller_id = $1 ORDER BY created_at DESC
+    """
+    res = await execute_query(query, seller_id)
+    return res
+
+# Get Single Order Details
+@app.get("/api/orders/{order_id}", response_model=OrderResponse)
+async def get_order_details(order_id: UUID):
+    query = """
+    SELECT id, user_id, seller_id, total_amount, status, tracking_id, order_source, shipping_partner, payment_gateway, trust_donation_amount, currency, exchange_rate, created_at
+    FROM orders WHERE id = $1
+    """
+    res = await execute_query_one(query, order_id)
+    if not res:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return res
+
+# Get User Wallet Transactions
+@app.get("/api/wallet/transactions/{user_id}", response_model=List[WalletTransactionResponse])
+async def get_user_wallet_transactions(user_id: UUID):
+    query = """
+    SELECT id, user_id, amount, type, description, created_at
+    FROM wallet_transactions WHERE user_id = $1 ORDER BY created_at DESC
+    """
+    res = await execute_query(query, user_id)
+    return res
+
+# Update Order Status
+@app.put("/api/orders/{order_id}/status")
+async def update_order_status(order_id: UUID, status: str):
+    valid_statuses = ['pending', 'paid', 'failed', 'processing', 'shipped', 'delivered', 'cancelled', 'disputed']
+    if status.lower() not in valid_statuses:
+        raise HTTPException(status_code=400, detail="Invalid order status.")
+    
+    query = "UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING id, status"
+    res = await execute_query_one(query, status.lower(), order_id)
+    if not res:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return {"success": True, "order_id": res['id'], "status": res['status']}
 
 

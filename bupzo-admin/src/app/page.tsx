@@ -5,10 +5,10 @@ import { useRouter } from 'next/navigation';
 
 // Mock Data
 const initialUsers = [
-  { id: "USR-10293", phone: "+919876543210", email: "ravi@gmail.com", wallet: 450, tier: "Premium", status: "Active", risk: "Low" },
-  { id: "USR-10294", phone: "+918876543210", email: "anitha@gmail.com", wallet: 50, tier: "Normal", status: "Active", risk: "Low" },
-  { id: "USR-10295", phone: "+917876543210", email: "karthik@gmail.com", wallet: 1200, tier: "Premium", status: "Active", risk: "Medium" },
-  { id: "USR-10296", phone: "+916876543210", email: "subha@gmail.com", wallet: 0, tier: "Normal", status: "Suspended", risk: "High" }
+  { id: "USR-10293", name: "Ravi Kumar", phone: "+919876543210", email: "ravi@gmail.com", wallet: 450, tier: "Premium", status: "Active", risk: "Low" },
+  { id: "USR-10294", name: "Anitha Pandian", phone: "+918876543210", email: "anitha@gmail.com", wallet: 50, tier: "Normal", status: "Active", risk: "Low" },
+  { id: "USR-10295", name: "Karthik Ganesan", phone: "+917876543210", email: "karthik@gmail.com", wallet: 1200, tier: "Premium", status: "Active", risk: "Medium" },
+  { id: "USR-10296", name: "Subhashini M.", phone: "+916876543210", email: "subha@gmail.com", wallet: 0, tier: "Normal", status: "Suspended", risk: "High" }
 ];
 
 const initialSellers = [
@@ -100,6 +100,10 @@ export default function AdminDashboard() {
   const [editCouponCode, setEditCouponCode] = useState('');
   const [editCouponDiscount, setEditCouponDiscount] = useState('');
   const [editCouponMinSpend, setEditCouponMinSpend] = useState('');
+  const [editCouponIsPremiumOnly, setEditCouponIsPremiumOnly] = useState(false);
+
+  const [newUserName, setNewUserName] = useState('');
+  const [editUserName, setEditUserName] = useState('');
 
   const [editUserPhone, setEditUserPhone] = useState('');
   const [editUserEmail, setEditUserEmail] = useState('');
@@ -150,6 +154,7 @@ export default function AdminDashboard() {
           if (Array.isArray(usersData) && usersData.length > 0) {
             setUsers(usersData.map((u: any) => ({
               id: u.id,
+              name: u.name || 'Bupzo Patron',
               phone: u.phone,
               email: u.email || 'N/A',
               wallet: u.wallet_balance,
@@ -345,6 +350,46 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleApproveVoucher = async (couponId: string) => {
+    try {
+      const resp = await fetch(`${API_URL}/api/coupons/${couponId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'APPROVED' })
+      });
+      if (resp.ok) {
+        alert("Voucher approved successfully!");
+        setCoupons(prev => prev.map(c => c.id === couponId ? { ...c, status: 'APPROVED' } : c));
+      } else {
+        alert("Failed to approve voucher.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Offline Mode: locally approved voucher.");
+      setCoupons(prev => prev.map(c => c.id === couponId ? { ...c, status: 'APPROVED' } : c));
+    }
+  };
+
+  const handleRejectVoucher = async (couponId: string) => {
+    try {
+      const resp = await fetch(`${API_URL}/api/coupons/${couponId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'REJECTED' })
+      });
+      if (resp.ok) {
+        alert("Voucher rejected successfully!");
+        setCoupons(prev => prev.map(c => c.id === couponId ? { ...c, status: 'REJECTED' } : c));
+      } else {
+        alert("Failed to reject voucher.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Offline Mode: locally rejected voucher.");
+      setCoupons(prev => prev.map(c => c.id === couponId ? { ...c, status: 'REJECTED' } : c));
+    }
+  };
+
   const handleEditProductSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedProduct) return;
@@ -385,7 +430,8 @@ export default function AdminDashboard() {
         body: JSON.stringify({
           code: editCouponCode,
           discount_percent: parseFloat(editCouponDiscount),
-          min_order_value: parseFloat(editCouponMinSpend)
+          min_order_value: parseFloat(editCouponMinSpend),
+          is_premium_only: editCouponIsPremiumOnly
         })
       });
       if (resp.ok) {
@@ -530,6 +576,7 @@ export default function AdminDashboard() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          name: newUserName || 'Bupzo Patron',
           phone: newUserPhone,
           email: newUserEmail || null,
           is_premium: newUserTier === 'Premium',
@@ -548,6 +595,7 @@ export default function AdminDashboard() {
           const usersData = await usersResp.json();
           setUsers(usersData.map((u: any) => ({
             id: u.id,
+            name: u.name || 'Bupzo Patron',
             phone: u.phone,
             email: u.email || 'N/A',
             wallet: u.wallet_balance,
@@ -560,6 +608,7 @@ export default function AdminDashboard() {
           setUsers(prev => [
             {
               id: newUser.id,
+              name: newUser.name || newUserName || 'Bupzo Patron',
               phone: newUser.phone,
               email: newUser.email || 'N/A',
               wallet: parseFloat(newUserWallet) || 0,
@@ -572,6 +621,7 @@ export default function AdminDashboard() {
         }
 
         // Reset and close
+        setNewUserName('');
         setNewUserPhone('');
         setNewUserEmail('');
         setNewUserTier('Normal');
@@ -588,6 +638,7 @@ export default function AdminDashboard() {
       setUsers(prev => [
         {
           id: offlineId,
+          name: newUserName || 'Bupzo Patron',
           phone: newUserPhone,
           email: newUserEmail || 'N/A',
           wallet: parseFloat(newUserWallet) || 0,
@@ -606,9 +657,9 @@ export default function AdminDashboard() {
     }
   };
 
-  // Open Edit User Modal
   const openEditUserModal = (user: any) => {
     setSelectedUser(user);
+    setEditUserName(user.name || '');
     setEditUserPhone(user.phone);
     setEditUserEmail(user.email === 'N/A' ? '' : user.email);
     setEditUserTier(user.tier);
@@ -626,6 +677,7 @@ export default function AdminDashboard() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          name: editUserName,
           phone: editUserPhone,
           email: editUserEmail || null,
           is_premium: editUserTier === 'Premium',
@@ -642,6 +694,7 @@ export default function AdminDashboard() {
           const usersData = await usersResp.json();
           setUsers(usersData.map((u: any) => ({
             id: u.id,
+            name: u.name || 'Bupzo Patron',
             phone: u.phone,
             email: u.email || 'N/A',
             wallet: u.wallet_balance,
@@ -653,6 +706,7 @@ export default function AdminDashboard() {
           // Local fallback
           setUsers(prev => prev.map(u => u.id === selectedUser.id ? {
             ...u,
+            name: editUserName,
             phone: editUserPhone,
             email: editUserEmail || 'N/A',
             wallet: parseFloat(editUserWallet) || 0,
@@ -672,6 +726,7 @@ export default function AdminDashboard() {
       // Local fallback
       setUsers(prev => prev.map(u => u.id === selectedUser.id ? {
         ...u,
+        name: editUserName,
         phone: editUserPhone,
         email: editUserEmail || 'N/A',
         wallet: parseFloat(editUserWallet) || 0,
@@ -694,85 +749,84 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className={`${darkMode ? 'dark bg-[#0c0b11]' : 'bg-[#fff8f4]'} min-h-screen text-[#1e1b19] dark:text-zinc-100 font-sans transition-colors duration-300 flex overflow-hidden`}>
+    <div className={`${darkMode ? 'dark bg-[#0f111a] text-[#e3e6ed]' : 'bg-[#f9fbfd] text-[#141824]'} min-h-screen font-sans transition-colors duration-300 flex overflow-hidden w-full`}>
       
       {/* Sidebar Navigation */}
-      <aside className="w-[280px] bg-white dark:bg-[#15131b] border-r border-[#e8e1dd] dark:border-[#2f2b3b] flex flex-col p-6 z-50 h-screen transition-colors duration-300">
+      <aside className="w-[280px] bg-white dark:bg-[#141824] border-r border-[#e3e6ed] dark:border-[#222834] flex flex-col p-6 z-50 h-screen transition-colors duration-300">
         <div className="mb-8 px-4 flex items-center gap-3">
           <img src="/Bupzo-logo.png" alt="BUPZO Logo" className="w-10 h-10 object-contain rounded" />
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-primary dark:text-[#ccc6dc] font-heading">BUPZO</h1>
-            <p className="text-[10px] text-[#706677] dark:text-[#c9c5cc] uppercase tracking-wider font-semibold">Phoenix Pro Admin</p>
+            <h1 className="text-xl font-bold tracking-tight text-[#3874ff] font-heading">BUPZO</h1>
+            <p className="text-[10px] text-[#525b75] dark:text-[#9fa6bc] uppercase tracking-wider font-semibold">Phoenix Pro Admin</p>
           </div>
         </div>
 
-        <nav className="flex-1 space-y-2 overflow-y-auto scrollbar-hide">
+        <nav className="flex-1 space-y-1.5 overflow-y-auto scrollbar-hide">
           <button 
             onClick={() => setActiveTab('dashboard')} 
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border-l-4 transition-all text-sm font-semibold ${activeTab === 'dashboard' ? 'border-[#3f3b4c] dark:border-[#ccc6dc] bg-zinc-100 dark:bg-zinc-800 text-black dark:text-white' : 'border-transparent text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
+            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'dashboard' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
           >
             Dashboard
           </button>
           
           <button 
             onClick={() => setActiveTab('users')} 
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border-l-4 transition-all text-sm font-semibold ${activeTab === 'users' ? 'border-[#3f3b4c] dark:border-[#ccc6dc] bg-zinc-100 dark:bg-zinc-800 text-black dark:text-white' : 'border-transparent text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
+            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'users' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
           >
             User Directory
           </button>
 
           <button 
             onClick={() => setActiveTab('products')} 
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border-l-4 transition-all text-sm font-semibold ${activeTab === 'products' ? 'border-[#3f3b4c] dark:border-[#ccc6dc] bg-zinc-100 dark:bg-zinc-800 text-black dark:text-white' : 'border-transparent text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
+            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'products' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
           >
             Products Catalog
           </button>
 
           <button 
             onClick={() => setActiveTab('kyc')} 
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border-l-4 transition-all text-sm font-semibold ${activeTab === 'kyc' ? 'border-[#3f3b4c] dark:border-[#ccc6dc] bg-zinc-100 dark:bg-zinc-800 text-black dark:text-white' : 'border-transparent text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
+            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'kyc' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
           >
             Seller KYC
           </button>
-
           <button 
             onClick={() => setActiveTab('financials')} 
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border-l-4 transition-all text-sm font-semibold ${activeTab === 'financials' ? 'border-[#3f3b4c] dark:border-[#ccc6dc] bg-zinc-100 dark:bg-zinc-800 text-black dark:text-white' : 'border-transparent text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
+            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'financials' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
           >
             Wallet & Audits
           </button>
 
           <button 
             onClick={() => setActiveTab('logistics')} 
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border-l-4 transition-all text-sm font-semibold ${activeTab === 'logistics' ? 'border-[#3f3b4c] dark:border-[#ccc6dc] bg-zinc-100 dark:bg-zinc-800 text-black dark:text-white' : 'border-transparent text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
+            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'logistics' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
           >
             Logistics API
           </button>
 
           <button 
             onClick={() => setActiveTab('disputes')} 
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border-l-4 transition-all text-sm font-semibold ${activeTab === 'disputes' ? 'border-[#3f3b4c] dark:border-[#ccc6dc] bg-zinc-100 dark:bg-zinc-800 text-black dark:text-white' : 'border-transparent text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
+            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'disputes' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
           >
             AI Fraud Center
           </button>
 
           <button 
             onClick={() => setActiveTab('whatsapp')} 
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border-l-4 transition-all text-sm font-semibold ${activeTab === 'whatsapp' ? 'border-[#3f3b4c] dark:border-[#ccc6dc] bg-zinc-100 dark:bg-zinc-800 text-black dark:text-white' : 'border-transparent text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
+            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'whatsapp' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
           >
             Marketing Blaster
           </button>
 
           <button 
             onClick={() => setActiveTab('vouchers')} 
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border-l-4 transition-all text-sm font-semibold ${activeTab === 'vouchers' ? 'border-[#3f3b4c] dark:border-[#ccc6dc] bg-zinc-100 dark:bg-zinc-800 text-black dark:text-white' : 'border-transparent text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
+            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'vouchers' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
           >
             Promo Vouchers
           </button>
 
           <button 
             onClick={() => setActiveTab('health')} 
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border-l-4 transition-all text-sm font-semibold ${activeTab === 'health' ? 'border-[#3f3b4c] dark:border-[#ccc6dc] bg-zinc-100 dark:bg-zinc-800 text-black dark:text-white' : 'border-transparent text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
+            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'health' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
           >
             System Telemetry
           </button>
@@ -1057,6 +1111,7 @@ export default function AdminDashboard() {
                   <thead>
                     <tr className="border-b border-zinc-200 dark:border-zinc-700 text-zinc-400">
                       <th className="py-2">User ID</th>
+                      <th className="py-2">Name</th>
                       <th className="py-2">Phone</th>
                       <th className="py-2">Email</th>
                       <th className="py-2">Wallet</th>
@@ -1070,6 +1125,7 @@ export default function AdminDashboard() {
                     {users.map(u => (
                       <tr key={u.id} className="border-b border-zinc-100 dark:border-zinc-800">
                         <td className="py-3 font-mono">{u.id}</td>
+                        <td className="py-3 font-semibold text-[#3874ff]">{u.name || 'Bupzo Patron'}</td>
                         <td className="py-3">{u.phone}</td>
                         <td className="py-3">{u.email}</td>
                         <td className="py-3 font-mono font-bold">₹{u.wallet}</td>
@@ -1443,7 +1499,7 @@ export default function AdminDashboard() {
                 <div className="lg:col-span-2 bg-white dark:bg-[#15131b] border border-[#e8e1dd] dark:border-[#2f2b3b] p-6 rounded-2xl shadow-sm">
                   <h3 className="text-md font-bold mb-4 font-heading">Systemwide Active Coupons</h3>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs">
+                    <table className="w-full text-left text-xs font-semibold">
                       <thead>
                         <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-400 font-bold uppercase tracking-wider text-[10px]">
                           <th className="py-2.5">Code</th>
@@ -1451,6 +1507,7 @@ export default function AdminDashboard() {
                           <th className="py-2.5">Min Order</th>
                           <th className="py-2.5">Expiry Date</th>
                           <th className="py-2.5">Premium Only</th>
+                          <th className="py-2.5">Status</th>
                           <th className="py-2.5">Actions</th>
                         </tr>
                       </thead>
@@ -1467,24 +1524,48 @@ export default function AdminDashboard() {
                               </span>
                             </td>
                             <td className="py-3">
-                              <button 
-                                onClick={() => {
-                                  setSelectedCoupon(cp);
-                                  setEditCouponCode(cp.code);
-                                  setEditCouponDiscount(cp.discount_percent.toString());
-                                  setEditCouponMinSpend(cp.min_order_value.toString());
-                                  setShowEditCouponModal(true);
-                                }}
-                                className="bg-charcoal dark:bg-zinc-800 text-white dark:text-zinc-200 px-2.5 py-1 rounded text-[10px] font-bold hover:opacity-90"
-                              >
-                                Edit
-                              </button>
+                              <span className={`px-2 py-0.5 rounded font-bold ${cp.status === 'PENDING' ? 'bg-yellow-100/10 text-yellow-500' : cp.status === 'REJECTED' ? 'bg-red-100/10 text-red-500' : 'bg-green-100/10 text-green-500'}`}>
+                                {cp.status || 'APPROVED'}
+                              </span>
+                            </td>
+                            <td className="py-3">
+                              <div className="flex gap-2">
+                                <button 
+                                  onClick={() => {
+                                    setSelectedCoupon(cp);
+                                    setEditCouponCode(cp.code);
+                                    setEditCouponDiscount(cp.discount_percent.toString());
+                                    setEditCouponMinSpend(cp.min_order_value.toString());
+                                    setEditCouponIsPremiumOnly(cp.is_premium_only);
+                                    setShowEditCouponModal(true);
+                                  }}
+                                  className="bg-charcoal dark:bg-zinc-800 text-white dark:text-zinc-200 px-2 py-1 rounded text-[10px] font-bold hover:opacity-90"
+                                >
+                                  Edit
+                                </button>
+                                {cp.status === 'PENDING' && (
+                                  <>
+                                    <button 
+                                      onClick={() => handleApproveVoucher(cp.id)}
+                                      className="bg-green-600 text-white px-2 py-1 rounded text-[10px] font-bold hover:bg-opacity-95 transition-all"
+                                    >
+                                      Approve
+                                    </button>
+                                    <button 
+                                      onClick={() => handleRejectVoucher(cp.id)}
+                                      className="bg-red-600 text-white px-2 py-1 rounded text-[10px] font-bold hover:bg-opacity-95 transition-all"
+                                    >
+                                      Reject
+                                    </button>
+                                  </>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         ))}
                         {coupons.length === 0 && (
                           <tr>
-                            <td colSpan={6} className="py-6 text-center text-zinc-400">No active systemwide promo vouchers found.</td>
+                            <td colSpan={7} className="py-6 text-center text-zinc-400">No active systemwide promo vouchers found.</td>
                           </tr>
                         )}
                       </tbody>
@@ -1505,6 +1586,16 @@ export default function AdminDashboard() {
           <div className="bg-[#fff8f4] dark:bg-[#15131b] border border-[#e8e1dd] dark:border-[#2f2b3b] rounded-2xl w-full max-w-md p-6 shadow-2xl relative text-zinc-900 dark:text-zinc-100">
             <h3 className="text-lg font-bold font-heading mb-4">Add Platform User</h3>
             <form onSubmit={handleAddUserSubmit} className="space-y-4 text-xs font-semibold">
+              <div>
+                <label className="block text-zinc-500 mb-1">Full Name</label>
+                <input 
+                  type="text" 
+                  value={newUserName} 
+                  onChange={(e) => setNewUserName(e.target.value)} 
+                  placeholder="Ravi Kumar"
+                  className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm text-zinc-900 dark:text-zinc-100 outline-none"
+                />
+              </div>
               <div>
                 <label className="block text-zinc-500 mb-1">Phone Number (Required)</label>
                 <input 
@@ -1580,6 +1671,15 @@ export default function AdminDashboard() {
                   value={selectedUser.id} 
                   disabled
                   className="w-full px-3 py-2 bg-zinc-100 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm text-zinc-500 font-mono outline-none cursor-not-allowed"
+                />
+              </div>
+              <div>
+                <label className="block text-zinc-500 mb-1">Full Name</label>
+                <input 
+                  type="text" 
+                  value={editUserName} 
+                  onChange={(e) => setEditUserName(e.target.value)} 
+                  className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm text-zinc-900 dark:text-zinc-100 outline-none"
                 />
               </div>
               <div>
@@ -1759,6 +1859,16 @@ export default function AdminDashboard() {
                   className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm outline-none font-mono"
                   required
                 />
+              </div>
+              <div className="flex items-center gap-2 py-1">
+                <input 
+                  type="checkbox" 
+                  id="editCouponIsPremiumOnly"
+                  checked={editCouponIsPremiumOnly}
+                  onChange={(e) => setEditCouponIsPremiumOnly(e.target.checked)}
+                  className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-800 text-[#3874ff] focus:ring-[#3874ff] cursor-pointer"
+                />
+                <label htmlFor="editCouponIsPremiumOnly" className="text-zinc-500 select-none cursor-pointer">Premium Only Voucher</label>
               </div>
               <div className="flex gap-3 justify-end pt-4">
                 <button 
