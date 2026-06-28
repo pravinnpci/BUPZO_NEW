@@ -18,7 +18,28 @@ interface AuthState {
 }
 
 export const useUser = create<AuthState>((set) => ({
-  user: null,
-  setUser: (user) => set({ user }),
-  clearUser: () => set({ user: null }),
+  user: typeof window !== 'undefined' ? (() => {
+    try {
+      const stored = localStorage.getItem('bupzo_user');
+      return stored ? JSON.parse(stored) : null;
+    } catch (e) {
+      return null;
+    }
+  })() : null,
+  setUser: (user) => {
+    if (typeof window !== 'undefined') {
+      if (user) {
+        localStorage.setItem('bupzo_user', JSON.stringify(user));
+      } else {
+        localStorage.removeItem('bupzo_user');
+      }
+    }
+    set({ user });
+  },
+  clearUser: () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('bupzo_user');
+    }
+    set({ user: null });
+  },
 }));

@@ -110,6 +110,12 @@ export default function AdminDashboard() {
   const [editUserTier, setEditUserTier] = useState('Normal');
   const [editUserWallet, setEditUserWallet] = useState('0.00');
 
+  // Notifications State
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
+  const [isAdminSidebarOpen, setIsAdminSidebarOpen] = useState(false);
+  const [isSidebarReduced, setIsSidebarReduced] = useState(false);
+
   // Set mount state
   useEffect(() => {
     setHasMounted(true);
@@ -142,15 +148,13 @@ export default function AdminDashboard() {
     }
   }, [darkMode, hasMounted]);
 
-  // Fetch live backend data
-  useEffect(() => {
-    if (!hasMounted || isLoading) return;
-
-    async function loadLiveAdminData() {
+  const refreshAllAdminData = async () => {
+    try {
+      let usersData: any[] = [];
       try {
         const usersResp = await fetch(`${API_URL}/api/users/`);
         if (usersResp.ok) {
-          const usersData = await usersResp.json();
+          usersData = await usersResp.json();
           if (Array.isArray(usersData) && usersData.length > 0) {
             setUsers(usersData.map((u: any) => ({
               id: u.id,
@@ -164,10 +168,15 @@ export default function AdminDashboard() {
             })));
           }
         }
+      } catch (e) {
+        console.warn("Failed to fetch users:", e);
+      }
 
+      let sellersData: any[] = [];
+      try {
         const sellersResp = await fetch(`${API_URL}/api/sellers/`);
         if (sellersResp.ok) {
-          const sellersData = await sellersResp.json();
+          sellersData = await sellersResp.json();
           if (Array.isArray(sellersData) && sellersData.length > 0) {
             setSellers(sellersData.map((s: any) => ({
               id: s.id,
@@ -180,7 +189,11 @@ export default function AdminDashboard() {
             })));
           }
         }
+      } catch (e) {
+        console.warn("Failed to fetch sellers:", e);
+      }
 
+      try {
         const payoutsResp = await fetch(`${API_URL}/api/payouts/`);
         if (payoutsResp.ok) {
           const payoutsData = await payoutsResp.json();
@@ -195,34 +208,68 @@ export default function AdminDashboard() {
             })));
           }
         }
-
-        // Fetch coupons
-        try {
-          const couponsResp = await fetch(`${API_URL}/api/coupons/`);
-          if (couponsResp.ok) {
-            const couponsData = await couponsResp.json();
-            setCoupons(couponsData);
-          }
-        } catch (e) {
-          console.error("Failed to load coupons in admin:", e);
-        }
-
-        // Fetch products
-        try {
-          const productsResp = await fetch(`${API_URL}/api/products/`);
-          if (productsResp.ok) {
-            const productsData = await productsResp.json();
-            setProducts(productsData);
-          }
-        } catch (e) {
-          console.error("Failed to load products in admin:", e);
-        }
-      } catch (err) {
-        console.error("Live admin data load error:", err);
+      } catch (e) {
+        console.warn("Failed to fetch payouts:", e);
       }
-    }
 
-    loadLiveAdminData();
+      let couponsData: any[] = [];
+      try {
+        const couponsResp = await fetch(`${API_URL}/api/coupons/`);
+        if (couponsResp.ok) {
+          couponsData = await couponsResp.json();
+          setCoupons(couponsData);
+        }
+      } catch (e) {
+        console.warn("Failed to fetch coupons:", e);
+      }
+
+      try {
+        const productsResp = await fetch(`${API_URL}/api/products/`);
+        if (productsResp.ok) {
+          const productsData = await productsResp.json();
+          setProducts(productsData);
+        }
+      } catch (e) {
+        console.warn("Failed to fetch products:", e);
+      }
+
+      // Compute dynamic notification alerts
+      let computedNotifs: any[] = [];
+      if (Array.isArray(couponsData)) {
+        couponsData.filter((c: any) => c.status === 'PENDING').forEach((c: any) => {
+          computedNotifs.push({
+            id: `coupon-${c.id}`,
+            title: 'Voucher Approval Required',
+            body: `Voucher code "${c.code}" created by seller. Approval required.`,
+            targetTab: 'vouchers',
+            timestamp: new Date(c.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            read: false
+          });
+        });
+      }
+      if (Array.isArray(sellersData)) {
+        sellersData.filter((s: any) => s.status === 'PENDING').forEach((s: any) => {
+          computedNotifs.push({
+            id: `seller-${s.id}`,
+            title: 'Seller KYC Pending',
+            body: `Merchant "${s.business_name}" is pending KYC approval.`,
+            targetTab: 'kyc',
+            timestamp: new Date(s.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            read: false
+          });
+        });
+      }
+      setNotifications(computedNotifs);
+
+    } catch (err) {
+      console.warn("refreshAllAdminData error:", err);
+    }
+  };
+
+  // Fetch live backend data on load
+  useEffect(() => {
+    if (!hasMounted || isLoading) return;
+    refreshAllAdminData();
   }, [hasMounted, isLoading]);
 
   // Telemetry log simulation loop
@@ -359,7 +406,7 @@ export default function AdminDashboard() {
       });
       if (resp.ok) {
         alert("Voucher approved successfully!");
-        setCoupons(prev => prev.map(c => c.id === couponId ? { ...c, status: 'APPROVED' } : c));
+        await refreshAllAdminData();
       } else {
         alert("Failed to approve voucher.");
       }
@@ -379,7 +426,7 @@ export default function AdminDashboard() {
       });
       if (resp.ok) {
         alert("Voucher rejected successfully!");
-        setCoupons(prev => prev.map(c => c.id === couponId ? { ...c, status: 'REJECTED' } : c));
+        await refreshAllAdminData();
       } else {
         alert("Failed to reject voucher.");
       }
@@ -408,7 +455,7 @@ export default function AdminDashboard() {
       if (resp.ok) {
         const prod = await resp.json();
         alert(`Product "${prod.name}" updated successfully!`);
-        setProducts(prev => prev.map(p => p.id === prod.id ? prod : p));
+        await refreshAllAdminData();
         setShowEditProductModal(false);
         setSelectedProduct(null);
       } else {
@@ -437,7 +484,7 @@ export default function AdminDashboard() {
       if (resp.ok) {
         const cp = await resp.json();
         alert(`Voucher "${cp.code}" updated successfully!`);
-        setCoupons(prev => prev.map(c => c.id === cp.id ? cp : c));
+        await refreshAllAdminData();
         setShowEditCouponModal(false);
         setSelectedCoupon(null);
       } else {
@@ -483,8 +530,8 @@ export default function AdminDashboard() {
         method: 'POST'
       });
       if (resp.ok) {
-        setSellers(prev => prev.map(s => s.id === sellerId ? { ...s, status: 'Approved' } : s));
         alert("Merchant KYC approved successfully!");
+        await refreshAllAdminData();
         
         const newLog = {
           time: new Date().toLocaleTimeString(),
@@ -687,34 +734,7 @@ export default function AdminDashboard() {
 
       if (resp.ok) {
         alert("User updated successfully!");
-        
-        // Refresh users
-        const usersResp = await fetch(`${API_URL}/api/users/`);
-        if (usersResp.ok) {
-          const usersData = await usersResp.json();
-          setUsers(usersData.map((u: any) => ({
-            id: u.id,
-            name: u.name || 'Bupzo Patron',
-            phone: u.phone,
-            email: u.email || 'N/A',
-            wallet: u.wallet_balance,
-            tier: u.is_premium ? 'Premium' : 'Normal',
-            status: 'Active',
-            risk: parseFloat(u.wallet_balance) > 4000 ? 'Medium' : 'Low'
-          })));
-        } else {
-          // Local fallback
-          setUsers(prev => prev.map(u => u.id === selectedUser.id ? {
-            ...u,
-            name: editUserName,
-            phone: editUserPhone,
-            email: editUserEmail || 'N/A',
-            wallet: parseFloat(editUserWallet) || 0,
-            tier: editUserTier,
-            risk: (parseFloat(editUserWallet) || 0) > 4000 ? 'Medium' : 'Low'
-          } : u));
-        }
-
+        await refreshAllAdminData();
         setShowEditUserModal(false);
         setSelectedUser(null);
       } else {
@@ -752,92 +772,137 @@ export default function AdminDashboard() {
     <div className={`${darkMode ? 'dark bg-[#0f111a] text-[#e3e6ed]' : 'bg-[#f9fbfd] text-[#141824]'} min-h-screen font-sans transition-colors duration-300 flex overflow-hidden w-full`}>
       
       {/* Sidebar Navigation */}
-      <aside className="w-[280px] bg-white dark:bg-[#141824] border-r border-[#e3e6ed] dark:border-[#222834] flex flex-col p-6 z-50 h-screen transition-colors duration-300">
-        <div className="mb-8 px-4 flex items-center gap-3">
-          <img src="/Bupzo-logo.png" alt="BUPZO Logo" className="w-10 h-10 object-contain rounded" />
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-[#3874ff] font-heading">BUPZO</h1>
-            <p className="text-[10px] text-[#525b75] dark:text-[#9fa6bc] uppercase tracking-wider font-semibold">Phoenix Pro Admin</p>
+      {isAdminSidebarOpen && (
+        <div 
+          onClick={() => setIsAdminSidebarOpen(false)}
+          className="fixed inset-0 bg-black/50 z-40 md:hidden transition-all duration-300"
+        />
+      )}
+      <aside className={`${isSidebarReduced ? 'w-20 p-4' : 'w-[280px] p-6'} bg-white dark:bg-[#141824] border-r border-[#e3e6ed] dark:border-[#222834] flex flex-col z-50 h-screen fixed top-0 left-0 md:relative transition-all duration-300 transform md:translate-x-0 ${isAdminSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="mb-8 px-4 flex items-center justify-between gap-3">
+          <div 
+            onClick={() => setIsSidebarReduced(!isSidebarReduced)} 
+            className="flex items-center gap-3 cursor-pointer hover:opacity-85 select-none"
+            title={isSidebarReduced ? "Expand Sidebar" : "Collapse Sidebar"}
+          >
+            <img src="/Bupzo-logo.png" alt="BUPZO Logo" className="w-10 h-10 object-contain rounded" />
+            {!isSidebarReduced && (
+              <div>
+                <h1 className="text-xl font-bold tracking-tight text-[#3874ff] font-heading">BUPZO</h1>
+                <p className="text-[10px] text-[#525b75] dark:text-[#9fa6bc] uppercase tracking-wider font-semibold">Phoenix Pro Admin</p>
+              </div>
+            )}
           </div>
+          {!isSidebarReduced && (
+            <button 
+              onClick={() => setIsAdminSidebarOpen(false)}
+              className="md:hidden p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded"
+            >
+              <span className="text-sm font-bold">✕</span>
+            </button>
+          )}
         </div>
 
         <nav className="flex-1 space-y-1.5 overflow-y-auto scrollbar-hide">
           <button 
-            onClick={() => setActiveTab('dashboard')} 
-            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'dashboard' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
+            onClick={() => { setActiveTab('dashboard'); setIsAdminSidebarOpen(false); }} 
+            className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'dashboard' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
+            title="Dashboard"
           >
-            Dashboard
+            <span>📊</span>
+            {!isSidebarReduced && <span>Dashboard</span>}
           </button>
           
           <button 
-            onClick={() => setActiveTab('users')} 
-            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'users' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
+            onClick={() => { setActiveTab('users'); setIsAdminSidebarOpen(false); }} 
+            className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'users' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
+            title="User Directory"
           >
-            User Directory
+            <span>👥</span>
+            {!isSidebarReduced && <span>User Directory</span>}
           </button>
 
           <button 
-            onClick={() => setActiveTab('products')} 
-            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'products' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
+            onClick={() => { setActiveTab('products'); setIsAdminSidebarOpen(false); }} 
+            className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'products' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
+            title="Products Catalog"
           >
-            Products Catalog
+            <span>📦</span>
+            {!isSidebarReduced && <span>Products Catalog</span>}
           </button>
 
           <button 
-            onClick={() => setActiveTab('kyc')} 
-            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'kyc' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
+            onClick={() => { setActiveTab('kyc'); setIsAdminSidebarOpen(false); }} 
+            className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'kyc' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
+            title="Seller KYC"
           >
-            Seller KYC
+            <span>🛡️</span>
+            {!isSidebarReduced && <span>Seller KYC</span>}
           </button>
+          
           <button 
-            onClick={() => setActiveTab('financials')} 
-            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'financials' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
+            onClick={() => { setActiveTab('financials'); setIsAdminSidebarOpen(false); }} 
+            className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'financials' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
+            title="Wallet & Audits"
           >
-            Wallet & Audits
-          </button>
-
-          <button 
-            onClick={() => setActiveTab('logistics')} 
-            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'logistics' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
-          >
-            Logistics API
+            <span>💳</span>
+            {!isSidebarReduced && <span>Wallet & Audits</span>}
           </button>
 
           <button 
-            onClick={() => setActiveTab('disputes')} 
-            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'disputes' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
+            onClick={() => { setActiveTab('logistics'); setIsAdminSidebarOpen(false); }} 
+            className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'logistics' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
+            title="Logistics API"
           >
-            AI Fraud Center
+            <span>🚚</span>
+            {!isSidebarReduced && <span>Logistics API</span>}
           </button>
 
           <button 
-            onClick={() => setActiveTab('whatsapp')} 
-            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'whatsapp' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
+            onClick={() => { setActiveTab('disputes'); setIsAdminSidebarOpen(false); }} 
+            className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'disputes' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
+            title="AI Fraud Center"
           >
-            Marketing Blaster
+            <span>🚨</span>
+            {!isSidebarReduced && <span>AI Fraud Center</span>}
           </button>
 
           <button 
-            onClick={() => setActiveTab('vouchers')} 
-            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'vouchers' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
+            onClick={() => { setActiveTab('whatsapp'); setIsAdminSidebarOpen(false); }} 
+            className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'whatsapp' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
+            title="Marketing Blaster"
           >
-            Promo Vouchers
+            <span>📢</span>
+            {!isSidebarReduced && <span>Marketing Blaster</span>}
           </button>
 
           <button 
-            onClick={() => setActiveTab('health')} 
-            className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'health' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
+            onClick={() => { setActiveTab('vouchers'); setIsAdminSidebarOpen(false); }} 
+            className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'vouchers' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
+            title="Promo Vouchers"
           >
-            System Telemetry
+            <span>🎟️</span>
+            {!isSidebarReduced && <span>Promo Vouchers</span>}
+          </button>
+
+          <button 
+            onClick={() => { setActiveTab('health'); setIsAdminSidebarOpen(false); }} 
+            className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'health' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
+            title="System Telemetry"
+          >
+            <span>⚙️</span>
+            {!isSidebarReduced && <span>System Telemetry</span>}
           </button>
         </nav>
 
         <div className="pt-4 border-t border-[#e8e1dd] dark:border-[#2f2b3b] mt-auto space-y-1">
           <button 
             onClick={() => setDarkMode(!darkMode)}
-            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg font-semibold"
+            className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-3 text-sm text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg font-semibold`}
+            title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
           >
-            {darkMode ? '☀️ Light Mode' : '🌙 Dark Mode'}
+            <span>{darkMode ? '☀️' : '🌙'}</span>
+            {!isSidebarReduced && <span>{darkMode ? 'Light Mode' : 'Dark Mode'}</span>}
           </button>
           <button 
             onClick={() => {
@@ -846,9 +911,11 @@ export default function AdminDashboard() {
                 router.push('/login');
               }
             }}
-            className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg font-bold transition-all"
+            className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-3 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg font-semibold`}
+            title="Logout Console"
           >
-            🔒 Logout Console
+            <span>🔒</span>
+            {!isSidebarReduced && <span>Logout Console</span>}
           </button>
         </div>
       </aside>
@@ -858,10 +925,67 @@ export default function AdminDashboard() {
         {/* Top Navbar */}
         <header className="h-16 border-b border-[#e8e1dd] dark:border-[#2f2b3b] bg-white/80 dark:bg-[#15131b]/80 backdrop-blur-xl flex items-center justify-between px-8 transition-colors duration-300">
           <div className="flex items-center gap-4 flex-1">
+            <button 
+              onClick={() => setIsAdminSidebarOpen(true)}
+              className="md:hidden p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg flex items-center justify-center mr-2"
+            >
+              <span className="text-xl">☰</span>
+            </button>
             <h2 className="text-lg font-bold uppercase tracking-wider text-[#3f3b4c] dark:text-[#ccc6dc] font-heading">Phoenix Telemetry</h2>
           </div>
 
           <div className="flex items-center gap-4">
+            {/* Notification Bell Icon & Dropdown */}
+            <div className="relative">
+              <button 
+                onClick={() => setShowNotificationsDropdown(!showNotificationsDropdown)}
+                className="relative p-2 text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 transition-all rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/50 flex items-center justify-center"
+              >
+                <span className="material-symbols-outlined text-[20px]">notifications</span>
+                {notifications.length > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-extrabold rounded-full flex items-center justify-center animate-pulse">
+                    {notifications.length}
+                  </span>
+                )}
+              </button>
+
+              {showNotificationsDropdown && (
+                <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-[#141824] border border-[#e8e1dd] dark:border-[#222834] rounded-2xl shadow-xl z-50 p-4 space-y-3 text-xs text-zinc-900 dark:text-zinc-100">
+                  <div className="flex justify-between items-center pb-2 border-b border-zinc-100 dark:border-zinc-800">
+                    <span className="font-bold">Notifications ({notifications.length})</span>
+                    <button 
+                      onClick={() => setNotifications([])}
+                      className="text-[#3874ff] hover:underline font-semibold"
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                  <div className="max-h-60 overflow-y-auto space-y-2">
+                    {notifications.map((n) => (
+                      <div 
+                        key={n.id}
+                        onClick={() => {
+                          setActiveTab(n.targetTab);
+                          setShowNotificationsDropdown(false);
+                          setNotifications(prev => prev.filter(item => item.id !== n.id));
+                        }}
+                        className="p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-900/50 hover:bg-[#3874ff]/5 dark:hover:bg-[#3874ff]/5 border border-transparent hover:border-[#3874ff]/20 cursor-pointer transition-all space-y-1"
+                      >
+                        <div className="flex justify-between items-start">
+                          <span className="font-bold text-[11px] text-[#3874ff]">{n.title}</span>
+                          <span className="text-[9px] text-zinc-400 font-mono">{n.timestamp}</span>
+                        </div>
+                        <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium leading-normal">{n.body}</p>
+                      </div>
+                    ))}
+                    {notifications.length === 0 && (
+                      <div className="py-8 text-center text-zinc-400 font-medium">No new notifications. All clear!</div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="text-right">
               <p className="text-xs font-bold">Admin Console</p>
               <p className="text-[10px] text-[#32D74B] font-mono flex items-center justify-end gap-1">
@@ -1107,24 +1231,25 @@ export default function AdminDashboard() {
               </div>
 
               <div className="bg-white dark:bg-[#15131b] p-6 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b]">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-zinc-200 dark:border-zinc-700 text-zinc-400">
-                      <th className="py-2">User ID</th>
-                      <th className="py-2">Name</th>
-                      <th className="py-2">Phone</th>
-                      <th className="py-2">Email</th>
-                      <th className="py-2">Wallet</th>
-                      <th className="py-2">Tier</th>
-                      <th className="py-2">Status</th>
-                      <th className="py-2">Risk</th>
-                      <th className="py-2 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {users.map(u => (
-                      <tr key={u.id} className="border-b border-zinc-100 dark:border-zinc-800">
-                        <td className="py-3 font-mono">{u.id}</td>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs min-w-[800px]">
+                    <thead>
+                      <tr className="border-b border-zinc-200 dark:border-zinc-700 text-zinc-400">
+                        <th className="py-2">User ID</th>
+                        <th className="py-2">Name</th>
+                        <th className="py-2">Phone</th>
+                        <th className="py-2">Email</th>
+                        <th className="py-2">Wallet</th>
+                        <th className="py-2">Tier</th>
+                        <th className="py-2">Status</th>
+                        <th className="py-2">Risk</th>
+                        <th className="py-2 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {users.map(u => (
+                        <tr key={u.id} className="border-b border-zinc-100 dark:border-zinc-800">
+                          <td className="py-3 font-mono">{u.id ? `${u.id.substring(0, 8)}...` : ''}</td>
                         <td className="py-3 font-semibold text-[#3874ff]">{u.name || 'Bupzo Patron'}</td>
                         <td className="py-3">{u.phone}</td>
                         <td className="py-3">{u.email}</td>
@@ -1150,6 +1275,7 @@ export default function AdminDashboard() {
                 </table>
               </div>
             </div>
+          </div>
           )}
 
           {/* TAB 3: SELLER KYC */}

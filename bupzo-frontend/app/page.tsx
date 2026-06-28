@@ -6,6 +6,11 @@ import { fetchProducts, createCheckout, addToWishlist, getWishlistItems, removeF
 import { useWebSocket } from '@/lib/websocket';
 import { useUser } from '@/lib/authStore';
 import AuthModal from '@/components/AuthModal';
+import { CustomerHome } from '@/components/CustomerHome';
+import { CustomerCategories } from '@/components/CustomerCategories';
+import { CustomerOrders } from '@/components/CustomerOrders';
+import { CustomerWallet } from '@/components/CustomerWallet';
+import { CustomerWishlist } from '@/components/CustomerWishlist';
 
 export default function Home() {
   const [userRole, setUserRole] = useState<'customer' | 'seller'>('customer');
@@ -86,6 +91,10 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isCustomerSidebarOpen, setIsCustomerSidebarOpen] = useState(false);
+  const [isSellerSidebarOpen, setIsSellerSidebarOpen] = useState(false);
+  const [hasMounted, setHasMounted] = useState(false);
+  const [isSidebarReduced, setIsSidebarReduced] = useState(false);
 
   // Authenticated user state
   const { user, setUser } = useUser();
@@ -95,16 +104,19 @@ export default function Home() {
   const { messages } = useWebSocket(user?.id || mockUserId);
 
   useEffect(() => {
-    // Authenticate default mock user for local first dev
-    setUser({
-      id: mockUserId,
-      phone: "+919876543210",
-      email: "localadmin@bupzo.com",
-      isPremium: true,
-      signupPlatform: "WEB",
-      walletBalance: 2500.00,
-      createdAt: new Date().toISOString()
-    });
+    setHasMounted(true);
+    if (!user) {
+      setUser({
+        id: mockUserId,
+        phone: "+919876543210",
+        name: "Bupzo Patron",
+        email: "localadmin@bupzo.com",
+        isPremium: true,
+        signupPlatform: "WEB",
+        walletBalance: 2500.00,
+        createdAt: new Date().toISOString()
+      });
+    }
 
     async function loadData() {
       try {
@@ -121,7 +133,7 @@ export default function Home() {
             setSelectedCategoryId(cats[0].id);
           }
         } catch (e) {
-          console.error("Failed to load categories:", e);
+          console.warn("Failed to load categories:", e);
         }
 
         // Fetch coupons
@@ -129,10 +141,10 @@ export default function Home() {
           const cps = await fetchCoupons();
           setCoupons(cps);
         } catch (e) {
-          console.error("Failed to load coupons:", e);
+          console.warn("Failed to load coupons:", e);
         }
       } catch (err) {
-        console.error("Error loading products/wishlist:", err);
+        console.warn("Error loading products/wishlist:", err);
       } finally {
         setLoading(false);
       }
@@ -169,7 +181,7 @@ export default function Home() {
           setWishlist(wishs);
         }
       } catch (err) {
-        console.error("Error loading user dynamic orders/wallet/wishlist data:", err);
+        console.warn("Error loading user dynamic orders/wallet/wishlist data:", err);
       }
     };
 
@@ -189,7 +201,7 @@ export default function Home() {
           setSellerOrdersList(data);
         }
       } catch (err) {
-        console.error("Error fetching seller orders:", err);
+        console.warn("Error fetching seller orders:", err);
       }
     };
     loadSellerOrders();
@@ -227,7 +239,7 @@ export default function Home() {
           }
         }
       } catch (err) {
-        console.error("Error evaluating seller role verification status:", err);
+        console.warn("Error evaluating seller role verification status:", err);
         // Fallback
         if (user.phone === '+919876543211') {
           setIsSeller(true);
@@ -535,7 +547,7 @@ export default function Home() {
         alert(`Voucher "${res.code}" applied! Discount: ₹${res.discount_amount}`);
       }
     } catch (err: any) {
-      console.error(err);
+      console.warn(err);
       setPromoError(err.message || "Failed to validate voucher.");
       setAppliedPromo(null);
     }
@@ -576,8 +588,8 @@ export default function Home() {
         setWishlist(wishs);
       }
     } catch (err: any) {
-      console.error(err);
-      alert("Failed to add item to wishlist.");
+      console.warn(err);
+      alert(err.message || "Failed to add item to wishlist.");
     }
   };
 
@@ -643,6 +655,14 @@ export default function Home() {
     }
   };
 
+  if (!hasMounted) {
+    return (
+      <div className="min-h-screen bg-[#f9fbfd] dark:bg-[#0f111a] flex items-center justify-center font-sans text-xs font-bold text-[#3874ff]">
+        Loading Bupzo Storefront...
+      </div>
+    );
+  }
+
   return (
     <div className={`${theme === 'dark' ? 'dark bg-[#0f111a] text-[#e3e6ed]' : 'bg-[#f9fbfd] text-[#141824]'} min-h-screen font-sans transition-colors duration-300 flex w-full`}>
       
@@ -676,90 +696,122 @@ export default function Home() {
       {userRole === 'customer' && (
         <div className="flex flex-1">
           {/* Customer Left Sidebar */}
-          <aside className={`w-64 ${theme === 'dark' ? 'bg-[#141824] border-[#222834] text-[#e3e6ed]' : 'bg-white border-[#e3e6ed] text-[#141824]'} border-r p-6 flex flex-col justify-between h-screen fixed z-30 transition-colors duration-300`}>
+          {isCustomerSidebarOpen && (
+            <div 
+              onClick={() => setIsCustomerSidebarOpen(false)}
+              className="fixed inset-0 bg-black/50 z-40 md:hidden transition-all duration-300"
+            />
+          )}
+          <aside className={`${isSidebarReduced ? 'w-20 p-4' : 'w-64 p-6'} ${theme === 'dark' ? 'bg-[#141824] border-[#222834] text-[#e3e6ed]' : 'bg-white border-[#e3e6ed] text-[#141824]'} border-r flex flex-col justify-between h-screen fixed top-0 left-0 z-50 transition-all duration-300 transform md:translate-x-0 ${isCustomerSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
             <div className="space-y-6">
-              <div className="flex items-center gap-3">
-                <img src="/Bupzo-logo.png" alt="BUPZO Logo" className="w-8 h-8 object-contain rounded" />
-                <span className="font-extrabold tracking-wider font-heading text-[#3874ff]">BUPZO STORE</span>
-              </div>
-              <nav className="space-y-1.5">
-                <button 
-                  onClick={() => setCustomerTab('home')}
-                  className={`w-full text-left px-4 py-2 rounded-lg font-bold text-xs transition-all ${customerTab === 'home' ? 'bg-[#3874ff] text-white font-bold' : 'text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/10 hover:text-[#3874ff]'}`}
+              <div className="flex items-center justify-between gap-3">
+                <div 
+                  onClick={() => setIsSidebarReduced(!isSidebarReduced)} 
+                  className="flex items-center gap-3 cursor-pointer hover:opacity-85 select-none"
+                  title={isSidebarReduced ? "Expand Sidebar" : "Collapse Sidebar"}
                 >
-                  Home
-                </button>
-                <button 
-                  onClick={() => setCustomerTab('categories')}
-                  className={`w-full text-left px-4 py-2 rounded-lg font-bold text-xs transition-all ${customerTab === 'categories' ? 'bg-[#3874ff] text-white font-bold' : 'text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/10 hover:text-[#3874ff]'}`}
-                >
-                  Shop Categories
-                </button>
-                <button 
-                  onClick={() => setCustomerTab('orders')}
-                  className={`w-full text-left px-4 py-2 rounded-lg font-bold text-xs transition-all ${customerTab === 'orders' ? 'bg-[#3874ff] text-white font-bold' : 'text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/10 hover:text-[#3874ff]'}`}
-                >
-                  Track Orders
-                </button>
-                <button 
-                  onClick={() => setCustomerTab('wallet')}
-                  className={`w-full text-left px-4 py-2 rounded-lg font-bold text-xs transition-all ${customerTab === 'wallet' ? 'bg-[#3874ff] text-white font-bold' : 'text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/10 hover:text-[#3874ff]'}`}
-                >
-                  My Wallet
-                </button>
-                <button 
-                  onClick={() => setCustomerTab('wishlist')}
-                  className={`w-full text-left px-4 py-2 rounded-lg font-bold text-xs transition-all ${customerTab === 'wishlist' ? 'bg-[#3874ff] text-white font-bold' : 'text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/10 hover:text-[#3874ff]'}`}
-                >
-                  My Wishlist
-                </button>
-              </nav>
-              
-              <div className="space-y-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
-                {user ? (
-                  <div className="space-y-1.5 text-xs">
-                    <p className="text-zinc-400 font-mono text-[9px]">Logged In:</p>
-                    <p className="font-bold text-[11px] truncate text-[#3874ff]">{user.name || 'Bupzo Patron'}</p>
-                    <p className="text-zinc-500 font-mono text-[9px] truncate">{user.phone}</p>
-                    <p className="text-almond-silk font-semibold text-[10px]">Wallet: ₹{user.walletBalance ?? 0}</p>
-                    <button 
-                      onClick={() => setUser(null)}
-                      className="text-[10px] text-red-400 font-bold hover:underline"
-                    >
-                      Logout
-                    </button>
-                  </div>
-                ) : (
+                  <img src="/Bupzo-logo.png" alt="BUPZO Logo" className="w-8 h-8 object-contain rounded" />
+                  {!isSidebarReduced && <span className="font-extrabold tracking-wider font-heading text-[#3874ff]">BUPZO STORE</span>}
+                </div>
+                {!isSidebarReduced && (
                   <button 
-                    onClick={() => setIsAuthModalOpen(true)}
-                    className="w-full bg-[#3874ff] text-white py-2 rounded-xl text-xs font-bold hover:bg-opacity-95 active:scale-95 transition"
+                    onClick={() => setIsCustomerSidebarOpen(false)}
+                    className="md:hidden p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded"
                   >
-                    Login / Register
+                    <span className="text-sm font-bold">✕</span>
                   </button>
                 )}
               </div>
+              <nav className="space-y-1.5">
+                <button 
+                  onClick={() => { setCustomerTab('home'); setIsCustomerSidebarOpen(false); }}
+                  className={`w-full text-left px-3 py-2 rounded-lg font-bold text-xs transition-all flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-2'} ${customerTab === 'home' ? 'bg-[#3874ff] text-white font-bold' : 'text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/10 hover:text-[#3874ff]'}`}
+                  title="Home"
+                >
+                  <span className="text-sm">🏠</span>
+                  {!isSidebarReduced && <span>Home</span>}
+                </button>
+                <button 
+                  onClick={() => { setCustomerTab('categories'); setIsCustomerSidebarOpen(false); }}
+                  className={`w-full text-left px-3 py-2 rounded-lg font-bold text-xs transition-all flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-2'} ${customerTab === 'categories' ? 'bg-[#3874ff] text-white font-bold' : 'text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/10 hover:text-[#3874ff]'}`}
+                  title="Shop Categories"
+                >
+                  <span className="text-sm">🛍️</span>
+                  {!isSidebarReduced && <span>Categories</span>}
+                </button>
+                <button 
+                  onClick={() => { setCustomerTab('orders'); setIsCustomerSidebarOpen(false); }}
+                  className={`w-full text-left px-3 py-2 rounded-lg font-bold text-xs transition-all flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-2'} ${customerTab === 'orders' ? 'bg-[#3874ff] text-white font-bold' : 'text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/10 hover:text-[#3874ff]'}`}
+                  title="Track Orders"
+                >
+                  <span className="text-sm">📦</span>
+                  {!isSidebarReduced && <span>Orders</span>}
+                </button>
+                <button 
+                  onClick={() => { setCustomerTab('wallet'); setIsCustomerSidebarOpen(false); }}
+                  className={`w-full text-left px-3 py-2 rounded-lg font-bold text-xs transition-all flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-2'} ${customerTab === 'wallet' ? 'bg-[#3874ff] text-white font-bold' : 'text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/10 hover:text-[#3874ff]'}`}
+                  title="My Wallet"
+                >
+                  <span className="text-sm">💳</span>
+                  {!isSidebarReduced && <span>Wallet</span>}
+                </button>
+                <button 
+                  onClick={() => { setCustomerTab('wishlist'); setIsCustomerSidebarOpen(false); }}
+                  className={`w-full text-left px-3 py-2 rounded-lg font-bold text-xs transition-all flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-2'} ${customerTab === 'wishlist' ? 'bg-[#3874ff] text-white font-bold' : 'text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/10 hover:text-[#3874ff]'}`}
+                  title="My Wishlist"
+                >
+                  <span className="text-sm">❤️</span>
+                  {!isSidebarReduced && <span>Wishlist</span>}
+                </button>
+              </nav>
+              
+              {!isSidebarReduced && (
+                <div className="space-y-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+                  {user ? (
+                    <div className="space-y-1.5 text-xs">
+                      <p className="text-zinc-400 font-mono text-[9px]">Logged In:</p>
+                      <p className="font-bold text-[11px] truncate text-[#3874ff]">{user.name || 'Bupzo Patron'}</p>
+                      <p className="text-zinc-500 font-mono text-[9px] truncate">{user.phone}</p>
+                      <p className="text-almond-silk font-semibold text-[10px]">Wallet: ₹{user.walletBalance ?? 0}</p>
+                      <button 
+                        onClick={() => setUser(null)}
+                        className="text-[10px] text-red-400 font-bold hover:underline"
+                      >
+                        Logout
+                      </button>
+                    </div>
+                  ) : (
+                    <button 
+                      onClick={() => { setIsAuthModalOpen(true); setIsCustomerSidebarOpen(false); }}
+                      className="w-full bg-[#3874ff] text-white py-2 rounded-xl text-xs font-bold hover:bg-opacity-95 active:scale-95 transition"
+                    >
+                      Login / Register
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
             <div className="text-[10px] text-zinc-400">© 2026 BUPZO Ecom</div>
           </aside>
 
           {/* Customer Content */}
-          <div className="ml-64 p-8 flex-1">
-            <div className="max-w-4xl mx-auto space-y-8">
+          <div className={`ml-0 ${isSidebarReduced ? 'md:ml-20' : 'md:ml-64'} p-4 md:p-8 flex-1 min-h-screen transition-all duration-300`}>
+            {/* Mobile Navigation Header */}
+            <div className="flex items-center gap-3 md:hidden mb-6 bg-white dark:bg-[#141824] p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm justify-between">
+              <button 
+                onClick={() => setIsCustomerSidebarOpen(true)}
+                className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg flex items-center justify-center"
+              >
+                <span className="text-xl">☰</span>
+              </button>
+              <span className="font-extrabold text-xs tracking-wider font-heading text-[#3874ff]">BUPZO STORE</span>
+              <div className="w-8"></div>
+            </div>
+            <div className="w-full max-w-7xl mx-auto space-y-8">
               
               {/* TAB: HOME */}
               {customerTab === 'home' && (
                 <div className="space-y-8">
-                  <div className="relative h-64 rounded-2xl overflow-hidden shadow-lg bg-dusty-mauve flex items-center justify-center">
-                    <video autoPlay loop muted playsInline className="absolute inset-0 w-full h-full object-cover z-0 opacity-70">
-                      <source src="/Bupzo-gif.mp4" type="video/mp4" />
-                    </video>
-                    <div className="absolute inset-0 bg-black/40 z-10"></div>
-                    <div className="relative z-20 text-center space-y-2 text-white">
-                      <h1 className="text-4xl font-extrabold font-heading">Discover Nagore Specialties</h1>
-                      <p className="text-sm">Authentic Halwa, premium Dry Fruits, and handcrafted items delivered directly.</p>
-                    </div>
-                  </div>
-
                   {/* AI Semantic Search bar */}
                   <form onSubmit={handleAISearch} className="flex gap-2">
                     <div className="flex-1 relative">
@@ -788,420 +840,63 @@ export default function Home() {
                     </button>
                   </form>
 
-                  {/* Products Catalog */}
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center flex-wrap gap-4 border-b border-zinc-150 dark:border-zinc-800 pb-3">
-                      <h3 className="text-xl font-bold font-heading">Featured New Arrivals</h3>
-                      
-                      {/* Category Selector Dropdown */}
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider">Specialty Filter:</span>
-                        <select
-                          value={homeCategoryFilter}
-                          onChange={(e) => setHomeCategoryFilter(e.target.value)}
-                          className="bg-white dark:bg-[#141824] border border-zinc-200 dark:border-zinc-800 text-[11px] font-bold px-3 py-1.5 rounded-lg outline-none shadow-sm focus:border-[#3874ff] text-zinc-800 dark:text-zinc-200 cursor-pointer"
-                        >
-                          <option value="all">All Specialties</option>
-                          {categories.map((cat) => (
-                            <option key={cat.id} value={cat.id}>{cat.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    {loading ? (
-                      <div className="text-center py-12 text-zinc-400 font-medium">Loading catalog items...</div>
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {products
-                          .filter(p => homeCategoryFilter === 'all' || p.category_id === homeCategoryFilter)
-                          .map((p) => (
-                          <div 
-                            key={p.id} 
-                            onClick={() => setPreviewProduct(p)}
-                            className="bg-white dark:bg-[#15131b] rounded-xl border border-outline-variant/30 overflow-hidden shadow-sm flex flex-col cursor-pointer hover:shadow-md transition-all"
-                          >
-                            <div className="relative h-48 bg-zinc-100 dark:bg-zinc-800">
-                              <img src={p.image_url || "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=400&q=80"} alt={p.name} className="w-full h-full object-cover" />
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleAddToWishlist(p);
-                                }}
-                                className="absolute top-2 right-2 p-1.5 rounded-full bg-white/90 dark:bg-zinc-900/90 text-red-500 hover:scale-110 active:scale-95 transition-all shadow-sm font-bold text-xs"
-                                title="Add to Wishlist"
-                              >
-                                ❤️
-                              </button>
-                            </div>
-                            <div className="p-4 flex-1 flex flex-col justify-between space-y-2">
-                              <div>
-                                <span className="text-[9px] font-bold uppercase tracking-wider text-dusty-mauve">Nagore Specialties</span>
-                                <h4 className="font-bold text-sm mt-1">{p.name}</h4>
-                                <p className="text-[11px] text-zinc-400 mt-1 line-clamp-2">{p.description}</p>
-                              </div>
-                              <div className="flex justify-between items-center pt-2" onClick={(e) => e.stopPropagation()}>
-                                <span className="font-bold text-sm">₹{p.price}</span>
-                                <button 
-                                  onClick={() => handleAddToCart(p)}
-                                  className="bg-charcoal dark:bg-zinc-800 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-opacity-90 active:scale-95 transition-all"
-                                >
-                                  Add to Cart
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  {loading ? (
+                    <div className="text-center py-12 text-zinc-400 font-medium">Loading catalog items...</div>
+                  ) : (
+                    <CustomerHome 
+                      products={products}
+                      setPreviewProduct={setPreviewProduct}
+                      handleAddToWishlist={handleAddToWishlist}
+                      handleAddToCart={handleAddToCart}
+                      categories={categories}
+                      selectedCategoryId={homeCategoryFilter === 'all' ? null : homeCategoryFilter}
+                      setSelectedCategoryId={(id) => setHomeCategoryFilter(id || 'all')}
+                    />
+                  )}
                 </div>
               )}
 
               {/* TAB: SHOP CATEGORIES */}
               {customerTab === 'categories' && (
-                <div className="space-y-6">
-                  <div>
-                    <h2 className="text-2xl font-bold font-heading">Shop By Category</h2>
-                    <p className="text-xs text-zinc-500 mt-1">Browse and filter traditional sweets, dry fruits, combo offers, and craftsmanship.</p>
-                  </div>
-
-                  {/* Categories Filter Pills */}
-                  <div className="flex flex-wrap gap-2 pt-2">
-                    <button 
-                      onClick={() => setSelectedCategoryFilter(null)}
-                      className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${!selectedCategoryFilter ? 'bg-[#3874ff] text-white' : 'bg-white dark:bg-[#15131b] border border-zinc-200 dark:border-zinc-800 text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/10'}`}
-                    >
-                      All Specialties
-                    </button>
-                    {categories.map((cat) => (
-                      <button 
-                        key={cat.id}
-                        onClick={() => setSelectedCategoryFilter(cat.id)}
-                        className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${selectedCategoryFilter === cat.id ? 'bg-[#3874ff] text-white' : 'bg-white dark:bg-[#15131b] border border-zinc-200 dark:border-zinc-800 text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/10'}`}
-                      >
-                        {cat.name}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Filtered Grid */}
-                  <div className="space-y-4 pt-4">
-                    <h3 className="text-md font-bold uppercase tracking-wider">
-                      {selectedCategoryFilter 
-                        ? `${categories.find(c => c.id === selectedCategoryFilter)?.name || 'Filtered'} Selection`
-                        : "Full Platform Catalog"
-                      }
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {products
-                        .filter(p => !selectedCategoryFilter || p.category_id === selectedCategoryFilter)
-                        .map((p) => (
-                          <div 
-                            key={p.id}
-                            onClick={() => setPreviewProduct(p)}
-                            className="bg-white dark:bg-[#15131b] rounded-xl border border-outline-variant/30 overflow-hidden shadow-sm flex flex-col cursor-pointer hover:shadow-md transition-all"
-                          >
-                            <div className="relative h-48 bg-zinc-100 dark:bg-zinc-800">
-                              <img src={p.image_url || "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=400&q=80"} alt={p.name} className="w-full h-full object-cover" />
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleAddToWishlist(p);
-                                }}
-                                className="absolute top-2 right-2 p-1.5 rounded-full bg-white/90 dark:bg-zinc-900/90 text-red-500 hover:scale-110 active:scale-95 transition-all shadow-sm font-bold text-xs"
-                                title="Add to Wishlist"
-                              >
-                                ❤️
-                              </button>
-                            </div>
-                            <div className="p-4 flex-1 flex flex-col justify-between space-y-2">
-                              <div>
-                                <span className="text-[9px] font-bold uppercase tracking-wider text-dusty-mauve">Nagore Specialties</span>
-                                <h4 className="font-bold text-sm mt-1">{p.name}</h4>
-                                <p className="text-[11px] text-zinc-400 mt-1 line-clamp-2">{p.description}</p>
-                              </div>
-                              <div className="flex justify-between items-center pt-2" onClick={(e) => e.stopPropagation()}>
-                                <span className="font-bold text-sm">₹{p.price}</span>
-                                <button 
-                                  onClick={() => handleAddToCart(p)}
-                                  className="bg-charcoal dark:bg-zinc-800 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-opacity-90 active:scale-95 transition-all"
-                                >
-                                  Add to Cart
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      {products.filter(p => !selectedCategoryFilter || p.category_id === selectedCategoryFilter).length === 0 && (
-                        <div className="col-span-full py-12 text-center text-zinc-400 font-medium">No specialties listed in this category yet.</div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                <CustomerCategories 
+                  categories={categories}
+                  products={products}
+                  selectedCategoryFilter={selectedCategoryFilter}
+                  setSelectedCategoryFilter={setSelectedCategoryFilter}
+                  setPreviewProduct={setPreviewProduct}
+                  handleAddToWishlist={handleAddToWishlist}
+                  handleAddToCart={handleAddToCart}
+                />
               )}
 
               {/* TAB: TRACK ORDERS */}
               {customerTab === 'orders' && (
-                <div className="space-y-6">
-                  <div>
-                    <h2 className="text-2xl font-bold font-heading">Track Orders</h2>
-                    <p className="text-xs text-zinc-500 mt-1">Monitor real-time delivery timelines, dispatch alerts, and Stitch Sandboxing ledger.</p>
-                  </div>
-
-                  <div className="space-y-4">
-                    {customerOrders.map((ord: any) => {
-                      const stages = ['pending', 'paid', 'processing', 'shipped', 'delivered'];
-                      const currentStageIdx = stages.indexOf(ord.status);
-                      
-                      return (
-                        <div key={ord.id} className="bg-white dark:bg-[#141824] border border-[#e3e6ed] dark:border-[#222834] rounded-2xl p-6 shadow-sm space-y-4 text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                          <div className="flex justify-between items-center border-b border-zinc-150 dark:border-zinc-800 pb-3 flex-wrap gap-2">
-                            <div>
-                              <p className="text-[10px] text-zinc-400 uppercase">Order Reference</p>
-                              <p className="font-bold text-zinc-800 dark:text-zinc-200 font-mono text-sm">{ord.id}</p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-[10px] text-zinc-400">Total Paid</p>
-                              <p className="font-bold text-sm text-[#3874ff]">₹{ord.total_amount}</p>
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-[10px] bg-zinc-50 dark:bg-zinc-900/50 p-3 rounded-lg border">
-                            <div>
-                              <span className="text-zinc-400">Status:</span>
-                              <span className="block font-bold capitalize text-[#3874ff]">{ord.status}</span>
-                            </div>
-                            <div>
-                              <span className="text-zinc-400">Logistics Courier:</span>
-                              <span className="block font-bold">{ord.shipping_partner || 'Delhivery SLA'}</span>
-                            </div>
-                            <div>
-                              <span className="text-zinc-400">Gateway:</span>
-                              <span className="block font-bold">{ord.payment_gateway || 'Razorpay'}</span>
-                            </div>
-                            <div>
-                              <span className="text-zinc-400">Order Date:</span>
-                              <span className="block font-bold">{new Date(ord.created_at).toLocaleDateString()} {new Date(ord.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
-                            </div>
-                          </div>
-
-                          {/* Tracking Stages Progress Bar */}
-                          <div className="pt-2">
-                            <p className="text-[10px] text-zinc-400 mb-3 uppercase">Delivery Stage</p>
-                            <div className="relative flex items-center justify-between">
-                              <div className="absolute left-0 right-0 h-1 bg-zinc-200 dark:bg-zinc-800 -z-0"></div>
-                              <div 
-                                className="absolute left-0 h-1 bg-[#3874ff] transition-all duration-500" 
-                                style={{ width: `${Math.max(0, currentStageIdx) * 25}%` }}
-                              ></div>
-
-                              {stages.map((stage, idx) => {
-                                const active = idx <= currentStageIdx;
-                                const isCurrent = idx === currentStageIdx;
-                                
-                                return (
-                                  <div key={stage} className="relative z-10 flex flex-col items-center">
-                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-[9px] border transition-all ${
-                                      isCurrent ? 'bg-[#3874ff] border-[#3874ff] text-white scale-110 shadow-lg' :
-                                      active ? 'bg-[#3874ff]/20 border-[#3874ff] text-[#3874ff]' :
-                                      'bg-white dark:bg-[#15131b] border-zinc-200 dark:border-zinc-800 text-zinc-400'
-                                    }`}>
-                                      {idx + 1}
-                                    </div>
-                                    <span className={`text-[9px] mt-1 capitalize font-bold ${active ? 'text-zinc-800 dark:text-zinc-200' : 'text-zinc-400'}`}>
-                                      {stage}
-                                    </span>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    {customerOrders.length === 0 && (
-                      <div className="bg-white dark:bg-[#141824] border border-[#e3e6ed] dark:border-[#222834] rounded-2xl p-12 text-center text-zinc-400 font-medium">
-                        You have not placed any orders yet. Specialties added to your cart will display here after checkout.
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <CustomerOrders 
+                  customerOrders={customerOrders}
+                  user={user}
+                  mockUserId={mockUserId}
+                />
               )}
 
               {/* TAB: MY WALLET */}
               {customerTab === 'wallet' && (
-                <div className="space-y-6">
-                  <div>
-                    <h2 className="text-2xl font-bold font-heading">My Premium Wallet</h2>
-                    <p className="text-xs text-zinc-500 mt-1">Manage platform credits, sign-up bonuses, and top-ups.</p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    
-                    {/* Wallet card & Topup */}
-                    <div className="md:col-span-1 space-y-6">
-                      
-                      {/* Skeuomorphic Wallet balance card */}
-                      <div className="relative bg-gradient-to-br from-[#3874ff] to-[#6a38ff] rounded-2xl p-6 text-white shadow-xl overflow-hidden aspect-[1.6/1]">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-xl pointer-events-none"></div>
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <p className="text-[10px] text-white/70 uppercase tracking-wider font-semibold">Wallet Account Balance</p>
-                            <p className="text-2xl font-extrabold mt-1">₹{user?.walletBalance ?? 0}</p>
-                          </div>
-                          <span className="text-xl">💰</span>
-                        </div>
-                        <div className="mt-8 flex justify-between items-end text-[10px] font-mono text-white/80">
-                          <p>BUPZO USER LEDGER</p>
-                          <p>ACTIVE SECURE</p>
-                        </div>
-                      </div>
-
-                      {/* Topup Form */}
-                      <div className="bg-white dark:bg-[#141824] border border-[#e3e6ed] dark:border-[#222834] rounded-2xl p-5 shadow-sm">
-                        <h3 className="text-xs font-bold uppercase tracking-wider mb-3">Refill Wallet Funds</h3>
-                        <form onSubmit={handleTopupWallet} className="space-y-3 text-xs font-semibold">
-                          <div>
-                            <label className="block text-zinc-400 mb-1">Deposit Amount (₹)</label>
-                            <input 
-                              type="number"
-                              min="10"
-                              placeholder="500"
-                              value={topupAmount}
-                              onChange={(e) => setTopupAmount(e.target.value)}
-                              className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg px-3 py-2 outline-none font-mono"
-                              required
-                            />
-                          </div>
-                          <button 
-                            type="submit"
-                            className="w-full bg-[#3874ff] text-white py-2 rounded-xl font-bold hover:bg-opacity-95 active:scale-95 transition-all text-xs"
-                          >
-                            Top-Up Now
-                          </button>
-                        </form>
-                      </div>
-
-                    </div>
-
-                    {/* Transaction history */}
-                    <div className="md:col-span-2 bg-white dark:bg-[#141824] border border-[#e3e6ed] dark:border-[#222834] rounded-2xl p-6 shadow-sm">
-                      <h3 className="text-sm font-bold mb-4 font-heading">Wallet Transactions History</h3>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs">
-                          <thead>
-                            <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-400 font-bold uppercase text-[9px]">
-                              <th className="py-2.5">Type</th>
-                              <th className="py-2.5">Amount</th>
-                              <th className="py-2.5">Description</th>
-                              <th className="py-2.5">Timestamp</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {walletTransactions.map((tx: any) => {
-                              const isDebit = parseFloat(tx.amount) < 0;
-                              return (
-                                <tr key={tx.id} className="border-b border-zinc-100 dark:border-zinc-900">
-                                  <td className="py-3">
-                                    <span className={`px-2 py-0.5 rounded font-bold text-[9px] ${tx.type === 'TOPUP' || tx.type === 'REFERRAL' ? 'bg-green-100/10 text-green-500' : 'bg-red-100/10 text-red-500'}`}>
-                                      {tx.type}
-                                    </span>
-                                  </td>
-                                  <td className={`py-3 font-bold font-mono ${isDebit ? 'text-red-500' : 'text-green-500'}`}>
-                                    {isDebit ? '-' : '+'}₹{Math.abs(parseFloat(tx.amount))}
-                                  </td>
-                                  <td className="py-3 text-zinc-500 font-semibold">{tx.description || 'N/A'}</td>
-                                  <td className="py-3 text-zinc-400 font-mono text-[10px]">{new Date(tx.created_at).toLocaleString()}</td>
-                                </tr>
-                              );
-                            })}
-                            {walletTransactions.length === 0 && (
-                              <tr>
-                                <td colSpan={4} className="py-6 text-center text-zinc-400 font-medium">No transactions recorded in wallet ledger.</td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-
-                  </div>
-                </div>
+                <CustomerWallet 
+                  walletBalance={user?.walletBalance ?? 0}
+                  walletTransactions={walletTransactions}
+                  user={user}
+                  mockUserId={mockUserId}
+                  theme={theme}
+                />
               )}
 
               {/* TAB: WISHLIST */}
               {customerTab === 'wishlist' && (
-                <div className="space-y-6">
-                  <div>
-                    <h2 className="text-2xl font-bold font-heading">My Platform Wishlist</h2>
-                    <p className="text-xs text-zinc-500 mt-1">Keep track of your favorite sweets and receive price drop alerts.</p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {wishlist.map((item: any) => {
-                      // Find matching product detail from the state catalog
-                      const p = products.find(prod => prod.id === item.product_id) || {
-                        id: item.product_id,
-                        name: item.product_name,
-                        price: item.product_price,
-                        image_url: "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=400&q=80",
-                        description: "Cached wishlist specialty item."
-                      };
-
-                      return (
-                        <div 
-                          key={item.id}
-                          onClick={() => setPreviewProduct(p as any)}
-                          className="bg-white dark:bg-[#15131b] rounded-xl border border-outline-variant/30 overflow-hidden shadow-sm flex flex-col cursor-pointer hover:shadow-md transition-all animate-fade-in"
-                        >
-                          <div className="relative h-48 bg-zinc-100 dark:bg-zinc-800">
-                            <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
-                          </div>
-                          <div className="p-4 flex-1 flex flex-col justify-between space-y-2">
-                            <div>
-                              <span className="text-[9px] font-bold uppercase tracking-wider text-dusty-mauve">Nagore Specialties</span>
-                              <h4 className="font-bold text-sm mt-1">{p.name}</h4>
-                              <p className="text-[11px] text-zinc-400 mt-1 line-clamp-2">{p.description}</p>
-                            </div>
-                            <div className="flex justify-between items-center pt-2" onClick={(e) => e.stopPropagation()}>
-                              <span className="font-bold text-sm">₹{p.price}</span>
-                              <div className="flex gap-2">
-                                <button 
-                                  onClick={() => {
-                                    handleAddToCart(p as any);
-                                    alert("Added to cart!");
-                                  }}
-                                  className="bg-[#3874ff] text-white px-2.5 py-1.5 rounded-lg text-[10px] font-bold hover:bg-opacity-95 active:scale-95 transition-all"
-                                >
-                                  Add to Cart
-                                </button>
-                                <button 
-                                  onClick={async () => {
-                                    try {
-                                      await removeFromWishlist(item.id);
-                                      setWishlist(prev => prev.filter(w => w.id !== item.id));
-                                      alert("Removed from wishlist.");
-                                    } catch (err) {
-                                      console.error(err);
-                                    }
-                                  }}
-                                  className="bg-red-500/10 text-red-500 hover:bg-red-500/20 px-2.5 py-1.5 rounded-lg text-[10px] font-bold transition-all"
-                                >
-                                  Remove
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {wishlist.length === 0 && (
-                      <div className="col-span-full py-12 text-center text-zinc-400 font-medium">Your wishlist is currently empty. Click the heart icon on any product to save it.</div>
-                    )}
-                  </div>
-                </div>
+                <CustomerWishlist 
+                  wishlist={wishlist}
+                  removeFromWishlist={removeFromWishlist}
+                  setWishlist={setWishlist}
+                  handleAddToCart={handleAddToCart}
+                />
               )}
 
             </div>
@@ -1235,76 +930,123 @@ export default function Home() {
               </button>
             </div>
           </div>
-        ) : (
-          <div className="flex flex-1">
-          {/* Seller Left Navigation Sidebar */}
-          <aside className="w-64 bg-white dark:bg-[#15131b] border-r border-[#e8e1dd] dark:border-[#2f2b3b] p-6 flex flex-col h-screen fixed transition-colors duration-300">
-            <div className="mb-8 px-4 flex items-center gap-3">
-              <img src="/Bupzo-logo.png" alt="BUPZO Logo" className="w-8 h-8 object-contain rounded" />
-              <div>
-                <h1 className="text-md font-bold tracking-tight text-charcoal dark:text-[#f3f4f6]">Seller Portal</h1>
-                <p className="text-[9px] text-zinc-400 uppercase tracking-widest font-bold font-heading">Bupzo Merchant</p>
+           {/* Seller Left Navigation Sidebar */}
+          {isSellerSidebarOpen && (
+            <div 
+              onClick={() => setIsSellerSidebarOpen(false)}
+              className="fixed inset-0 bg-black/50 z-40 md:hidden transition-all duration-300"
+            />
+          )}
+          <aside className={`${isSidebarReduced ? 'w-20 p-4' : 'w-64 p-6'} bg-white dark:bg-[#15131b] border-r border-[#e8e1dd] dark:border-[#2f2b3b] flex flex-col h-screen fixed top-0 left-0 z-50 transition-all duration-300 transform md:translate-x-0 ${isSellerSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+            <div className="mb-8 px-4 flex items-center justify-between gap-3">
+              <div 
+                onClick={() => setIsSidebarReduced(!isSidebarReduced)} 
+                className="flex items-center gap-3 cursor-pointer hover:opacity-85 select-none"
+                title={isSidebarReduced ? "Expand Sidebar" : "Collapse Sidebar"}
+              >
+                <img src="/Bupzo-logo.png" alt="BUPZO Logo" className="w-8 h-8 object-contain rounded" />
+                {!isSidebarReduced && (
+                  <div>
+                    <h1 className="text-md font-bold tracking-tight text-charcoal dark:text-[#f3f4f6]">Seller Portal</h1>
+                    <p className="text-[9px] text-zinc-400 uppercase tracking-widest font-bold font-heading">Bupzo Merchant</p>
+                  </div>
+                )}
               </div>
+              {!isSidebarReduced && (
+                <button 
+                  onClick={() => setIsSellerSidebarOpen(false)}
+                  className="md:hidden p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded"
+                >
+                  <span className="text-sm font-bold">✕</span>
+                </button>
+              )}
             </div>
 
             <nav className="space-y-1.5 flex-1 overflow-y-auto scrollbar-hide">
               <button 
-                onClick={() => setSellerTab('overview')} 
-                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs font-semibold border-l-4 transition-all ${sellerTab === 'overview' ? 'border-charcoal dark:border-[#f3f4f6] bg-almond-silk/10 text-black dark:text-white' : 'border-transparent text-zinc-400 hover:bg-almond-silk/5'}`}
+                onClick={() => { setSellerTab('overview'); setIsSellerSidebarOpen(false); }} 
+                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 rounded-lg text-xs font-semibold border-l-4 transition-all ${sellerTab === 'overview' ? 'border-charcoal dark:border-[#f3f4f6] bg-almond-silk/10 text-black dark:text-white' : 'border-transparent text-zinc-400 hover:bg-almond-silk/5'}`}
+                title="Dashboard"
               >
-                📊 Dashboard
+                <span>📊</span>
+                {!isSidebarReduced && <span>Dashboard</span>}
               </button>
               <button 
-                onClick={() => setSellerTab('products')} 
-                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs font-semibold border-l-4 transition-all ${sellerTab === 'products' ? 'border-charcoal dark:border-[#f3f4f6] bg-almond-silk/10 text-black dark:text-white' : 'border-transparent text-zinc-400 hover:bg-almond-silk/5'}`}
+                onClick={() => { setSellerTab('products'); setIsSellerSidebarOpen(false); }} 
+                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 rounded-lg text-xs font-semibold border-l-4 transition-all ${sellerTab === 'products' ? 'border-charcoal dark:border-[#f3f4f6] bg-almond-silk/10 text-black dark:text-white' : 'border-transparent text-zinc-400 hover:bg-almond-silk/5'}`}
+                title="Products & Studio"
               >
-                📦 Products &amp; Studio
+                <span>📦</span>
+                {!isSidebarReduced && <span>Products & Studio</span>}
               </button>
               <button 
-                onClick={() => setSellerTab('orders')} 
-                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs font-semibold border-l-4 transition-all ${sellerTab === 'orders' ? 'border-charcoal dark:border-[#f3f4f6] bg-almond-silk/10 text-black dark:text-white' : 'border-transparent text-zinc-400 hover:bg-almond-silk/5'}`}
+                onClick={() => { setSellerTab('orders'); setIsSellerSidebarOpen(false); }} 
+                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 rounded-lg text-xs font-semibold border-l-4 transition-all ${sellerTab === 'orders' ? 'border-charcoal dark:border-[#f3f4f6] bg-almond-silk/10 text-black dark:text-white' : 'border-transparent text-zinc-400 hover:bg-almond-silk/5'}`}
+                title="Orders Pipeline"
               >
-                🛒 Orders Pipeline
+                <span>🛒</span>
+                {!isSidebarReduced && <span>Orders Pipeline</span>}
               </button>
               <button 
-                onClick={() => setSellerTab('escrow')} 
-                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs font-semibold border-l-4 transition-all ${sellerTab === 'escrow' ? 'border-charcoal dark:border-[#f3f4f6] bg-almond-silk/10 text-black dark:text-white' : 'border-transparent text-zinc-400 hover:bg-almond-silk/5'}`}
+                onClick={() => { setSellerTab('escrow'); setIsSellerSidebarOpen(false); }} 
+                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 rounded-lg text-xs font-semibold border-l-4 transition-all ${sellerTab === 'escrow' ? 'border-charcoal dark:border-[#f3f4f6] bg-almond-silk/10 text-black dark:text-white' : 'border-transparent text-zinc-400 hover:bg-almond-silk/5'}`}
+                title="Escrow Wallet"
               >
-                💰 Escrow Wallet
+                <span>💰</span>
+                {!isSidebarReduced && <span>Escrow Wallet</span>}
               </button>
               <button 
-                onClick={() => setSellerTab('kyc')} 
-                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs font-semibold border-l-4 transition-all ${sellerTab === 'kyc' ? 'border-charcoal dark:border-[#f3f4f6] bg-almond-silk/10 text-black dark:text-white' : 'border-transparent text-zinc-400 hover:bg-almond-silk/5'}`}
+                onClick={() => { setSellerTab('kyc'); setIsSellerSidebarOpen(false); }} 
+                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 rounded-lg text-xs font-semibold border-l-4 transition-all ${sellerTab === 'kyc' ? 'border-charcoal dark:border-[#f3f4f6] bg-almond-silk/10 text-black dark:text-white' : 'border-transparent text-zinc-400 hover:bg-almond-silk/5'}`}
+                title="KYC Profile"
               >
-                🛡️ KYC Profile
+                <span>🛡️</span>
+                {!isSidebarReduced && <span>KYC Profile</span>}
               </button>
               <button 
-                onClick={() => setSellerTab('disputes')} 
-                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs font-semibold border-l-4 transition-all ${sellerTab === 'disputes' ? 'border-charcoal dark:border-[#f3f4f6] bg-almond-silk/10 text-black dark:text-white' : 'border-transparent text-zinc-400 hover:bg-almond-silk/5'}`}
+                onClick={() => { setSellerTab('disputes'); setIsSellerSidebarOpen(false); }} 
+                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 rounded-lg text-xs font-semibold border-l-4 transition-all ${sellerTab === 'disputes' ? 'border-charcoal dark:border-[#f3f4f6] bg-almond-silk/10 text-black dark:text-white' : 'border-transparent text-zinc-400 hover:bg-almond-silk/5'}`}
+                title="Disputes Center"
               >
-                ⚖️ Disputes Center
+                <span>⚖️</span>
+                {!isSidebarReduced && <span>Disputes Center</span>}
               </button>
               <button 
-                onClick={() => setSellerTab('vouchers')} 
-                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs font-semibold border-l-4 transition-all ${sellerTab === 'vouchers' ? 'border-charcoal dark:border-[#f3f4f6] bg-almond-silk/10 text-black dark:text-white' : 'border-transparent text-zinc-400 hover:bg-almond-silk/5'}`}
+                onClick={() => { setSellerTab('vouchers'); setIsSellerSidebarOpen(false); }} 
+                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 rounded-lg text-xs font-semibold border-l-4 transition-all ${sellerTab === 'vouchers' ? 'border-charcoal dark:border-[#f3f4f6] bg-almond-silk/10 text-black dark:text-white' : 'border-transparent text-zinc-400 hover:bg-almond-silk/5'}`}
+                title="Promo Vouchers"
               >
-                🎟️ Promo Vouchers
+                <span>🎟️</span>
+                {!isSidebarReduced && <span>Promo Vouchers</span>}
               </button>
             </nav>
             
             <div className="pt-4 border-t border-[#e8e1dd] dark:border-[#2f2b3b] mt-auto">
               <button 
                 onClick={() => setUser(null)}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg font-bold transition-all"
+                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg font-bold transition-all`}
+                title="Logout Store"
               >
-                🔒 Logout Store
+                <span>🔒</span>
+                {!isSidebarReduced && <span>Logout Store</span>}
               </button>
             </div>
           </aside>
 
           {/* Seller Content Panel */}
-          <div className="ml-64 p-8 flex-1 h-screen overflow-y-auto">
-            <div className="max-w-5xl mx-auto space-y-6 pb-24">
+          <div className={`ml-0 ${isSidebarReduced ? 'md:ml-20' : 'md:ml-64'} p-4 md:p-8 flex-1 h-screen overflow-y-auto transition-all duration-300`}>
+            {/* Mobile Navigation Header */}
+            <div className="flex items-center gap-3 md:hidden mb-6 bg-white dark:bg-[#15131b] p-3 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b] shadow-sm justify-between">
+              <button 
+                onClick={() => setIsSellerSidebarOpen(true)}
+                className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg flex items-center justify-center"
+              >
+                <span className="text-xl">☰</span>
+              </button>
+              <span className="font-extrabold text-xs tracking-wider font-heading text-charcoal dark:text-white">Seller Portal</span>
+              <div className="w-8"></div>
+            </div>
+            <div className="w-full max-w-7xl mx-auto space-y-6 pb-24">
               
               {/* TAB 1: OVERVIEW */}
               {sellerTab === 'overview' && (

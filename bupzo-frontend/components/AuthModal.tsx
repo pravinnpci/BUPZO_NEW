@@ -43,7 +43,7 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
         setMessage(`Database Sync Error: ${errorData.detail || 'Could not verify user.'}`);
       }
     } catch (err) {
-      console.error('Backend registration failed:', err);
+      console.warn('Backend registration failed:', err);
       // Fallback: register mock local user so dev is not blocked
       const mockUser = {
         id: 'mock-user-id',
@@ -118,7 +118,7 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
       }
     } catch (error) {
       setMessage('Invalid OTP. Please try again.');
-      console.error('Error verifying OTP:', error);
+      console.warn('Error verifying OTP:', error);
     }
   };
 

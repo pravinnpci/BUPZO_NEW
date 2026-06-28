@@ -1,4 +1,5 @@
-from fastapi import FastAPI, HTTPException, Depends, status, UploadFile, File
+from fastapi import FastAPI, HTTPException, Depends, status, UploadFile, File, Request
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import io
@@ -43,6 +44,21 @@ minio_client = Minio(
 try:
     if not minio_client.bucket_exists(MINIO_BUCKET):
         minio_client.make_bucket(MINIO_BUCKET)
+    
+    # Configure public read access policy
+    import json
+    public_policy = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Principal": {"AWS": ["*"]},
+                "Action": ["s3:GetObject"],
+                "Resource": [f"arn:aws:s3:::{MINIO_BUCKET}/*"]
+            }
+        ]
+    }
+    minio_client.set_bucket_policy(MINIO_BUCKET, json.dumps(public_policy))
 except Exception as e:
     print(f"Error checking/creating MinIO bucket: {e}")
 
@@ -68,6 +84,20 @@ async def startup_event():
         await conn.execute("ALTER TABLE coupons ADD COLUMN IF NOT EXISTS created_by_seller_id UUID REFERENCES sellers(id) ON DELETE CASCADE;")
         await conn.execute("ALTER TABLE coupons ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'PENDING';")
         await conn.execute("UPDATE coupons SET status = 'APPROVED' WHERE status IS NULL;")
+        # Seed Mock User so wishlist foreign keys work
+        await conn.execute("""
+            DELETE FROM users 
+            WHERE phone = '+919876543210' 
+              AND id != 'a01b1234-5678-abcd-ef01-1234567890ab';
+        """)
+        await conn.execute("""
+            INSERT INTO users (id, phone, email, is_premium, signup_platform, privacy_accepted, wallet_balance, name)
+            VALUES ('a01b1234-5678-abcd-ef01-1234567890ab', '+919876543210', 'localadmin@bupzo.com', TRUE, 'WEB', TRUE, 2500.00, 'Bupzo Patron')
+            ON CONFLICT (id) DO UPDATE SET
+                phone = EXCLUDED.phone,
+                name = EXCLUDED.name,
+                wallet_balance = EXCLUDED.wallet_balance;
+        """)
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -1145,7 +1175,7 @@ async def update_product(product_id: UUID, payload: ProductUpdate):
 
 # MinIO Upload Endpoint
 @app.post("/api/upload/")
-async def upload_image(file: UploadFile = File(...)):
+async def upload_image(request: Request, file: UploadFile = File(...)):
     filename = f"{uuid4().hex}_{file.filename}"
     file_data = await file.read()
     file_size = len(file_data)
@@ -1158,10 +1188,22 @@ async def upload_image(file: UploadFile = File(...)):
             file_size,
             content_type=file.content_type or "image/jpeg"
         )
-        url = f"http://localhost:9002/{MINIO_BUCKET}/{filename}"
+        base_url = str(request.base_url).rstrip("/")
+        # If running inside Docker, let the host resolve via the dynamic Request base_url (which points to the FastAPI host address as the user sees it)
+        url = f"{base_url}/api/media/{filename}"
         return {"success": True, "url": url}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"MinIO upload error: {str(e)}")
+
+# MinIO Media Proxy Endpoint to bypass CORS and Docker local localhost network resolution issues
+@app.get("/api/media/{filename}")
+async def get_media_file(filename: str):
+    try:
+        # Fetch object from MinIO container internally
+        response = minio_client.get_object(MINIO_BUCKET, filename)
+        return StreamingResponse(response, media_type="image/jpeg")
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=f"File {filename} not found in MinIO storage: {str(e)}")
 
 # Get User Orders
 @app.get("/api/orders/user/{user_id}", response_model=List[OrderResponse])

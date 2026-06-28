@@ -65,7 +65,8 @@ export async function addToWishlist(productId: string, userId: string): Promise<
   });
 
   if (!response.ok) {
-    throw new Error('Failed to add item to wishlist');
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.detail || 'Failed to add item to wishlist');
   }
   return response.json();
 }
@@ -79,9 +80,13 @@ export async function getWishlistItems(userId: string): Promise<WishlistItem[]> 
 }
 
 export async function removeFromWishlist(itemId: string): Promise<void> {
-  await fetch(`${API_BASE_URL}/api/wishlist/${itemId}`, {
+  const response = await fetch(`${API_BASE_URL}/api/wishlist/${itemId}`, {
     method: 'DELETE',
   });
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.detail || 'Failed to remove from wishlist');
+  }
 }
 
 export async function initiateStitchPayment(orderId: string, amount: number): Promise<{ success: boolean; payment_url: string; mode: string }> {
