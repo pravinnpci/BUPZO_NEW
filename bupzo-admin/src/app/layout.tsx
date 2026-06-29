@@ -18,6 +18,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${plusJakartaSans.variable}`} suppressHydrationWarning>
       <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1" rel="stylesheet" />
       </head>
       <body className="bg-dust-grey dark:bg-[#1a191e] text-[#565264] dark:text-[#f3f4f6] font-sans antialiased">

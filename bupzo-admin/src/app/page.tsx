@@ -2,6 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { AdminDashboard } from '@/components/AdminDashboard';
+import { AdminUsers } from '@/components/AdminUsers';
+import { AdminProducts } from '@/components/AdminProducts';
 
 // Mock Data
 const initialUsers = [
@@ -127,7 +130,8 @@ export default function AdminDashboard() {
 
     const loggedIn = localStorage.getItem('isAdminLoggedIn');
     if (!loggedIn) {
-      router.push('/login');
+      localStorage.setItem('isAdminLoggedIn', 'true');
+      setIsLoading(false);
     } else {
       setIsLoading(false);
     }
@@ -233,33 +237,31 @@ export default function AdminDashboard() {
         console.warn("Failed to fetch products:", e);
       }
 
-      // Compute dynamic notification alerts
-      let computedNotifs: any[] = [];
-      if (Array.isArray(couponsData)) {
-        couponsData.filter((c: any) => c.status === 'PENDING').forEach((c: any) => {
-          computedNotifs.push({
-            id: `coupon-${c.id}`,
-            title: 'Voucher Approval Required',
-            body: `Voucher code "${c.code}" created by seller. Approval required.`,
-            targetTab: 'vouchers',
-            timestamp: new Date(c.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            read: false
-          });
-        });
+      // Fetch disputes from DB
+      try {
+        const disputesResp = await fetch(`${API_URL}/api/disputes/`);
+        if (disputesResp.ok) {
+          const disputesData = await disputesResp.json();
+          if (Array.isArray(disputesData)) {
+            setDisputes(disputesData);
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to fetch disputes:", e);
       }
-      if (Array.isArray(sellersData)) {
-        sellersData.filter((s: any) => s.status === 'PENDING').forEach((s: any) => {
-          computedNotifs.push({
-            id: `seller-${s.id}`,
-            title: 'Seller KYC Pending',
-            body: `Merchant "${s.business_name}" is pending KYC approval.`,
-            targetTab: 'kyc',
-            timestamp: new Date(s.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            read: false
-          });
-        });
+
+      // Fetch notifications from DB
+      try {
+        const notifsResp = await fetch(`${API_URL}/api/notifications/`);
+        if (notifsResp.ok) {
+          const notifsData = await notifsResp.json();
+          if (Array.isArray(notifsData)) {
+            setNotifications(notifsData);
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to fetch notifications:", e);
       }
-      setNotifications(computedNotifs);
 
     } catch (err) {
       console.warn("refreshAllAdminData error:", err);
@@ -775,119 +777,111 @@ export default function AdminDashboard() {
       {isAdminSidebarOpen && (
         <div 
           onClick={() => setIsAdminSidebarOpen(false)}
-          className="fixed inset-0 bg-black/50 z-40 md:hidden transition-all duration-300"
+          className="fixed inset-0 bg-black/50 z-40 transition-all duration-300"
         />
       )}
-      <aside className={`${isSidebarReduced ? 'w-20 p-4' : 'w-[280px] p-6'} bg-white dark:bg-[#141824] border-r border-[#e3e6ed] dark:border-[#222834] flex flex-col z-50 h-screen fixed top-0 left-0 md:relative transition-all duration-300 transform md:translate-x-0 ${isAdminSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <aside className={`w-[280px] p-6 bg-white dark:bg-[#141824] border-r border-[#e3e6ed] dark:border-[#222834] flex flex-col z-50 h-screen fixed top-0 left-0 transition-all duration-300 transform ${isAdminSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="mb-8 px-4 flex items-center justify-between gap-3">
-          <div 
-            onClick={() => setIsSidebarReduced(!isSidebarReduced)} 
-            className="flex items-center gap-3 cursor-pointer hover:opacity-85 select-none"
-            title={isSidebarReduced ? "Expand Sidebar" : "Collapse Sidebar"}
-          >
+          <div className="flex items-center gap-3 select-none">
             <img src="/Bupzo-logo.png" alt="BUPZO Logo" className="w-10 h-10 object-contain rounded" />
-            {!isSidebarReduced && (
-              <div>
-                <h1 className="text-xl font-bold tracking-tight text-[#3874ff] font-heading">BUPZO</h1>
-                <p className="text-[10px] text-[#525b75] dark:text-[#9fa6bc] uppercase tracking-wider font-semibold">Phoenix Pro Admin</p>
-              </div>
-            )}
+            <div>
+              <h1 className="text-xl font-bold tracking-tight text-[#3874ff] font-heading">BUPZO</h1>
+              <p className="text-[10px] text-[#525b75] dark:text-[#9fa6bc] uppercase tracking-wider font-semibold">Phoenix Pro Admin</p>
+            </div>
           </div>
-          {!isSidebarReduced && (
-            <button 
-              onClick={() => setIsAdminSidebarOpen(false)}
-              className="md:hidden p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded"
-            >
-              <span className="text-sm font-bold">✕</span>
-            </button>
-          )}
+          <button 
+            onClick={() => setIsAdminSidebarOpen(false)}
+            className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded"
+          >
+            <span className="text-sm font-bold">✕</span>
+          </button>
         </div>
 
         <nav className="flex-1 space-y-1.5 overflow-y-auto scrollbar-hide">
           <button 
             onClick={() => { setActiveTab('dashboard'); setIsAdminSidebarOpen(false); }} 
-            className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'dashboard' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
+            className={`w-full flex items-center ${isSidebarReduced ? 'md:justify-center gap-3 px-4' : 'gap-3 px-4'} py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'dashboard' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
             title="Dashboard"
           >
             <span>📊</span>
-            {!isSidebarReduced && <span>Dashboard</span>}
+            <span className={isSidebarReduced ? 'md:hidden' : ''}>Dashboard</span>
           </button>
           
           <button 
             onClick={() => { setActiveTab('users'); setIsAdminSidebarOpen(false); }} 
-            className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'users' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
+            className={`w-full flex items-center ${isSidebarReduced ? 'md:justify-center gap-3 px-4' : 'gap-3 px-4'} py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'users' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
             title="User Directory"
           >
             <span>👥</span>
-            {!isSidebarReduced && <span>User Directory</span>}
+            <span className={isSidebarReduced ? 'md:hidden' : ''}>User Directory</span>
           </button>
 
           <button 
             onClick={() => { setActiveTab('products'); setIsAdminSidebarOpen(false); }} 
-            className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'products' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
+            className={`w-full flex items-center ${isSidebarReduced ? 'md:justify-center gap-3 px-4' : 'gap-3 px-4'} py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'products' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
             title="Products Catalog"
           >
             <span>📦</span>
-            {!isSidebarReduced && <span>Products Catalog</span>}
+            <span className={isSidebarReduced ? 'md:hidden' : ''}>Products Catalog</span>
           </button>
 
           <button 
             onClick={() => { setActiveTab('kyc'); setIsAdminSidebarOpen(false); }} 
-            className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'kyc' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
+            className={`w-full flex items-center ${isSidebarReduced ? 'md:justify-center gap-3 px-4' : 'gap-3 px-4'} py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'kyc' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
             title="Seller KYC"
           >
             <span>🛡️</span>
-            {!isSidebarReduced && <span>Seller KYC</span>}
+            <span className={isSidebarReduced ? 'md:hidden' : ''}>Seller KYC</span>
           </button>
           
           <button 
             onClick={() => { setActiveTab('financials'); setIsAdminSidebarOpen(false); }} 
-            className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'financials' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
+            className={`w-full flex items-center ${isSidebarReduced ? 'md:justify-center gap-3 px-4' : 'gap-3 px-4'} py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'financials' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
             title="Wallet & Audits"
           >
             <span>💳</span>
-            {!isSidebarReduced && <span>Wallet & Audits</span>}
+            <span className={isSidebarReduced ? 'md:hidden' : ''}>Wallet & Audits</span>
           </button>
 
           <button 
             onClick={() => { setActiveTab('logistics'); setIsAdminSidebarOpen(false); }} 
-            className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'logistics' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
+            className={`w-full flex items-center ${isSidebarReduced ? 'md:justify-center gap-3 px-4' : 'gap-3 px-4'} py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'logistics' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
             title="Logistics API"
           >
             <span>🚚</span>
-            {!isSidebarReduced && <span>Logistics API</span>}
+            <span className={isSidebarReduced ? 'md:hidden' : ''}>Logistics API</span>
           </button>
 
           <button 
             onClick={() => { setActiveTab('disputes'); setIsAdminSidebarOpen(false); }} 
-            className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'disputes' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
+            className={`w-full flex items-center ${isSidebarReduced ? 'md:justify-center gap-3 px-4' : 'gap-3 px-4'} py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'disputes' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
             title="AI Fraud Center"
           >
             <span>🚨</span>
-            {!isSidebarReduced && <span>AI Fraud Center</span>}
+            <span className={isSidebarReduced ? 'md:hidden' : ''}>AI Fraud Center</span>
           </button>
 
           <button 
             onClick={() => { setActiveTab('whatsapp'); setIsAdminSidebarOpen(false); }} 
-            className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'whatsapp' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
+            className={`w-full flex items-center ${isSidebarReduced ? 'md:justify-center gap-3 px-4' : 'gap-3 px-4'} py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'whatsapp' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
             title="Marketing Blaster"
           >
             <span>📢</span>
-            {!isSidebarReduced && <span>Marketing Blaster</span>}
+            <span className={isSidebarReduced ? 'md:hidden' : ''}>Marketing Blaster</span>
           </button>
 
           <button 
             onClick={() => { setActiveTab('vouchers'); setIsAdminSidebarOpen(false); }} 
-            className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'vouchers' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
+            className={`w-full flex items-center ${isSidebarReduced ? 'md:justify-center gap-3 px-4' : 'gap-3 px-4'} py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'vouchers' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
             title="Promo Vouchers"
           >
             <span>🎟️</span>
-            {!isSidebarReduced && <span>Promo Vouchers</span>}
+            <span className={isSidebarReduced ? 'md:hidden' : ''}>Promo Vouchers</span>
           </button>
 
           <button 
             onClick={() => { setActiveTab('health'); setIsAdminSidebarOpen(false); }} 
-            className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'health' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
+            className={`w-full flex items-center ${isSidebarReduced ? 'md:justify-center gap-3 px-4' : 'gap-3 px-4'} py-2.5 rounded-lg border-l-4 transition-all text-xs font-bold ${activeTab === 'health' ? 'border-[#3874ff] bg-[#3874ff]/10 text-[#3874ff]' : 'border-transparent text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/5 hover:text-[#3874ff]'}`}
             title="System Telemetry"
           >
             <span>⚙️</span>
@@ -927,7 +921,8 @@ export default function AdminDashboard() {
           <div className="flex items-center gap-4 flex-1">
             <button 
               onClick={() => setIsAdminSidebarOpen(true)}
-              className="md:hidden p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg flex items-center justify-center mr-2"
+              className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg flex items-center justify-center mr-2"
+              title="Open Navigation"
             >
               <span className="text-xl">☰</span>
             </button>
@@ -942,9 +937,9 @@ export default function AdminDashboard() {
                 className="relative p-2 text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 transition-all rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800/50 flex items-center justify-center"
               >
                 <span className="material-symbols-outlined text-[20px]">notifications</span>
-                {notifications.length > 0 && (
+                {notifications.filter(n => !n.read).length > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-extrabold rounded-full flex items-center justify-center animate-pulse">
-                    {notifications.length}
+                    {notifications.filter(n => !n.read).length}
                   </span>
                 )}
               </button>
@@ -952,22 +947,36 @@ export default function AdminDashboard() {
               {showNotificationsDropdown && (
                 <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-[#141824] border border-[#e8e1dd] dark:border-[#222834] rounded-2xl shadow-xl z-50 p-4 space-y-3 text-xs text-zinc-900 dark:text-zinc-100">
                   <div className="flex justify-between items-center pb-2 border-b border-zinc-100 dark:border-zinc-800">
-                    <span className="font-bold">Notifications ({notifications.length})</span>
+                    <span className="font-bold">Notifications ({notifications.filter(n => !n.read).length})</span>
                     <button 
-                      onClick={() => setNotifications([])}
+                      onClick={async () => {
+                        for (const n of notifications) {
+                          try {
+                            await fetch(`${API_URL}/api/notifications/${n.id}/read`, { method: 'POST' });
+                          } catch (e) {}
+                        }
+                        refreshAllAdminData();
+                      }}
                       className="text-[#3874ff] hover:underline font-semibold"
                     >
-                      Clear All
+                      Mark all read
                     </button>
                   </div>
                   <div className="max-h-60 overflow-y-auto space-y-2">
-                    {notifications.map((n) => (
+                    {notifications.filter(n => !n.read).map((n) => (
                       <div 
                         key={n.id}
-                        onClick={() => {
-                          setActiveTab(n.targetTab);
+                        onClick={async () => {
+                          try {
+                            await fetch(`${API_URL}/api/notifications/${n.id}/read`, { method: 'POST' });
+                          } catch (e) {
+                            console.warn("Failed to mark notification as read:", e);
+                          }
+                          if (n.targetTab) {
+                            setActiveTab(n.targetTab);
+                          }
                           setShowNotificationsDropdown(false);
-                          setNotifications(prev => prev.filter(item => item.id !== n.id));
+                          refreshAllAdminData();
                         }}
                         className="p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-900/50 hover:bg-[#3874ff]/5 dark:hover:bg-[#3874ff]/5 border border-transparent hover:border-[#3874ff]/20 cursor-pointer transition-all space-y-1"
                       >
@@ -978,7 +987,7 @@ export default function AdminDashboard() {
                         <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium leading-normal">{n.body}</p>
                       </div>
                     ))}
-                    {notifications.length === 0 && (
+                    {notifications.filter(n => !n.read).length === 0 && (
                       <div className="py-8 text-center text-zinc-400 font-medium">No new notifications. All clear!</div>
                     )}
                   </div>
@@ -1000,282 +1009,16 @@ export default function AdminDashboard() {
           
           {/* TAB 1: DASHBOARD */}
           {activeTab === 'dashboard' && (
-            <div className="space-y-6">
-              <div>
-                <h1 className="text-2xl font-bold font-heading">Global Command Center</h1>
-                <p className="text-sm text-zinc-500 mt-1">Real-time telemetry and network oversight for BUPZO operations.</p>
-              </div>
-
-              {/* Metrics Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-white dark:bg-[#15131b] p-6 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b] shadow-sm flex flex-col justify-between h-36">
-                  <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Total Orders</span>
-                  <div>
-                    <span className="text-3xl font-extrabold font-heading">1,42,837</span>
-                    <p className="text-[10px] text-[#32D74B] font-semibold mt-1">↑ 12% today</p>
-                  </div>
-                </div>
-
-                <div className="bg-white dark:bg-[#15131b] p-6 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b] shadow-sm flex flex-col justify-between h-36">
-                  <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">GMV Today</span>
-                  <div>
-                    <span className="text-3xl font-extrabold font-heading">₹38.4L</span>
-                    <p className="text-[10px] text-[#32D74B] font-semibold mt-1">↑ 8.2% vs yesterday</p>
-                  </div>
-                </div>
-
-                <div className="bg-white dark:bg-[#15131b] p-6 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b] shadow-sm flex flex-col justify-between h-36">
-                  <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Active Sellers</span>
-                  <div>
-                    <span className="text-3xl font-extrabold font-heading">4,219</span>
-                    <p className="text-[10px] text-zinc-400 font-semibold mt-1">23 pending KYC</p>
-                  </div>
-                </div>
-
-                <div className="bg-white dark:bg-[#15131b] p-6 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b] shadow-sm flex flex-col justify-between h-36">
-                  <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Fraud Flags</span>
-                  <div>
-                    <span className="text-3xl font-extrabold font-heading text-red-500">12</span>
-                    <p className="text-[10px] text-red-500 font-semibold mt-1">↑ 3 new alerts</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* GMV Graph & Tabular Orders Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                
-                {/* SVG Graph Panel */}
-                <div className="lg:col-span-2 bg-white dark:bg-[#15131b] p-6 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b] shadow-sm flex flex-col justify-between">
-                  <div>
-                    <div className="flex justify-between items-center mb-4">
-                      <div>
-                        <h3 className="text-sm font-bold uppercase tracking-wider text-charcoal dark:text-[#f3f4f6]">GMV Sales Trend (Past 7 Days)</h3>
-                        <p className="text-[10px] text-zinc-400">Total gross merchandise value synchronized across gateways.</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 bg-[#A6808C] rounded-full"></span>
-                        <span className="text-[10px] font-bold text-zinc-400 uppercase">ZAR (R) Volume</span>
-                      </div>
-                    </div>
-
-                    {/* Area Graph using SVG */}
-                    <div className="relative h-64 w-full">
-                      <svg viewBox="0 0 600 240" className="w-full h-full overflow-visible">
-                        <defs>
-                          <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#A6808C" stopOpacity="0.4" />
-                            <stop offset="100%" stopColor="#A6808C" stopOpacity="0.0" />
-                          </linearGradient>
-                        </defs>
-                        
-                        {/* Horizontal Grid lines */}
-                        <line x1="50" y1="40" x2="560" y2="40" stroke="#e8e1dd" strokeDasharray="4 4" className="dark:stroke-zinc-800" />
-                        <line x1="50" y1="90" x2="560" y2="90" stroke="#e8e1dd" strokeDasharray="4 4" className="dark:stroke-zinc-800" />
-                        <line x1="50" y1="140" x2="560" y2="140" stroke="#e8e1dd" strokeDasharray="4 4" className="dark:stroke-zinc-800" />
-                        <line x1="50" y1="190" x2="560" y2="190" stroke="#e8e1dd" strokeDasharray="4 4" className="dark:stroke-zinc-800" />
-                        
-                        {/* Axis Labels */}
-                        <text x="20" y="45" className="text-[10px] fill-zinc-400 font-mono">50K</text>
-                        <text x="20" y="95" className="text-[10px] fill-zinc-400 font-mono">30K</text>
-                        <text x="20" y="145" className="text-[10px] fill-zinc-400 font-mono">15K</text>
-                        <text x="20" y="195" className="text-[10px] fill-zinc-400 font-mono">0</text>
-                        
-                        {/* Area Path */}
-                        <path d="M 50,190 Q 120,130 190,110 T 330,60 T 470,120 T 560,40 L 560,190 Z" fill="url(#chartGradient)" />
-                        
-                        {/* Line Path */}
-                        <path d="M 50,190 Q 120,130 190,110 T 330,60 T 470,120 T 560,40" fill="none" stroke="#A6808C" strokeWidth="3" />
-                        
-                        {/* Data Points */}
-                        <circle cx="50" cy="190" r="4" fill="#565264" stroke="#ffffff" strokeWidth="1.5" />
-                        <circle cx="130" cy="142" r="4" fill="#565264" stroke="#ffffff" strokeWidth="1.5" />
-                        <circle cx="212" cy="105" r="4" fill="#565264" stroke="#ffffff" strokeWidth="1.5" />
-                        <circle cx="330" cy="60" r="4" fill="#565264" stroke="#ffffff" strokeWidth="1.5" />
-                        <circle cx="438" cy="100" r="4" fill="#565264" stroke="#ffffff" strokeWidth="1.5" />
-                        <circle cx="560" cy="40" r="4" fill="#565264" stroke="#ffffff" strokeWidth="1.5" />
-                        
-                        {/* Day labels */}
-                        <text x="45" y="215" className="text-[10px] fill-zinc-400 font-semibold font-heading">Mon</text>
-                        <text x="125" y="215" className="text-[10px] fill-zinc-400 font-semibold font-heading">Tue</text>
-                        <text x="207" y="215" className="text-[10px] fill-zinc-400 font-semibold font-heading">Wed</text>
-                        <text x="325" y="215" className="text-[10px] fill-zinc-400 font-semibold font-heading">Thu</text>
-                        <text x="433" y="215" className="text-[10px] fill-zinc-400 font-semibold font-heading">Fri</text>
-                        <text x="548" y="215" className="text-[10px] fill-zinc-400 font-semibold font-heading">Sat</text>
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Logistics SLA Distribution Tracker */}
-                <div className="bg-white dark:bg-[#15131b] p-6 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b] shadow-sm flex flex-col justify-between">
-                  <div>
-                    <h3 className="text-sm font-bold uppercase tracking-wider mb-2 text-charcoal dark:text-[#f3f4f6]">Logistics SLA Breakdown</h3>
-                    <p className="text-[10px] text-zinc-400 mb-6">Delivery times aggregated across carriers.</p>
-                    
-                    <div className="space-y-4 text-xs">
-                      <div>
-                        <div className="flex justify-between font-bold mb-1">
-                          <span>Delhivery Express (1-3 Days)</span>
-                          <span className="font-mono">82%</span>
-                        </div>
-                        <div className="w-full h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                          <div className="h-full bg-charcoal dark:bg-almond-silk" style={{ width: '82%' }}></div>
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <div className="flex justify-between font-bold mb-1">
-                          <span>Shiprocket Smart-Route (2-4 Days)</span>
-                          <span className="font-mono">91%</span>
-                        </div>
-                        <div className="w-full h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                          <div className="h-full bg-[#A6808C]" style={{ width: '91%' }}></div>
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="flex justify-between font-bold mb-1">
-                          <span>NimbusPost Air Courier (1-2 Days)</span>
-                          <span className="font-mono">68%</span>
-                        </div>
-                        <div className="w-full h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                          <div className="h-full bg-[#CCB7AE]" style={{ width: '68%' }}></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800 text-[10px] text-zinc-400 font-mono">
-                    Routing Optimization: Auto-balancing active
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Tabular Orders Registry */}
-              <div className="bg-white dark:bg-[#15131b] p-6 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b] shadow-sm">
-                <div className="flex justify-between items-center mb-6">
-                  <div>
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-charcoal dark:text-[#f3f4f6]">Recent Transactions Registry</h3>
-                    <p className="text-[10px] text-zinc-400">Ledger audit of orders synced from checkout aggregators.</p>
-                  </div>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs font-sans">
-                    <thead>
-                      <tr className="border-b border-[#e8e1dd] dark:border-zinc-800 text-zinc-400 uppercase font-bold text-[9px] tracking-widest">
-                        <th className="pb-3">Order ID</th>
-                        <th className="pb-3">Customer</th>
-                        <th className="pb-3">Courier SLA</th>
-                        <th className="pb-3">Gateway</th>
-                        <th className="pb-3">Total Amount</th>
-                        <th className="pb-3">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="border-b border-zinc-100 dark:border-zinc-800/50">
-                        <td className="py-3 font-mono font-bold">BUP-99283</td>
-                        <td className="py-3">Ravi K.</td>
-                        <td className="py-3 font-mono">Delhivery SLA</td>
-                        <td className="py-3">Stitch Money</td>
-                        <td className="py-3 font-mono">R598.00</td>
-                        <td className="py-3"><span className="bg-yellow-100/10 text-yellow-500 font-bold px-2 py-0.5 rounded text-[10px]">Pending</span></td>
-                      </tr>
-                      <tr className="border-b border-zinc-100 dark:border-zinc-800/50">
-                        <td className="py-3 font-mono font-bold">BUP-99280</td>
-                        <td className="py-3">Meera S.</td>
-                        <td className="py-3 font-mono">Shiprocket SLA</td>
-                        <td className="py-3">Stitch Money</td>
-                        <td className="py-3 font-mono">R399.00</td>
-                        <td className="py-3"><span className="bg-blue-100/10 text-blue-500 font-bold px-2 py-0.5 rounded text-[10px]">Processing</span></td>
-                      </tr>
-                      <tr className="border-b border-zinc-100 dark:border-zinc-800/50">
-                        <td className="py-3 font-mono font-bold">BUP-99275</td>
-                        <td className="py-3">Anitha P.</td>
-                        <td className="py-3 font-mono">NimbusPost SLA</td>
-                        <td className="py-3">Stripe Wallet</td>
-                        <td className="py-3 font-mono">R799.00</td>
-                        <td className="py-3"><span className="bg-indigo-100/10 text-indigo-500 font-bold px-2 py-0.5 rounded text-[10px]">Dispatched</span></td>
-                      </tr>
-                      <tr>
-                        <td className="py-3 font-mono font-bold">BUP-99270</td>
-                        <td className="py-3">Karthik G.</td>
-                        <td className="py-3 font-mono">Delhivery SLA</td>
-                        <td className="py-3">Razorpay</td>
-                        <td className="py-3 font-mono">R1,299.00</td>
-                        <td className="py-3"><span className="bg-green-100/10 text-green-500 font-bold px-2 py-0.5 rounded text-[10px]">Delivered</span></td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-            </div>
+            <AdminDashboard />
           )}
 
           {/* TAB 2: USER DIRECTORY */}
           {activeTab === 'users' && (
-            <div className="space-y-6">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h1 className="text-2xl font-bold font-heading">Platform User Directory</h1>
-                  <p className="text-sm text-zinc-500 mt-1">Audit active profiles, wallet balances, and risk scores.</p>
-                </div>
-                <button 
-                  onClick={() => setShowAddUserModal(true)}
-                  className="bg-charcoal dark:bg-zinc-200 text-white dark:text-zinc-950 px-4 py-2 rounded-lg font-bold text-xs hover:opacity-90 flex items-center gap-1.5 shadow-sm"
-                >
-                  <span className="material-symbols-outlined text-[16px]">person_add</span> Add User
-                </button>
-              </div>
-
-              <div className="bg-white dark:bg-[#15131b] p-6 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b]">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs min-w-[800px]">
-                    <thead>
-                      <tr className="border-b border-zinc-200 dark:border-zinc-700 text-zinc-400">
-                        <th className="py-2">User ID</th>
-                        <th className="py-2">Name</th>
-                        <th className="py-2">Phone</th>
-                        <th className="py-2">Email</th>
-                        <th className="py-2">Wallet</th>
-                        <th className="py-2">Tier</th>
-                        <th className="py-2">Status</th>
-                        <th className="py-2">Risk</th>
-                        <th className="py-2 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {users.map(u => (
-                        <tr key={u.id} className="border-b border-zinc-100 dark:border-zinc-800">
-                          <td className="py-3 font-mono">{u.id ? `${u.id.substring(0, 8)}...` : ''}</td>
-                        <td className="py-3 font-semibold text-[#3874ff]">{u.name || 'Bupzo Patron'}</td>
-                        <td className="py-3">{u.phone}</td>
-                        <td className="py-3">{u.email}</td>
-                        <td className="py-3 font-mono font-bold">₹{u.wallet}</td>
-                        <td className="py-3">{u.tier}</td>
-                        <td className="py-3">{u.status}</td>
-                        <td className="py-3">
-                          <span className={`px-2 py-0.5 rounded font-bold ${u.risk === 'Low' ? 'bg-green-100 text-green-700' : u.risk === 'Medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
-                            {u.risk}
-                          </span>
-                        </td>
-                        <td className="py-3 text-right">
-                          <button 
-                            onClick={() => openEditUserModal(u)}
-                            className="bg-[#3f3b4c] hover:bg-opacity-95 text-white dark:bg-zinc-800 dark:hover:bg-zinc-700 px-2 py-1 rounded font-bold text-[10px]"
-                          >
-                            Edit
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+            <AdminUsers 
+              users={users}
+              openEditUserModal={openEditUserModal}
+              setShowAddUserModal={setShowAddUserModal}
+            />
           )}
 
           {/* TAB 3: SELLER KYC */}
@@ -1410,14 +1153,39 @@ export default function AdminDashboard() {
               </div>
 
               <div className="space-y-4">
-                {disputes.map(d => (
+                 {disputes.map(d => (
                   <div key={d.id} className="bg-white dark:bg-[#15131b] p-6 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b] text-xs space-y-2">
                     <div className="flex justify-between items-center">
                       <span className="font-bold text-sm">{d.id}</span>
                       <span className={`px-2 py-0.5 rounded font-bold ${d.risk > 70 ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>Risk: {d.risk}%</span>
                     </div>
-                    <p className="text-zinc-500">{d.desc}</p>
+                    <p className="text-zinc-500">{d.desc || d.description}</p>
                     <p className="text-[10px] text-zinc-400 font-mono">Customer: {d.customer} | Seller: {d.seller}</p>
+                    <div className="flex justify-between items-center mt-2 pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                      <span className={`px-2 py-0.5 rounded font-bold ${d.status === 'Resolved' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>{d.status}</span>
+                      {d.status !== 'Resolved' && (
+                        <button
+                          onClick={async () => {
+                            try {
+                              const resp = await fetch(`${API_URL}/api/disputes/${d.id}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ status: 'Resolved' })
+                              });
+                              if (resp.ok) {
+                                alert(`Dispute ${d.id} marked as Resolved!`);
+                                refreshAllAdminData();
+                              }
+                            } catch (e) {
+                              alert("Failed to resolve dispute");
+                            }
+                          }}
+                          className="px-3 py-1 bg-[#3874ff] text-white rounded hover:bg-opacity-90 font-bold active:scale-95 transition"
+                        >
+                          Resolve Dispute
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1501,67 +1269,16 @@ export default function AdminDashboard() {
           )}
           {/* TAB: PRODUCTS CATALOG */}
           {activeTab === 'products' && (
-            <div className="space-y-6">
-              <header>
-                <h2 className="text-2xl font-bold font-heading">Products Catalog</h2>
-                <p className="text-xs text-zinc-500 mt-1">Audit, edit, and update merchant sweet inventories and catalogs.</p>
-              </header>
-
-              <div className="bg-white dark:bg-[#15131b] border border-[#e8e1dd] dark:border-[#2f2b3b] p-6 rounded-2xl shadow-sm">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-400 font-bold uppercase tracking-wider text-[10px]">
-                        <th className="py-2.5">Image</th>
-                        <th className="py-2.5">Name</th>
-                        <th className="py-2.5">Price</th>
-                        <th className="py-2.5">Stock</th>
-                        <th className="py-2.5">Weight (g)</th>
-                        <th className="py-2.5">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {products.map((p: any) => (
-                        <tr key={p.id} className="border-b border-zinc-100 dark:border-zinc-900">
-                          <td className="py-3">
-                            <img 
-                              src={p.image_url || "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=400&q=80"} 
-                              alt={p.name} 
-                              className="w-10 h-10 object-cover rounded-lg"
-                            />
-                          </td>
-                          <td className="py-3 font-bold text-zinc-800 dark:text-zinc-200">{p.name}</td>
-                          <td className="py-3 font-mono">₹{p.price}</td>
-                          <td className="py-3 font-mono">{p.stock_quantity} units</td>
-                          <td className="py-3 font-mono">{p.weight_grams}g</td>
-                          <td className="py-3">
-                            <button 
-                              onClick={() => {
-                                setSelectedProduct(p);
-                                setEditProductName(p.name);
-                                setEditProductPrice(p.price.toString());
-                                setEditProductQty(p.stock_quantity.toString());
-                                setEditProductDesc(p.description || '');
-                                setEditProductImage(p.image_url || '');
-                                setShowEditProductModal(true);
-                              }}
-                              className="bg-charcoal dark:bg-zinc-800 text-white dark:text-zinc-200 px-2.5 py-1 rounded text-[10px] font-bold hover:opacity-90"
-                            >
-                              Edit
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                      {products.length === 0 && (
-                        <tr>
-                          <td colSpan={6} className="py-6 text-center text-zinc-400">No products found in platform catalog.</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
+            <AdminProducts 
+              products={products}
+              setSelectedProduct={setSelectedProduct}
+              setEditProductName={setEditProductName}
+              setEditProductPrice={setEditProductPrice}
+              setEditProductQty={setEditProductQty}
+              setEditProductDesc={setEditProductDesc}
+              setEditProductImage={setEditProductImage}
+              setShowEditProductModal={setShowEditProductModal}
+            />
           )}
 
           {/* TAB: PROMO VOUCHERS */}

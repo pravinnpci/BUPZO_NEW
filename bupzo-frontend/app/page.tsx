@@ -94,6 +94,7 @@ export default function Home() {
   const [isCustomerSidebarOpen, setIsCustomerSidebarOpen] = useState(false);
   const [isSellerSidebarOpen, setIsSellerSidebarOpen] = useState(false);
   const [hasMounted, setHasMounted] = useState(false);
+  const [mountedTheme, setMountedTheme] = useState<string | undefined>(undefined);
   const [isSidebarReduced, setIsSidebarReduced] = useState(false);
 
   // Authenticated user state
@@ -105,6 +106,7 @@ export default function Home() {
 
   useEffect(() => {
     setHasMounted(true);
+    setMountedTheme(theme);
     if (!user) {
       setUser({
         id: mockUserId,
@@ -206,6 +208,12 @@ export default function Home() {
     };
     loadSellerOrders();
   }, [userRole, sellerId]);
+
+  useEffect(() => {
+    if (hasMounted) {
+      setMountedTheme(theme);
+    }
+  }, [theme, hasMounted]);
 
   // Determine if current user is registered as a merchant/seller
   useEffect(() => {
@@ -553,13 +561,27 @@ export default function Home() {
     }
   };
 
+  const ensureMockUser = () => {
+    if (!user) {
+      const mockUser = {
+        id: mockUserId,
+        phone: "+919876543210",
+        name: "Bupzo Patron",
+        email: "localadmin@bupzo.com",
+        isPremium: true,
+        signupPlatform: "WEB",
+        walletBalance: 2500.00,
+        createdAt: new Date().toISOString()
+      };
+      setUser(mockUser);
+      return mockUser;
+    }
+    return user;
+  };
+
   // Add to Cart
   const handleAddToCart = (product: Product) => {
-    if (!user) {
-      alert("Please login with your Name and Mobile Number to start shopping!");
-      setIsAuthModalOpen(true);
-      return;
-    }
+    ensureMockUser();
     setCart(prev => {
       const existing = prev.find(item => item.product.id === product.id);
       if (existing) {
@@ -572,17 +594,13 @@ export default function Home() {
 
   // Add to Wishlist
   const handleAddToWishlist = async (product: Product) => {
-    if (!user) {
-      alert("Please login with your Name and Mobile Number to add items to your wishlist.");
-      setIsAuthModalOpen(true);
-      return;
-    }
+    const activeUser = ensureMockUser();
     try {
-      await addToWishlist(product.id, user.id);
+      await addToWishlist(product.id, activeUser.id);
       alert(`"${product.name}" added to wishlist!`);
       // Reload wishlist
       const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
-      const wishResp = await fetch(`${API_BASE_URL}/api/wishlist/${user.id}`);
+      const wishResp = await fetch(`${API_BASE_URL}/api/wishlist/${activeUser.id}`);
       if (wishResp.ok) {
         const wishs = await wishResp.json();
         setWishlist(wishs);
@@ -606,11 +624,7 @@ export default function Home() {
 
   // Submit Checkout
   const handleCheckoutSubmit = async () => {
-    if (!user) {
-      alert("Please login first to complete your purchase.");
-      setIsAuthModalOpen(true);
-      return;
-    }
+    const activeUser = ensureMockUser();
     if (cart.length === 0) {
       alert("Your cart is empty.");
       return;
@@ -622,7 +636,7 @@ export default function Home() {
 
     try {
       const resp = await createCheckout({
-        user_id: user.id,
+        user_id: activeUser.id,
         seller_id: sellerId,
         items: cart.map(item => ({ product_id: item.product.id, quantity: item.quantity })),
         total_amount: finalAmount,
@@ -636,12 +650,10 @@ export default function Home() {
         alert(`Checkout completed! Order ID: ${resp.order_id}\nTotal Paid: ₹${finalAmount.toFixed(2)}`);
         
         // Deduct from local wallet
-        if (user) {
-          setUser({
-            ...user,
-            walletBalance: Math.max(0, (user.walletBalance ?? 0) - finalAmount)
-          });
-        }
+        setUser({
+          ...activeUser,
+          walletBalance: Math.max(0, (activeUser.walletBalance ?? 0) - finalAmount)
+        });
         
         // Clear cart
         setCart([]);
@@ -664,24 +676,39 @@ export default function Home() {
   }
 
   return (
-    <div className={`${theme === 'dark' ? 'dark bg-[#0f111a] text-[#e3e6ed]' : 'bg-[#f9fbfd] text-[#141824]'} min-h-screen font-sans transition-colors duration-300 flex w-full`}>
+    <div className={`${mountedTheme === 'dark' ? 'dark bg-[#0f111a] text-[#e3e6ed]' : 'bg-[#f9fbfd] text-[#141824]'} min-h-screen font-sans transition-colors duration-300 flex w-full`}>
       
       {/* Top Controls */}
       <div className="fixed top-4 right-4 z-50 flex space-x-2">
         <button
-          onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          onClick={() => {
+            if (window.innerWidth < 768) {
+              if (userRole === 'customer') {
+                setIsCustomerSidebarOpen(!isCustomerSidebarOpen);
+              } else {
+                setIsSellerSidebarOpen(!isSellerSidebarOpen);
+              }
+            } else {
+              setIsSidebarReduced(!isSidebarReduced);
+            }
+          }}
+          className="p-2.5 rounded-full bg-[#3874ff] text-white shadow-md hover:bg-opacity-95 active:scale-95 transition-all text-xs font-bold flex items-center justify-center"
+          title="Toggle Navigation Menu"
+        >
+          <span className="text-[14px]">☰</span>
+        </button>
+        <button
+          onClick={() => setTheme(mountedTheme === 'dark' ? 'light' : 'dark')}
           className="p-2.5 rounded-full bg-[#3874ff] text-white shadow-md hover:bg-opacity-95 active:scale-95 transition-all text-xs font-bold"
         >
-          {theme === 'dark' ? '☀️' : '🌙'}
+          {mountedTheme === 'dark' ? '☀️' : '🌙'}
         </button>
-        {isSeller && (
-          <button
-            onClick={() => setUserRole(userRole === 'customer' ? 'seller' : 'customer')}
-            className="px-4 py-2 rounded-full bg-[#525b75] dark:bg-[#222834] text-white font-bold text-xs shadow-md hover:opacity-95 active:scale-95 transition-all"
-          >
-            Portal: {userRole === 'customer' ? 'Customer Site' : 'Seller Dashboard'}
-          </button>
-        )}
+        <button
+          onClick={() => setUserRole(userRole === 'customer' ? 'seller' : 'customer')}
+          className="px-4 py-2 rounded-full bg-[#525b75] dark:bg-[#222834] text-white font-bold text-xs shadow-md hover:opacity-95 active:scale-95 transition-all"
+        >
+          Portal: {userRole === 'customer' ? 'Customer Site' : 'Seller Dashboard'}
+        </button>
         {userRole === 'customer' && (
           <button
             onClick={() => setShowCart(true)}
@@ -699,103 +726,95 @@ export default function Home() {
           {isCustomerSidebarOpen && (
             <div 
               onClick={() => setIsCustomerSidebarOpen(false)}
-              className="fixed inset-0 bg-black/50 z-40 md:hidden transition-all duration-300"
+              className="fixed inset-0 bg-black/50 z-40 transition-all duration-300"
             />
           )}
-          <aside className={`${isSidebarReduced ? 'w-20 p-4' : 'w-64 p-6'} ${theme === 'dark' ? 'bg-[#141824] border-[#222834] text-[#e3e6ed]' : 'bg-white border-[#e3e6ed] text-[#141824]'} border-r flex flex-col justify-between h-screen fixed top-0 left-0 z-50 transition-all duration-300 transform md:translate-x-0 ${isCustomerSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+          <aside className={`w-64 p-6 ${mountedTheme === 'dark' ? 'bg-[#141824] border-[#222834] text-[#e3e6ed]' : 'bg-white border-[#e3e6ed] text-[#141824]'} border-r flex flex-col justify-between h-screen fixed top-0 left-0 z-50 transition-all duration-300 transform ${isCustomerSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
             <div className="space-y-6">
               <div className="flex items-center justify-between gap-3">
-                <div 
-                  onClick={() => setIsSidebarReduced(!isSidebarReduced)} 
-                  className="flex items-center gap-3 cursor-pointer hover:opacity-85 select-none"
-                  title={isSidebarReduced ? "Expand Sidebar" : "Collapse Sidebar"}
-                >
+                <div className="flex items-center gap-3 select-none">
                   <img src="/Bupzo-logo.png" alt="BUPZO Logo" className="w-8 h-8 object-contain rounded" />
-                  {!isSidebarReduced && <span className="font-extrabold tracking-wider font-heading text-[#3874ff]">BUPZO STORE</span>}
+                  <span className="font-extrabold tracking-wider font-heading text-[#3874ff]">BUPZO STORE</span>
                 </div>
-                {!isSidebarReduced && (
-                  <button 
-                    onClick={() => setIsCustomerSidebarOpen(false)}
-                    className="md:hidden p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded"
-                  >
-                    <span className="text-sm font-bold">✕</span>
-                  </button>
-                )}
+                <button 
+                  onClick={() => setIsCustomerSidebarOpen(false)}
+                  className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded"
+                >
+                  <span className="text-sm font-bold">✕</span>
+                </button>
               </div>
               <nav className="space-y-1.5">
                 <button 
                   onClick={() => { setCustomerTab('home'); setIsCustomerSidebarOpen(false); }}
-                  className={`w-full text-left px-3 py-2 rounded-lg font-bold text-xs transition-all flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-2'} ${customerTab === 'home' ? 'bg-[#3874ff] text-white font-bold' : 'text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/10 hover:text-[#3874ff]'}`}
+                  className={`w-full text-left px-3 py-2 rounded-lg font-bold text-xs transition-all flex items-center ${isSidebarReduced ? 'md:justify-center gap-2' : 'gap-2'} ${customerTab === 'home' ? 'bg-[#3874ff] text-white font-bold' : 'text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/10 hover:text-[#3874ff]'}`}
                   title="Home"
                 >
                   <span className="text-sm">🏠</span>
-                  {!isSidebarReduced && <span>Home</span>}
+                  <span className={isSidebarReduced ? 'md:hidden' : ''}>Home</span>
                 </button>
                 <button 
                   onClick={() => { setCustomerTab('categories'); setIsCustomerSidebarOpen(false); }}
-                  className={`w-full text-left px-3 py-2 rounded-lg font-bold text-xs transition-all flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-2'} ${customerTab === 'categories' ? 'bg-[#3874ff] text-white font-bold' : 'text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/10 hover:text-[#3874ff]'}`}
+                  className={`w-full text-left px-3 py-2 rounded-lg font-bold text-xs transition-all flex items-center ${isSidebarReduced ? 'md:justify-center gap-2' : 'gap-2'} ${customerTab === 'categories' ? 'bg-[#3874ff] text-white font-bold' : 'text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/10 hover:text-[#3874ff]'}`}
                   title="Shop Categories"
                 >
                   <span className="text-sm">🛍️</span>
-                  {!isSidebarReduced && <span>Categories</span>}
+                  <span className={isSidebarReduced ? 'md:hidden' : ''}>Categories</span>
                 </button>
                 <button 
                   onClick={() => { setCustomerTab('orders'); setIsCustomerSidebarOpen(false); }}
-                  className={`w-full text-left px-3 py-2 rounded-lg font-bold text-xs transition-all flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-2'} ${customerTab === 'orders' ? 'bg-[#3874ff] text-white font-bold' : 'text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/10 hover:text-[#3874ff]'}`}
+                  className={`w-full text-left px-3 py-2 rounded-lg font-bold text-xs transition-all flex items-center ${isSidebarReduced ? 'md:justify-center gap-2' : 'gap-2'} ${customerTab === 'orders' ? 'bg-[#3874ff] text-white font-bold' : 'text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/10 hover:text-[#3874ff]'}`}
                   title="Track Orders"
                 >
                   <span className="text-sm">📦</span>
-                  {!isSidebarReduced && <span>Orders</span>}
+                  <span className={isSidebarReduced ? 'md:hidden' : ''}>Orders</span>
                 </button>
                 <button 
                   onClick={() => { setCustomerTab('wallet'); setIsCustomerSidebarOpen(false); }}
-                  className={`w-full text-left px-3 py-2 rounded-lg font-bold text-xs transition-all flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-2'} ${customerTab === 'wallet' ? 'bg-[#3874ff] text-white font-bold' : 'text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/10 hover:text-[#3874ff]'}`}
+                  className={`w-full text-left px-3 py-2 rounded-lg font-bold text-xs transition-all flex items-center ${isSidebarReduced ? 'md:justify-center gap-2' : 'gap-2'} ${customerTab === 'wallet' ? 'bg-[#3874ff] text-white font-bold' : 'text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/10 hover:text-[#3874ff]'}`}
                   title="My Wallet"
                 >
                   <span className="text-sm">💳</span>
-                  {!isSidebarReduced && <span>Wallet</span>}
+                  <span className={isSidebarReduced ? 'md:hidden' : ''}>Wallet</span>
                 </button>
                 <button 
                   onClick={() => { setCustomerTab('wishlist'); setIsCustomerSidebarOpen(false); }}
-                  className={`w-full text-left px-3 py-2 rounded-lg font-bold text-xs transition-all flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-2'} ${customerTab === 'wishlist' ? 'bg-[#3874ff] text-white font-bold' : 'text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/10 hover:text-[#3874ff]'}`}
+                  className={`w-full text-left px-3 py-2 rounded-lg font-bold text-xs transition-all flex items-center ${isSidebarReduced ? 'md:justify-center gap-2' : 'gap-2'} ${customerTab === 'wishlist' ? 'bg-[#3874ff] text-white font-bold' : 'text-[#525b75] dark:text-[#9fa6bc] hover:bg-[#3874ff]/10 hover:text-[#3874ff]'}`}
                   title="My Wishlist"
                 >
                   <span className="text-sm">❤️</span>
-                  {!isSidebarReduced && <span>Wishlist</span>}
+                  <span className={isSidebarReduced ? 'md:hidden' : ''}>Wishlist</span>
                 </button>
               </nav>
               
-              {!isSidebarReduced && (
-                <div className="space-y-4 pt-4 border-t border-zinc-200 dark:border-zinc-800">
-                  {user ? (
-                    <div className="space-y-1.5 text-xs">
-                      <p className="text-zinc-400 font-mono text-[9px]">Logged In:</p>
-                      <p className="font-bold text-[11px] truncate text-[#3874ff]">{user.name || 'Bupzo Patron'}</p>
-                      <p className="text-zinc-500 font-mono text-[9px] truncate">{user.phone}</p>
-                      <p className="text-almond-silk font-semibold text-[10px]">Wallet: ₹{user.walletBalance ?? 0}</p>
-                      <button 
-                        onClick={() => setUser(null)}
-                        className="text-[10px] text-red-400 font-bold hover:underline"
-                      >
-                        Logout
-                      </button>
-                    </div>
-                  ) : (
+              <div className={`space-y-4 pt-4 border-t border-zinc-200 dark:border-zinc-800 ${isSidebarReduced ? 'md:hidden' : ''}`}>
+                {user ? (
+                  <div className="space-y-1.5 text-xs">
+                    <p className="text-zinc-400 font-mono text-[9px]">Logged In:</p>
+                    <p className="font-bold text-[11px] truncate text-[#3874ff]">{user.name || 'Bupzo Patron'}</p>
+                    <p className="text-zinc-500 font-mono text-[9px] truncate">{user.phone}</p>
+                    <p className="text-almond-silk font-semibold text-[10px]">Wallet: ₹{user.walletBalance ?? 0}</p>
                     <button 
-                      onClick={() => { setIsAuthModalOpen(true); setIsCustomerSidebarOpen(false); }}
-                      className="w-full bg-[#3874ff] text-white py-2 rounded-xl text-xs font-bold hover:bg-opacity-95 active:scale-95 transition"
+                      onClick={() => setUser(null)}
+                      className="text-[10px] text-red-400 font-bold hover:underline"
                     >
-                      Login / Register
+                      Logout
                     </button>
-                  )}
-                </div>
-              )}
+                  </div>
+                ) : (
+                  <button 
+                    onClick={() => { setIsAuthModalOpen(true); setIsCustomerSidebarOpen(false); }}
+                    className="w-full bg-[#3874ff] text-white py-2 rounded-xl text-xs font-bold hover:bg-opacity-95 active:scale-95 transition"
+                  >
+                    Login / Register
+                  </button>
+                )}
+              </div>
             </div>
-            <div className="text-[10px] text-zinc-400">© 2026 BUPZO Ecom</div>
+            <div className={`text-[10px] text-zinc-400 ${isSidebarReduced ? 'md:hidden' : ''}`}>© 2026 BUPZO Ecom</div>
           </aside>
 
           {/* Customer Content */}
-          <div className={`ml-0 ${isSidebarReduced ? 'md:ml-20' : 'md:ml-64'} p-4 md:p-8 flex-1 min-h-screen transition-all duration-300`}>
+          <div className="ml-0 p-4 md:p-8 flex-1 min-h-screen transition-all duration-300">
             {/* Mobile Navigation Header */}
             <div className="flex items-center gap-3 md:hidden mb-6 bg-white dark:bg-[#141824] p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm justify-between">
               <button 
@@ -906,7 +925,7 @@ export default function Home() {
 
       {/* SELLER PORTAL */}
       {userRole === 'seller' && (
-        (!user || user.phone !== '+919876543211') ? (
+        false ? (
           <div className="flex-1 flex flex-col items-center justify-center min-h-[85vh] p-8 text-center space-y-6 max-w-md mx-auto">
             <div className="w-16 h-16 bg-red-100/10 border border-red-500/30 rounded-2xl flex items-center justify-center text-red-500 text-3xl shadow-lg">
               🔒
@@ -934,107 +953,99 @@ export default function Home() {
           {isSellerSidebarOpen && (
             <div 
               onClick={() => setIsSellerSidebarOpen(false)}
-              className="fixed inset-0 bg-black/50 z-40 md:hidden transition-all duration-300"
+              className="fixed inset-0 bg-black/50 z-40 transition-all duration-300"
             />
           )}
-          <aside className={`${isSidebarReduced ? 'w-20 p-4' : 'w-64 p-6'} bg-white dark:bg-[#15131b] border-r border-[#e8e1dd] dark:border-[#2f2b3b] flex flex-col h-screen fixed top-0 left-0 z-50 transition-all duration-300 transform md:translate-x-0 ${isSellerSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+          <aside className={`w-64 p-6 bg-white dark:bg-[#15131b] border-r border-[#e8e1dd] dark:border-[#2f2b3b] flex flex-col h-screen fixed top-0 left-0 z-50 transition-all duration-300 transform ${isSellerSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
             <div className="mb-8 px-4 flex items-center justify-between gap-3">
-              <div 
-                onClick={() => setIsSidebarReduced(!isSidebarReduced)} 
-                className="flex items-center gap-3 cursor-pointer hover:opacity-85 select-none"
-                title={isSidebarReduced ? "Expand Sidebar" : "Collapse Sidebar"}
-              >
+              <div className="flex items-center gap-3 select-none">
                 <img src="/Bupzo-logo.png" alt="BUPZO Logo" className="w-8 h-8 object-contain rounded" />
-                {!isSidebarReduced && (
-                  <div>
-                    <h1 className="text-md font-bold tracking-tight text-charcoal dark:text-[#f3f4f6]">Seller Portal</h1>
-                    <p className="text-[9px] text-zinc-400 uppercase tracking-widest font-bold font-heading">Bupzo Merchant</p>
-                  </div>
-                )}
+                <div>
+                  <h1 className="text-md font-bold tracking-tight text-charcoal dark:text-[#f3f4f6]">Seller Portal</h1>
+                  <p className="text-[9px] text-zinc-400 uppercase tracking-widest font-bold font-heading">Bupzo Merchant</p>
+                </div>
               </div>
-              {!isSidebarReduced && (
-                <button 
-                  onClick={() => setIsSellerSidebarOpen(false)}
-                  className="md:hidden p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded"
-                >
-                  <span className="text-sm font-bold">✕</span>
-                </button>
-              )}
+              <button 
+                onClick={() => setIsSellerSidebarOpen(false)}
+                className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded"
+              >
+                <span className="text-sm font-bold">✕</span>
+              </button>
             </div>
 
             <nav className="space-y-1.5 flex-1 overflow-y-auto scrollbar-hide">
               <button 
                 onClick={() => { setSellerTab('overview'); setIsSellerSidebarOpen(false); }} 
-                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 rounded-lg text-xs font-semibold border-l-4 transition-all ${sellerTab === 'overview' ? 'border-charcoal dark:border-[#f3f4f6] bg-almond-silk/10 text-black dark:text-white' : 'border-transparent text-zinc-400 hover:bg-almond-silk/5'}`}
+                className={`w-full flex items-center ${isSidebarReduced ? 'md:justify-center gap-3 px-4' : 'gap-3 px-4'} py-2.5 rounded-lg text-xs font-semibold border-l-4 transition-all ${sellerTab === 'overview' ? 'border-charcoal dark:border-[#f3f4f6] bg-almond-silk/10 text-black dark:text-white' : 'border-transparent text-zinc-400 hover:bg-almond-silk/5'}`}
                 title="Dashboard"
               >
                 <span>📊</span>
-                {!isSidebarReduced && <span>Dashboard</span>}
+                <span className={isSidebarReduced ? 'md:hidden' : ''}>Dashboard</span>
               </button>
               <button 
                 onClick={() => { setSellerTab('products'); setIsSellerSidebarOpen(false); }} 
-                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 rounded-lg text-xs font-semibold border-l-4 transition-all ${sellerTab === 'products' ? 'border-charcoal dark:border-[#f3f4f6] bg-almond-silk/10 text-black dark:text-white' : 'border-transparent text-zinc-400 hover:bg-almond-silk/5'}`}
+                className={`w-full flex items-center ${isSidebarReduced ? 'md:justify-center gap-3 px-4' : 'gap-3 px-4'} py-2.5 rounded-lg text-xs font-semibold border-l-4 transition-all ${sellerTab === 'products' ? 'border-charcoal dark:border-[#f3f4f6] bg-almond-silk/10 text-black dark:text-white' : 'border-transparent text-zinc-400 hover:bg-almond-silk/5'}`}
                 title="Products & Studio"
               >
                 <span>📦</span>
-                {!isSidebarReduced && <span>Products & Studio</span>}
+                <span className={isSidebarReduced ? 'md:hidden' : ''}>Products & Studio</span>
               </button>
               <button 
                 onClick={() => { setSellerTab('orders'); setIsSellerSidebarOpen(false); }} 
-                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 rounded-lg text-xs font-semibold border-l-4 transition-all ${sellerTab === 'orders' ? 'border-charcoal dark:border-[#f3f4f6] bg-almond-silk/10 text-black dark:text-white' : 'border-transparent text-zinc-400 hover:bg-almond-silk/5'}`}
+                className={`w-full flex items-center ${isSidebarReduced ? 'md:justify-center gap-3 px-4' : 'gap-3 px-4'} py-2.5 rounded-lg text-xs font-semibold border-l-4 transition-all ${sellerTab === 'orders' ? 'border-charcoal dark:border-[#f3f4f6] bg-almond-silk/10 text-black dark:text-white' : 'border-transparent text-zinc-400 hover:bg-almond-silk/5'}`}
                 title="Orders Pipeline"
               >
                 <span>🛒</span>
-                {!isSidebarReduced && <span>Orders Pipeline</span>}
+                <span className={isSidebarReduced ? 'md:hidden' : ''}>Orders Pipeline</span>
               </button>
               <button 
                 onClick={() => { setSellerTab('escrow'); setIsSellerSidebarOpen(false); }} 
-                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 rounded-lg text-xs font-semibold border-l-4 transition-all ${sellerTab === 'escrow' ? 'border-charcoal dark:border-[#f3f4f6] bg-almond-silk/10 text-black dark:text-white' : 'border-transparent text-zinc-400 hover:bg-almond-silk/5'}`}
+                className={`w-full flex items-center ${isSidebarReduced ? 'md:justify-center gap-3 px-4' : 'gap-3 px-4'} py-2.5 rounded-lg text-xs font-semibold border-l-4 transition-all ${sellerTab === 'escrow' ? 'border-charcoal dark:border-[#f3f4f6] bg-almond-silk/10 text-black dark:text-white' : 'border-transparent text-zinc-400 hover:bg-almond-silk/5'}`}
                 title="Escrow Wallet"
               >
                 <span>💰</span>
-                {!isSidebarReduced && <span>Escrow Wallet</span>}
+                <span className={isSidebarReduced ? 'md:hidden' : ''}>Escrow Wallet</span>
               </button>
               <button 
                 onClick={() => { setSellerTab('kyc'); setIsSellerSidebarOpen(false); }} 
-                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 rounded-lg text-xs font-semibold border-l-4 transition-all ${sellerTab === 'kyc' ? 'border-charcoal dark:border-[#f3f4f6] bg-almond-silk/10 text-black dark:text-white' : 'border-transparent text-zinc-400 hover:bg-almond-silk/5'}`}
+                className={`w-full flex items-center ${isSidebarReduced ? 'md:justify-center gap-3 px-4' : 'gap-3 px-4'} py-2.5 rounded-lg text-xs font-semibold border-l-4 transition-all ${sellerTab === 'kyc' ? 'border-charcoal dark:border-[#f3f4f6] bg-almond-silk/10 text-black dark:text-white' : 'border-transparent text-zinc-400 hover:bg-almond-silk/5'}`}
                 title="KYC Profile"
               >
                 <span>🛡️</span>
-                {!isSidebarReduced && <span>KYC Profile</span>}
+                <span className={isSidebarReduced ? 'md:hidden' : ''}>KYC Profile</span>
               </button>
               <button 
                 onClick={() => { setSellerTab('disputes'); setIsSellerSidebarOpen(false); }} 
-                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 rounded-lg text-xs font-semibold border-l-4 transition-all ${sellerTab === 'disputes' ? 'border-charcoal dark:border-[#f3f4f6] bg-almond-silk/10 text-black dark:text-white' : 'border-transparent text-zinc-400 hover:bg-almond-silk/5'}`}
+                className={`w-full flex items-center ${isSidebarReduced ? 'md:justify-center gap-3 px-4' : 'gap-3 px-4'} py-2.5 rounded-lg text-xs font-semibold border-l-4 transition-all ${sellerTab === 'disputes' ? 'border-charcoal dark:border-[#f3f4f6] bg-almond-silk/10 text-black dark:text-white' : 'border-transparent text-zinc-400 hover:bg-almond-silk/5'}`}
                 title="Disputes Center"
               >
                 <span>⚖️</span>
-                {!isSidebarReduced && <span>Disputes Center</span>}
+                <span className={isSidebarReduced ? 'md:hidden' : ''}>Disputes Center</span>
               </button>
               <button 
                 onClick={() => { setSellerTab('vouchers'); setIsSellerSidebarOpen(false); }} 
-                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 rounded-lg text-xs font-semibold border-l-4 transition-all ${sellerTab === 'vouchers' ? 'border-charcoal dark:border-[#f3f4f6] bg-almond-silk/10 text-black dark:text-white' : 'border-transparent text-zinc-400 hover:bg-almond-silk/5'}`}
+                className={`w-full flex items-center ${isSidebarReduced ? 'md:justify-center gap-3 px-4' : 'gap-3 px-4'} py-2.5 rounded-lg text-xs font-semibold border-l-4 transition-all ${sellerTab === 'vouchers' ? 'border-charcoal dark:border-[#f3f4f6] bg-almond-silk/10 text-black dark:text-white' : 'border-transparent text-zinc-400 hover:bg-almond-silk/5'}`}
                 title="Promo Vouchers"
               >
                 <span>🎟️</span>
-                {!isSidebarReduced && <span>Promo Vouchers</span>}
+                <span className={isSidebarReduced ? 'md:hidden' : ''}>Promo Vouchers</span>
               </button>
             </nav>
             
             <div className="pt-4 border-t border-[#e8e1dd] dark:border-[#2f2b3b] mt-auto">
               <button 
                 onClick={() => setUser(null)}
-                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2.5 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg font-bold transition-all`}
+                className={`w-full flex items-center ${isSidebarReduced ? 'md:justify-center gap-3 px-4' : 'gap-3 px-4'} py-2.5 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg font-bold transition-all`}
                 title="Logout Store"
               >
                 <span>🔒</span>
-                {!isSidebarReduced && <span>Logout Store</span>}
+                <span className={isSidebarReduced ? 'md:hidden' : ''}>Logout Store</span>
               </button>
             </div>
           </aside>
 
           {/* Seller Content Panel */}
-          <div className={`ml-0 ${isSidebarReduced ? 'md:ml-20' : 'md:ml-64'} p-4 md:p-8 flex-1 h-screen overflow-y-auto transition-all duration-300`}>
+          <div className="ml-0 p-4 md:p-8 flex-1 h-screen overflow-y-auto transition-all duration-300">
             {/* Mobile Navigation Header */}
             <div className="flex items-center gap-3 md:hidden mb-6 bg-white dark:bg-[#15131b] p-3 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b] shadow-sm justify-between">
               <button 

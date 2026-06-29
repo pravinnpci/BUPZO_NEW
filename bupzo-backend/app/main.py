@@ -3,6 +3,8 @@ from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 import os
 import io
+import json
+import redis.asyncio as aioredis
 import asyncpg
 from dotenv import load_dotenv
 from typing import Optional, List
@@ -62,6 +64,44 @@ try:
 except Exception as e:
     print(f"Error checking/creating MinIO bucket: {e}")
 
+# Redis Configuration
+REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379")
+redis_client = None
+
+async def init_redis():
+    global redis_client
+    try:
+        redis_client = aioredis.from_url(REDIS_URL, decode_responses=True)
+        print("Connected to Redis successfully!")
+    except Exception as e:
+        print(f"Failed to connect to Redis: {e}")
+
+async def get_cached_data(key: str):
+    if redis_client:
+        try:
+            val = await redis_client.get(key)
+            if val:
+                return json.loads(val)
+        except Exception as e:
+            print(f"Redis get error: {e}")
+    return None
+
+async def set_cached_data(key: str, data, ttl: int = 60):
+    if redis_client:
+        try:
+            await redis_client.setex(key, ttl, json.dumps(data, default=str))
+        except Exception as e:
+            print(f"Redis set error: {e}")
+
+async def clear_cache_keys(pattern: str):
+    if redis_client:
+        try:
+            keys = await redis_client.keys(pattern)
+            if keys:
+                await redis_client.delete(*keys)
+        except Exception as e:
+            print(f"Redis delete error: {e}")
+
 # Initialize asyncpg connection pool
 pool = None
 
@@ -78,17 +118,66 @@ async def init_db_pool():
 @app.on_event("startup")
 async def startup_event():
     await init_db_pool()
+    await init_redis()
     # Dynamic DB Schema Migration: Ensure columns exist
     async with pool.acquire() as conn:
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS name VARCHAR(100);")
         await conn.execute("ALTER TABLE coupons ADD COLUMN IF NOT EXISTS created_by_seller_id UUID REFERENCES sellers(id) ON DELETE CASCADE;")
         await conn.execute("ALTER TABLE coupons ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'PENDING';")
         await conn.execute("UPDATE coupons SET status = 'APPROVED' WHERE status IS NULL;")
+        
+        # Create disputes table
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS disputes (
+                id VARCHAR(50) PRIMARY KEY,
+                customer VARCHAR(100) NOT NULL,
+                seller VARCHAR(100) NOT NULL,
+                amount DECIMAL(12,2) NOT NULL,
+                risk INT DEFAULT 0,
+                status VARCHAR(50) DEFAULT 'Under Review',
+                description TEXT,
+                created_at TIMESTAMP DEFAULT NOW()
+            );
+        """)
+
+        # Seed mock disputes if empty
+        disputes_count = await conn.fetchval("SELECT COUNT(*) FROM disputes;")
+        if disputes_count == 0:
+            await conn.execute("""
+                INSERT INTO disputes (id, customer, seller, amount, risk, status, description)
+                VALUES 
+                ('DISP-10482', 'Meera S.', 'Nagore Halwa Palace', 2499.00, 82, 'Under Review', 'Mismatched shipping address + high quantity order of premium Halwa.'),
+                ('DISP-10480', 'Anitha P.', 'Siva Ceramics & Crafts', 899.00, 15, 'Resolved', 'Minor crack in ceramic base, refund completed to wallet.'),
+                ('DISP-10485', 'Ravi K.', 'Alpha Electronics', 5120.00, 65, 'Under Review', 'Third transaction failure follow-up.');
+            """)
+
+        # Create notifications table
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS notifications (
+                id VARCHAR(100) PRIMARY KEY,
+                title VARCHAR(255) NOT NULL,
+                body TEXT NOT NULL,
+                target_tab VARCHAR(50),
+                created_at TIMESTAMP DEFAULT NOW(),
+                read BOOLEAN DEFAULT FALSE
+            );
+        """)
+
+        # Seed mock notifications if empty
+        notifs_count = await conn.fetchval("SELECT COUNT(*) FROM notifications;")
+        if notifs_count == 0:
+            await conn.execute("""
+                INSERT INTO notifications (id, title, body, target_tab, read)
+                VALUES 
+                ('notif-seed-1', 'Voucher Approval Required', 'Voucher code "SWEET50" created by seller. Approval required.', 'vouchers', FALSE),
+                ('notif-seed-2', 'Seller KYC Pending', 'Merchant "Nagore Halwa Palace" is pending KYC approval.', 'kyc', FALSE);
+            """)
+
         # Seed Mock User so wishlist foreign keys work
         await conn.execute("""
             DELETE FROM users 
             WHERE phone = '+919876543210' 
-              AND id != 'a01b1234-5678-abcd-ef01-1234567890ab';
+            AND id != 'a01b1234-5678-abcd-ef01-1234567890ab';
         """)
         await conn.execute("""
             INSERT INTO users (id, phone, email, is_premium, signup_platform, privacy_accepted, wallet_balance, name)
@@ -103,6 +192,8 @@ async def startup_event():
 async def shutdown_event():
     if pool:
         await pool.close()
+    if redis_client:
+        await redis_client.close()
 
 # Pydantic Models for Request/Response
 class UserCreate(BaseModel):
@@ -134,6 +225,41 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     is_premium: Optional[bool] = None
     wallet_balance: Optional[float] = None
+
+# Dispute Pydantic Models
+class DisputeResponse(BaseModel):
+    id: str
+    customer: str
+    seller: str
+    amount: float
+    risk: int
+    status: str
+    description: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class DisputeUpdate(BaseModel):
+    status: str
+
+# Notification Pydantic Models
+class NotificationResponse(BaseModel):
+    id: str
+    title: str
+    body: str
+    targetTab: Optional[str] = None
+    read: bool
+    created_at: datetime
+    timestamp: str
+
+    class Config:
+        from_attributes = True
+
+class NotificationCreate(BaseModel):
+    title: str
+    body: str
+    targetTab: Optional[str] = None
 
 class CategoryCreate(BaseModel):
     name: str
@@ -1087,6 +1213,20 @@ async def create_coupon(payload: CouponCreate):
             payload.created_by_seller_id,
             assigned_status
         )
+        # If it's a seller creating a voucher, insert an admin notification
+        if assigned_status == 'PENDING':
+            notif_id = f"notif-coupon-{res['id']}"
+            await execute_query(
+                """INSERT INTO notifications (id, title, body, target_tab, read)
+                   VALUES ($1, $2, $3, $4, FALSE)
+                   ON CONFLICT (id) DO NOTHING;""",
+                notif_id,
+                "Voucher Approval Required",
+                f"Voucher code \"{res['code']}\" created by seller. Approval required.",
+                "vouchers"
+            )
+            # Clear notifications cache
+            await clear_cache_keys("cache:notifications")
         return res
     except asyncpg.exceptions.UniqueViolationError:
         raise HTTPException(status_code=400, detail="Coupon code already exists.")
@@ -1259,5 +1399,108 @@ async def update_order_status(order_id: UUID, status: str):
     if not res:
         raise HTTPException(status_code=404, detail="Order not found")
     return {"success": True, "order_id": res['id'], "status": res['status']}
+
+# Disputes Endpoints
+@app.get("/api/disputes/", response_model=List[DisputeResponse])
+async def get_disputes():
+    cache_key = "cache:disputes"
+    cached = await get_cached_data(cache_key)
+    if cached:
+        return cached
+
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("SELECT id, customer, seller, amount, risk, status, description, created_at FROM disputes ORDER BY created_at DESC;")
+        data = []
+        for r in rows:
+            data.append({
+                "id": r["id"],
+                "customer": r["customer"],
+                "seller": r["seller"],
+                "amount": float(r["amount"]),
+                "risk": r["risk"],
+                "status": r["status"],
+                "description": r["description"],
+                "created_at": r["created_at"]
+            })
+        await set_cached_data(cache_key, data, ttl=120)
+        return data
+
+@app.put("/api/disputes/{dispute_id}", response_model=DisputeResponse)
+async def update_dispute(dispute_id: str, dispute: DisputeUpdate):
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "UPDATE disputes SET status = $1 WHERE id = $2 RETURNING id, customer, seller, amount, risk, status, description, created_at;",
+            dispute.status, dispute_id
+        )
+        if not row:
+            raise HTTPException(status_code=404, detail="Dispute not found")
+        
+        data = {
+            "id": row["id"],
+            "customer": row["customer"],
+            "seller": row["seller"],
+            "amount": float(row["amount"]),
+            "risk": row["risk"],
+            "status": row["status"],
+            "description": row["description"],
+            "created_at": row["created_at"]
+        }
+        await clear_cache_keys("cache:disputes")
+        return data
+
+# Notifications Endpoints
+@app.get("/api/notifications/", response_model=List[NotificationResponse])
+async def get_notifications():
+    cache_key = "cache:notifications"
+    cached = await get_cached_data(cache_key)
+    if cached:
+        return cached
+
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("SELECT id, title, body, target_tab, created_at, read FROM notifications ORDER BY created_at DESC;")
+        data = []
+        for r in rows:
+            dt: datetime = r["created_at"]
+            data.append({
+                "id": r["id"],
+                "title": r["title"],
+                "body": r["body"],
+                "targetTab": r["target_tab"],
+                "read": r["read"],
+                "created_at": dt,
+                "timestamp": dt.strftime("%H:%M")
+            })
+        await set_cached_data(cache_key, data, ttl=30)
+        return data
+
+@app.post("/api/notifications/", response_model=NotificationResponse)
+async def create_notification(notif: NotificationCreate):
+    nid = f"notif-{uuid4().hex[:8]}"
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """INSERT INTO notifications (id, title, body, target_tab, read)
+               VALUES ($1, $2, $3, $4, FALSE)
+               RETURNING id, title, body, target_tab, created_at, read;""",
+            nid, notif.title, notif.body, notif.targetTab
+        )
+        dt: datetime = row["created_at"]
+        data = {
+            "id": row["id"],
+            "title": row["title"],
+            "body": row["body"],
+            "targetTab": row["target_tab"],
+            "read": row["read"],
+            "created_at": dt,
+            "timestamp": dt.strftime("%H:%M")
+        }
+        await clear_cache_keys("cache:notifications")
+        return data
+
+@app.post("/api/notifications/{id}/read")
+async def mark_notification_read(id: str):
+    async with pool.acquire() as conn:
+        await conn.execute("UPDATE notifications SET read = TRUE WHERE id = $1;", id)
+    await clear_cache_keys("cache:notifications")
+    return {"success": True}
 
 
