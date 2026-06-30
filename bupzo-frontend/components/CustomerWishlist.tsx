@@ -1,23 +1,5 @@
 import React from 'react';
-
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  weight_grams: number;
-  image_url: string;
-  description: string;
-  stock_quantity: number;
-}
-
-interface WishlistItem {
-  id: string;
-  user_id: string;
-  product_id: string;
-  added_at: string;
-  product_name?: string;
-  product_price?: number;
-}
+import { Product, WishlistItem } from '@/lib/api';
 
 interface CustomerWishlistProps {
   wishlist: WishlistItem[];
@@ -69,7 +51,11 @@ export const CustomerWishlist: React.FC<CustomerWishlistProps> = ({
                             weight_grams: 500,
                             image_url: "",
                             description: "",
-                            stock_quantity: 100
+                            stock_quantity: 100,
+                            category_id: "",
+                            is_combo: false,
+                            seller_id: "",
+                            created_at: ""
                           };
                           handleAddToCart(dummyProduct);
                         }}

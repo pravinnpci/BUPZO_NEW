@@ -99,7 +99,7 @@ export default function Home() {
 
   // Authenticated user state
   const { user, setUser } = useUser();
-  const mockUserId = 'a01b1234-5678-abcd-ef01-1234567890ab';
+  const mockUserId = 'a01b1234-5678-abcd-ef01-1234567890ac';
 
   // WebSocket Subscription hook
   const { messages } = useWebSocket(user?.id || mockUserId);
@@ -107,25 +107,31 @@ export default function Home() {
   useEffect(() => {
     setHasMounted(true);
     setMountedTheme(theme);
-    if (!user) {
-      setUser({
-        id: mockUserId,
-        phone: "+919876543210",
-        name: "Bupzo Patron",
-        email: "localadmin@bupzo.com",
-        isPremium: true,
-        signupPlatform: "WEB",
-        walletBalance: 2500.00,
-        createdAt: new Date().toISOString()
-      });
-    }
+    try {
+      const reduced = localStorage.getItem('bupzo_sidebar_reduced') === 'true';
+      setIsSidebarReduced(reduced);
+    } catch (e) {}
+
+    // One-time cleanup of auto-login mock user to enforce clean manual login flow
+    try {
+      if (localStorage.getItem('bupzo_mock_cleaned_v3') !== 'true') {
+        const stored = localStorage.getItem('bupzo_user');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed && (parsed.phone === "+919876543212" || parsed.phone === "+919876543211" || parsed.id === mockUserId)) {
+            localStorage.removeItem('bupzo_user');
+            setUser(null);
+          }
+        }
+        localStorage.setItem('bupzo_mock_cleaned_v3', 'true');
+      }
+    } catch (e) {}
 
     async function loadData() {
       try {
         const prodData = await fetchProducts();
         setProducts(prodData);
-        const wishData = await getWishlistItems(mockUserId);
-        setWishlist(wishData);
+        setWishlist([]);
         
         // Fetch categories
         try {
@@ -229,21 +235,20 @@ export default function Home() {
         const resp = await fetch(`${API_BASE_URL}/api/sellers/`);
         if (resp.ok) {
           const sellersList = await resp.json();
-          const found = sellersList.some((s: any) => s.user_id === user.id || s.id === sellerId);
+          const found = sellersList.some((s: any) => s.user_id === user.id);
           setIsSeller(found);
           if (found) {
-            setUserRole('seller');
-          } else {
-            setUserRole('customer');
+            const sellerObj = sellersList.find((s: any) => s.user_id === user.id);
+            if (sellerObj) {
+              setSellerId(sellerObj.id);
+            }
           }
         } else {
           // Local fallback checks
           if (user.phone === '+919876543211') {
             setIsSeller(true);
-            setUserRole('seller');
           } else {
             setIsSeller(false);
-            setUserRole('customer');
           }
         }
       } catch (err) {
@@ -251,16 +256,14 @@ export default function Home() {
         // Fallback
         if (user.phone === '+919876543211') {
           setIsSeller(true);
-          setUserRole('seller');
         } else {
           setIsSeller(false);
-          setUserRole('customer');
         }
       }
     };
 
     checkSellerStatus();
-  }, [user, sellerId]);
+  }, [user]);
 
   // Dispatch Order Action
   const handleUpdateOrderStatus = async (orderId: string, nextStatus: string) => {
@@ -561,27 +564,13 @@ export default function Home() {
     }
   };
 
-  const ensureMockUser = () => {
-    if (!user) {
-      const mockUser = {
-        id: mockUserId,
-        phone: "+919876543210",
-        name: "Bupzo Patron",
-        email: "localadmin@bupzo.com",
-        isPremium: true,
-        signupPlatform: "WEB",
-        walletBalance: 2500.00,
-        createdAt: new Date().toISOString()
-      };
-      setUser(mockUser);
-      return mockUser;
-    }
-    return user;
-  };
-
   // Add to Cart
   const handleAddToCart = (product: Product) => {
-    ensureMockUser();
+    if (!user) {
+      setIsAuthModalOpen(true);
+      alert("Please login to add items to your cart.");
+      return;
+    }
     setCart(prev => {
       const existing = prev.find(item => item.product.id === product.id);
       if (existing) {
@@ -594,13 +583,17 @@ export default function Home() {
 
   // Add to Wishlist
   const handleAddToWishlist = async (product: Product) => {
-    const activeUser = ensureMockUser();
+    if (!user) {
+      setIsAuthModalOpen(true);
+      alert("Please login to add items to your wishlist.");
+      return;
+    }
     try {
-      await addToWishlist(product.id, activeUser.id);
+      await addToWishlist(product.id, user.id);
       alert(`"${product.name}" added to wishlist!`);
       // Reload wishlist
       const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
-      const wishResp = await fetch(`${API_BASE_URL}/api/wishlist/${activeUser.id}`);
+      const wishResp = await fetch(`${API_BASE_URL}/api/wishlist/${user.id}`);
       if (wishResp.ok) {
         const wishs = await wishResp.json();
         setWishlist(wishs);
@@ -624,7 +617,11 @@ export default function Home() {
 
   // Submit Checkout
   const handleCheckoutSubmit = async () => {
-    const activeUser = ensureMockUser();
+    if (!user) {
+      setIsAuthModalOpen(true);
+      alert("Please login to proceed with checkout.");
+      return;
+    }
     if (cart.length === 0) {
       alert("Your cart is empty.");
       return;
@@ -636,7 +633,7 @@ export default function Home() {
 
     try {
       const resp = await createCheckout({
-        user_id: activeUser.id,
+        user_id: user.id,
         seller_id: sellerId,
         items: cart.map(item => ({ product_id: item.product.id, quantity: item.quantity })),
         total_amount: finalAmount,
@@ -651,8 +648,8 @@ export default function Home() {
         
         // Deduct from local wallet
         setUser({
-          ...activeUser,
-          walletBalance: Math.max(0, (activeUser.walletBalance ?? 0) - finalAmount)
+          ...user,
+          walletBalance: Math.max(0, (user.walletBalance ?? 0) - finalAmount)
         });
         
         // Clear cart
@@ -689,7 +686,11 @@ export default function Home() {
                 setIsSellerSidebarOpen(!isSellerSidebarOpen);
               }
             } else {
-              setIsSidebarReduced(!isSidebarReduced);
+              const val = !isSidebarReduced;
+              setIsSidebarReduced(val);
+              try {
+                localStorage.setItem('bupzo_sidebar_reduced', val.toString());
+              } catch (e) {}
             }
           }}
           className="p-2.5 rounded-full bg-[#3874ff] text-white shadow-md hover:bg-opacity-95 active:scale-95 transition-all text-xs font-bold flex items-center justify-center"
@@ -729,16 +730,16 @@ export default function Home() {
               className="fixed inset-0 bg-black/50 z-40 transition-all duration-300"
             />
           )}
-          <aside className={`w-64 p-6 ${mountedTheme === 'dark' ? 'bg-[#141824] border-[#222834] text-[#e3e6ed]' : 'bg-white border-[#e3e6ed] text-[#141824]'} border-r flex flex-col justify-between h-screen fixed top-0 left-0 z-50 transition-all duration-300 transform ${isCustomerSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+          <aside className={`${isSidebarReduced ? 'md:w-20' : 'md:w-64'} w-64 p-6 ${mountedTheme === 'dark' ? 'bg-[#141824] border-[#222834] text-[#e3e6ed]' : 'bg-white border-[#e3e6ed] text-[#141824]'} border-r flex flex-col justify-between h-screen fixed top-0 left-0 z-50 transition-all duration-300 transform ${isCustomerSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:static`}>
             <div className="space-y-6">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 select-none">
                   <img src="/Bupzo-logo.png" alt="BUPZO Logo" className="w-8 h-8 object-contain rounded" />
-                  <span className="font-extrabold tracking-wider font-heading text-[#3874ff]">BUPZO STORE</span>
+                  {!isSidebarReduced && <span className="font-extrabold tracking-wider font-heading text-[#3874ff]">BUPZO STORE</span>}
                 </div>
                 <button 
                   onClick={() => setIsCustomerSidebarOpen(false)}
-                  className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded"
+                  className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded md:hidden"
                 >
                   <span className="text-sm font-bold">✕</span>
                 </button>
@@ -904,7 +905,7 @@ export default function Home() {
                   walletTransactions={walletTransactions}
                   user={user}
                   mockUserId={mockUserId}
-                  theme={theme}
+                  theme={theme || 'light'}
                 />
               )}
 
@@ -923,9 +924,8 @@ export default function Home() {
         </div>
       )}
 
-      {/* SELLER PORTAL */}
       {userRole === 'seller' && (
-        false ? (
+        !isSeller ? (
           <div className="flex-1 flex flex-col items-center justify-center min-h-[85vh] p-8 text-center space-y-6 max-w-md mx-auto">
             <div className="w-16 h-16 bg-red-100/10 border border-red-500/30 rounded-2xl flex items-center justify-center text-red-500 text-3xl shadow-lg">
               🔒
@@ -949,25 +949,29 @@ export default function Home() {
               </button>
             </div>
           </div>
-           {/* Seller Left Navigation Sidebar */}
-          {isSellerSidebarOpen && (
+        ) : (
+          <div className="flex flex-1">
+            {/* Seller Left Navigation Sidebar */}
+            {isSellerSidebarOpen && (
             <div 
               onClick={() => setIsSellerSidebarOpen(false)}
               className="fixed inset-0 bg-black/50 z-40 transition-all duration-300"
             />
           )}
-          <aside className={`w-64 p-6 bg-white dark:bg-[#15131b] border-r border-[#e8e1dd] dark:border-[#2f2b3b] flex flex-col h-screen fixed top-0 left-0 z-50 transition-all duration-300 transform ${isSellerSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+          <aside className={`${isSidebarReduced ? 'md:w-20' : 'md:w-64'} w-64 p-6 bg-white dark:bg-[#15131b] border-r border-[#e8e1dd] dark:border-[#2f2b3b] flex flex-col h-screen fixed top-0 left-0 z-50 transition-all duration-300 transform ${isSellerSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:static`}>
             <div className="mb-8 px-4 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 select-none">
                 <img src="/Bupzo-logo.png" alt="BUPZO Logo" className="w-8 h-8 object-contain rounded" />
-                <div>
-                  <h1 className="text-md font-bold tracking-tight text-charcoal dark:text-[#f3f4f6]">Seller Portal</h1>
-                  <p className="text-[9px] text-zinc-400 uppercase tracking-widest font-bold font-heading">Bupzo Merchant</p>
-                </div>
+                {!isSidebarReduced && (
+                  <div>
+                    <h1 className="text-md font-bold tracking-tight text-charcoal dark:text-[#f3f4f6]">Seller Portal</h1>
+                    <p className="text-[9px] text-zinc-400 uppercase tracking-widest font-bold font-heading">Bupzo Merchant</p>
+                  </div>
+                )}
               </div>
               <button 
                 onClick={() => setIsSellerSidebarOpen(false)}
-                className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded"
+                className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded md:hidden"
               >
                 <span className="text-sm font-bold">✕</span>
               </button>

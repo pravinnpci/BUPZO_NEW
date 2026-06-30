@@ -20,7 +20,11 @@ app = FastAPI(title="BUPZO Core API", version="1.0.0")
 # CORS Configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # For development, we allow all origins
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:3013",
+        "http://localhost:3015",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -92,6 +96,14 @@ async def set_cached_data(key: str, data, ttl: int = 60):
             await redis_client.setex(key, ttl, json.dumps(data, default=str))
         except Exception as e:
             print(f"Redis set error: {e}")
+
+async def invalidate_cache(keys: List[str]):
+    if redis_client:
+        try:
+            for key in keys:
+                await redis_client.delete(key)
+        except Exception as e:
+            print(f"Redis invalidate error: {e}")
 
 async def clear_cache_keys(pattern: str):
     if redis_client:
@@ -580,6 +592,32 @@ async def read_user(user_id: UUID):
         raise HTTPException(status_code=404, detail="User not found")
     return result
 
+@app.delete("/api/users/{user_id}")
+async def delete_user(user_id: UUID):
+    async with pool.acquire() as conn:
+        u = await conn.fetchrow("SELECT id FROM users WHERE id = $1", user_id)
+        if not u:
+            raise HTTPException(status_code=444, detail="User not found")
+        
+        # Delete referencing orders (seller side)
+        seller = await conn.fetchrow("SELECT id FROM sellers WHERE user_id = $1", user_id)
+        if seller:
+            await conn.execute("DELETE FROM orders WHERE seller_id = $1", seller['id'])
+            
+        # Delete referencing orders (customer side)
+        await conn.execute("DELETE FROM orders WHERE user_id = $1", user_id)
+        
+        # Delete referencing referrals
+        await conn.execute("DELETE FROM referrals WHERE referrer_id = $1 OR referee_id = $1", user_id)
+        
+        # Delete wishlist
+        await conn.execute("DELETE FROM wishlist WHERE user_id = $1", user_id)
+        
+        # Finally delete the user
+        await conn.execute("DELETE FROM users WHERE id = $1", user_id)
+        await invalidate_cache(["cache:users"])
+        return {"success": True, "message": "User deleted successfully"}
+
 # Product Catalog Management
 @app.post("/api/products/", response_model=ProductResponse)
 async def create_product(product: ProductCreate):
@@ -631,8 +669,27 @@ async def read_product(product_id: UUID):
     """
     result = await execute_query_one(query, product_id)
     if not result:
-        raise HTTPException(status_code=404, detail="Product not found")
+      raise HTTPException(status_code=404, detail="Product not found")
     return result
+
+@app.delete("/api/products/{product_id}")
+async def delete_product(product_id: UUID):
+    async with pool.acquire() as conn:
+        p = await conn.fetchrow("SELECT id FROM products WHERE id = $1", product_id)
+        if not p:
+            raise HTTPException(status_code=404, detail="Product not found")
+        
+        # Delete referencing items
+        await conn.execute("DELETE FROM order_items WHERE product_id = $1", product_id)
+        await conn.execute("DELETE FROM reviews WHERE product_id = $1", product_id)
+        await conn.execute("DELETE FROM wishlist WHERE product_id = $1", product_id)
+        await conn.execute("DELETE FROM product_views WHERE product_id = $1", product_id)
+        await conn.execute("DELETE FROM flash_sales WHERE product_id = $1", product_id)
+        
+        # Finally delete the product
+        await conn.execute("DELETE FROM products WHERE id = $1", product_id)
+        await invalidate_cache(["cache:products"])
+        return {"success": True, "message": "Product deleted successfully"}
 
 # Wishlist Management
 @app.post("/api/wishlist/", response_model=WishlistItemResponse)
@@ -1182,6 +1239,17 @@ async def create_category(payload: CategoryCreate):
     except asyncpg.exceptions.UniqueViolationError:
         raise HTTPException(status_code=400, detail="Category already exists.")
 
+@app.delete("/api/categories/{category_id}")
+async def delete_category(category_id: UUID):
+    async with pool.acquire() as conn:
+        c = await conn.fetchrow("SELECT id FROM categories WHERE id = $1", category_id)
+        if not c:
+            raise HTTPException(status_code=404, detail="Category not found")
+        await conn.execute("UPDATE products SET category_id = NULL WHERE category_id = $1", category_id)
+        await conn.execute("DELETE FROM categories WHERE id = $1", category_id)
+        await invalidate_cache(["cache:categories", "cache:products"])
+        return {"success": True, "message": "Category deleted successfully"}
+
 # Coupon/Voucher Management
 # Coupon/Voucher Management
 @app.get("/api/coupons/", response_model=List[CouponResponse])
@@ -1285,6 +1353,16 @@ async def update_coupon(coupon_id: UUID, payload: CouponUpdate):
         return res
     except asyncpg.exceptions.UniqueViolationError:
         raise HTTPException(status_code=400, detail="Coupon code already exists.")
+
+@app.delete("/api/coupons/{coupon_id}")
+async def delete_coupon(coupon_id: UUID):
+    async with pool.acquire() as conn:
+        c = await conn.fetchrow("SELECT id FROM coupons WHERE id = $1", coupon_id)
+        if not c:
+            raise HTTPException(status_code=404, detail="Coupon not found")
+        await conn.execute("DELETE FROM coupons WHERE id = $1", coupon_id)
+        await invalidate_cache(["cache:coupons"])
+        return {"success": True, "message": "Coupon deleted successfully"}
 
 # Update Product
 @app.put("/api/products/{product_id}", response_model=ProductResponse)

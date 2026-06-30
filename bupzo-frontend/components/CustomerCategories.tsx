@@ -1,20 +1,5 @@
 import React from 'react';
-
-interface Category {
-  id: string;
-  name: string;
-}
-
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  weight_grams: number;
-  image_url: string;
-  description: string;
-  stock_quantity: number;
-  category_id?: string;
-}
+import { Product, Category } from '@/lib/api';
 
 interface CustomerCategoriesProps {
   categories: Category[];

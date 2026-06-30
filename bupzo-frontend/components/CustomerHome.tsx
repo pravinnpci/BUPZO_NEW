@@ -1,14 +1,5 @@
 import React from 'react';
-
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  weight_grams: number;
-  image_url: string;
-  description: string;
-  stock_quantity: number;
-}
+import { Product } from '@/lib/api';
 
 interface CustomerHomeProps {
   products: Product[];
