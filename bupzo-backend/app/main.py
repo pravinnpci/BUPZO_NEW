@@ -392,6 +392,14 @@ class OrderCreate(BaseModel):
     currency: str = "ZAR"
     exchange_rate: float = 1.000000
 
+class SellerRegisterRequest(BaseModel):
+    phone: str
+    email: Optional[str] = None
+    business_name: str
+    commission_rate: float = 10.0
+    status: str = "APPROVED"
+    kyc_details: Optional[dict] = {}
+
 class SellerResponse(BaseModel):
     id: UUID
     user_id: UUID
@@ -649,6 +657,19 @@ async def create_product(product: ProductCreate):
         product.description
     )
     result = await execute_query_one(query, *values)
+    # Send Notification to Admin
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO notifications (id, title, body, target_tab, read, created_at)
+            VALUES ($1, $2, $3, $4, FALSE, NOW())
+            """,
+            uuid4(),
+            "New Product Created",
+            f"Seller '{sel_check['business_name']}' created product '{product.name}' (Price: ₹{product.price}).",
+            "products"
+        )
+    await clear_cache_keys("cache:notifications")
     return result
 
 @app.get("/api/products/", response_model=List[ProductResponse])
@@ -1089,11 +1110,13 @@ async def ai_verify_kyc(payload: KYCVerificationRequest):
         "reason": reason
     })
 
+    seller_id_val = None
     if payload.seller_id:
         await execute_query_none(
             "UPDATE sellers SET status = $1, kyc_details = $2, updated_at = NOW() WHERE id = $3",
             db_status, kyc_payload, payload.seller_id
         )
+        seller_id_val = payload.seller_id
     elif payload.user_id:
         seller = await execute_query_one("SELECT id FROM sellers WHERE user_id = $1", payload.user_id)
         if seller:
@@ -1101,6 +1124,23 @@ async def ai_verify_kyc(payload: KYCVerificationRequest):
                 "UPDATE sellers SET status = $1, kyc_details = $2, updated_at = NOW() WHERE id = $3",
                 db_status, kyc_payload, seller['id']
             )
+            seller_id_val = seller['id']
+
+    if seller_id_val:
+        async with pool.acquire() as conn:
+            s_info = await conn.fetchrow("SELECT business_name FROM sellers WHERE id = $1", seller_id_val)
+            biz_name = s_info['business_name'] if s_info else "A Seller"
+            await conn.execute(
+                """
+                INSERT INTO notifications (id, title, body, target_tab, read, created_at)
+                VALUES ($1, $2, $3, $4, FALSE, NOW())
+                """,
+                uuid4(),
+                "Seller KYC Verification",
+                f"Seller '{biz_name}' completed KYC verification check. Result: {db_status}.",
+                "merchants"
+            )
+        await clear_cache_keys("cache:notifications")
 
     return {
         "status": status,
@@ -1162,6 +1202,68 @@ async def read_sellers():
         })
     return processed
 
+@app.post("/api/sellers/", response_model=SellerResponse)
+async def register_seller(payload: SellerRegisterRequest):
+    # 1. Check if user already exists
+    async with pool.acquire() as conn:
+        user = await conn.fetchrow("SELECT id, email FROM users WHERE phone = $1", payload.phone)
+        if not user:
+            # Create user
+            user_id = uuid4()
+            await conn.execute(
+                """
+                INSERT INTO users (id, phone, email, signup_platform)
+                VALUES ($1, $2, $3, 'WEB')
+                """,
+                user_id, payload.phone, payload.email
+            )
+        else:
+            user_id = user['id']
+            # Update email if provided and not set
+            if payload.email and not user['email']:
+                await conn.execute("UPDATE users SET email = $1 WHERE id = $2", payload.email, user_id)
+
+        # 2. Check if seller profile already exists for this user
+        existing_seller = await conn.fetchrow("SELECT id FROM sellers WHERE user_id = $1", user_id)
+        if existing_seller:
+            raise HTTPException(status_code=400, detail="User is already registered as a merchant.")
+
+        # 3. Create seller profile
+        seller_id = uuid4()
+        kyc_payload = json.dumps(payload.kyc_details or {})
+        
+        query = """
+        INSERT INTO sellers (id, user_id, business_name, commission_rate, status, kyc_details)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id, user_id, business_name, commission_rate, status, kyc_details, created_at, updated_at
+        """
+        try:
+            res = await conn.fetchrow(query, seller_id, user_id, payload.business_name, payload.commission_rate, payload.status, kyc_payload)
+            # Send Notification to Admin
+            await conn.execute(
+                """
+                INSERT INTO notifications (id, title, body, target_tab, read, created_at)
+                VALUES ($1, $2, $3, $4, FALSE, NOW())
+                """,
+                uuid4(),
+                "New Merchant Registered",
+                f"Merchant store '{payload.business_name}' has been created with status {payload.status}.",
+                "merchants"
+            )
+            await clear_cache_keys("cache:notifications")
+            return {
+                "id": res['id'],
+                "user_id": res['user_id'],
+                "business_name": res['business_name'],
+                "commission_rate": float(res['commission_rate']),
+                "status": res['status'],
+                "kyc_details": json.loads(res['kyc_details']) if isinstance(res['kyc_details'], str) else res['kyc_details'],
+                "created_at": res['created_at'],
+                "updated_at": res['updated_at']
+            }
+        except asyncpg.exceptions.UniqueViolationError:
+            raise HTTPException(status_code=400, detail="Store/Business name already exists.")
+
 @app.post("/api/sellers/{seller_id}/approve")
 async def approve_seller(seller_id: UUID):
     query = "UPDATE sellers SET status = 'APPROVED', updated_at = NOW() WHERE id = $1 RETURNING id, status"
@@ -1177,6 +1279,38 @@ async def reject_seller(seller_id: UUID):
     if not res:
         raise HTTPException(status_code=404, detail="Seller not found")
     return {"success": True, "seller_id": res['id'], "status": res['status']}
+
+# Update Seller Details / Commission
+@app.put("/api/sellers/{seller_id}")
+async def update_seller(seller_id: UUID, business_name: str, commission_rate: float, status: str):
+    query = """
+    UPDATE sellers 
+    SET business_name = $1, commission_rate = $2, status = $3, updated_at = NOW() 
+    WHERE id = $4 
+    RETURNING id, user_id, business_name, commission_rate, status, created_at, updated_at
+    """
+    res = await execute_query_one(query, business_name, commission_rate, status, seller_id)
+    if not res:
+        raise HTTPException(status_code=404, detail="Seller not found")
+    return {
+        "id": res['id'],
+        "user_id": res['user_id'],
+        "business_name": res['business_name'],
+        "commission_rate": float(res['commission_rate']),
+        "status": res['status'],
+        "kyc_details": {},
+        "created_at": res['created_at'],
+        "updated_at": res['updated_at']
+    }
+
+# Delete Seller
+@app.delete("/api/sellers/{seller_id}")
+async def delete_seller(seller_id: UUID):
+    query = "DELETE FROM sellers WHERE id = $1 RETURNING id"
+    res = await execute_query_one(query, seller_id)
+    if not res:
+        raise HTTPException(status_code=404, detail="Seller not found")
+    return {"success": True, "message": "Seller deleted successfully"}
 
 # Payouts Management
 @app.get("/api/payouts/", response_model=List[PayoutResponse])
@@ -1249,6 +1383,21 @@ async def delete_category(category_id: UUID):
         await conn.execute("DELETE FROM categories WHERE id = $1", category_id)
         await invalidate_cache(["cache:categories", "cache:products"])
         return {"success": True, "message": "Category deleted successfully"}
+
+# Update Specialty Category
+@app.put("/api/categories/{category_id}")
+async def update_category(category_id: UUID, payload: CategoryCreate):
+    query = """
+    UPDATE categories
+    SET name = $1, description = $2
+    WHERE id = $3
+    RETURNING id, name, description, created_at
+    """
+    res = await execute_query_one(query, payload.name, payload.description, category_id)
+    if not res:
+        raise HTTPException(status_code=404, detail="Category not found")
+    await invalidate_cache(["cache:categories", "cache:products"])
+    return res
 
 # Coupon/Voucher Management
 # Coupon/Voucher Management
@@ -1464,6 +1613,39 @@ async def get_user_wallet_transactions(user_id: UUID):
     """
     res = await execute_query(query, user_id)
     return res
+
+# Get All Wallet Transactions
+@app.get("/api/wallet/transactions/", response_model=List[WalletTransactionResponse])
+async def get_all_wallet_transactions():
+    query = """
+    SELECT id, user_id, amount, type, description, created_at
+    FROM wallet_transactions ORDER BY created_at DESC
+    """
+    res = await execute_query(query)
+    return res
+
+# Edit Wallet Transaction
+@app.put("/api/wallet/transactions/{tx_id}")
+async def edit_wallet_transaction(tx_id: UUID, amount: float, description: str, type: str):
+    query = """
+    UPDATE wallet_transactions
+    SET amount = $1, description = $2, type = $3
+    WHERE id = $4
+    RETURNING id, user_id, amount, type, description, created_at
+    """
+    res = await execute_query_one(query, amount, description, type, tx_id)
+    if not res:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    return res
+
+# Delete Wallet Transaction
+@app.delete("/api/wallet/transactions/{tx_id}")
+async def delete_wallet_transaction(tx_id: UUID):
+    query = "DELETE FROM wallet_transactions WHERE id = $1 RETURNING id"
+    res = await execute_query_one(query, tx_id)
+    if not res:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    return {"success": True, "message": "Transaction deleted successfully"}
 
 # Update Order Status
 @app.put("/api/orders/{order_id}/status")

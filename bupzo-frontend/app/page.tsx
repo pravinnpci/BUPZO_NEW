@@ -566,7 +566,7 @@ export default function Home() {
 
   // Add to Cart
   const handleAddToCart = (product: Product) => {
-    if (!user) {
+    if (!user || !user.id || !user.phone) {
       setIsAuthModalOpen(true);
       alert("Please login to add items to your cart.");
       return;
@@ -583,7 +583,7 @@ export default function Home() {
 
   // Add to Wishlist
   const handleAddToWishlist = async (product: Product) => {
-    if (!user) {
+    if (!user || !user.id || !user.phone) {
       setIsAuthModalOpen(true);
       alert("Please login to add items to your wishlist.");
       return;
@@ -617,7 +617,7 @@ export default function Home() {
 
   // Submit Checkout
   const handleCheckoutSubmit = async () => {
-    if (!user) {
+    if (!user || !user.id || !user.phone) {
       setIsAuthModalOpen(true);
       alert("Please login to proceed with checkout.");
       return;
@@ -788,7 +788,7 @@ export default function Home() {
               </nav>
               
               <div className={`space-y-4 pt-4 border-t border-zinc-200 dark:border-zinc-800 ${isSidebarReduced ? 'md:hidden' : ''}`}>
-                {user ? (
+                {user && user.id && user.phone ? (
                   <div className="space-y-1.5 text-xs">
                     <p className="text-zinc-400 font-mono text-[9px]">Logged In:</p>
                     <p className="font-bold text-[11px] truncate text-[#3874ff]">{user.name || 'Bupzo Patron'}</p>
@@ -1054,9 +1054,9 @@ export default function Home() {
             <div className="flex items-center gap-3 md:hidden mb-6 bg-white dark:bg-[#15131b] p-3 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b] shadow-sm justify-between">
               <button 
                 onClick={() => setIsSellerSidebarOpen(true)}
-                className="p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg flex items-center justify-center"
+                className="p-1 hover:opacity-90 active:scale-95 transition-all flex items-center justify-center"
               >
-                <span className="text-xl">☰</span>
+                <img src="/Bupzo-logo.png" alt="Bupzo Logo" className="w-8 h-8 object-contain rounded" />
               </button>
               <span className="font-extrabold text-xs tracking-wider font-heading text-charcoal dark:text-white">Seller Portal</span>
               <div className="w-8"></div>

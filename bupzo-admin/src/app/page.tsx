@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { AdminDashboard } from '@/components/AdminDashboard';
 import { AdminUsers } from '@/components/AdminUsers';
 import { AdminProducts } from '@/components/AdminProducts';
+import { AdminSellers } from '@/components/AdminSellers';
 
 // Mock Data
 const initialUsers = [
@@ -89,6 +90,16 @@ export default function AdminMainPage() {
   const [voucherSearchTerm, setVoucherSearchTerm] = useState('');
   const [voucherSortKey, setVoucherSortKey] = useState<string>('');
   const [voucherSortOrder, setVoucherSortOrder] = useState<'asc' | 'desc'>('asc');
+  // Wallet Transactions States
+  const [walletTransactions, setWalletTransactions] = useState<any[]>([]);
+  const [walletSearchTerm, setWalletSearchTerm] = useState('');
+  const [walletSortKey, setWalletSortKey] = useState<string>('');
+  const [walletSortOrder, setWalletSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [selectedWalletTx, setSelectedWalletTx] = useState<any>(null);
+  const [showEditWalletModal, setShowEditWalletModal] = useState(false);
+  const [editWalletAmount, setEditWalletAmount] = useState('');
+  const [editWalletDesc, setEditWalletDesc] = useState('');
+  const [editWalletType, setEditWalletType] = useState('REFERRAL');
 
   // Products & Categories States
   const [products, setProducts] = useState<any[]>([]);
@@ -162,6 +173,29 @@ export default function AdminMainPage() {
 
   const refreshAllAdminData = async () => {
     try {
+      let sellersData: any[] = [];
+      try {
+        const sellersResp = await fetch(`${API_URL}/api/sellers/`);
+        if (sellersResp.ok) {
+          sellersData = await sellersResp.json();
+          if (Array.isArray(sellersData) && sellersData.length > 0) {
+            setSellers(sellersData.map((s: any) => ({
+              id: s.id,
+              user_id: s.user_id,
+              businessName: s.business_name,
+              owner: `Seller Account`,
+              status: s.status === 'PENDING' ? 'Pending KYC' : s.status === 'APPROVED' ? 'Approved' : 'Rejected',
+              commission: s.commission_rate,
+              date: new Date(s.created_at).toLocaleDateString(),
+              rating: 4.5,
+              kyc_details: s.kyc_details
+            })));
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to fetch sellers:", e);
+      }
+
       let usersData: any[] = [];
       try {
         const usersResp = await fetch(`${API_URL}/api/users/`);
@@ -176,33 +210,13 @@ export default function AdminMainPage() {
               wallet: u.wallet_balance,
               tier: u.is_premium ? 'Premium' : 'Normal',
               status: 'Active',
-              risk: parseFloat(u.wallet_balance) > 4000 ? 'Medium' : 'Low'
+              risk: parseFloat(u.wallet_balance) > 4000 ? 'Medium' : 'Low',
+              isSeller: sellersData.some((s: any) => s.user_id === u.id)
             })));
           }
         }
       } catch (e) {
         console.warn("Failed to fetch users:", e);
-      }
-
-      let sellersData: any[] = [];
-      try {
-        const sellersResp = await fetch(`${API_URL}/api/sellers/`);
-        if (sellersResp.ok) {
-          sellersData = await sellersResp.json();
-          if (Array.isArray(sellersData) && sellersData.length > 0) {
-            setSellers(sellersData.map((s: any) => ({
-              id: s.id,
-              businessName: s.business_name,
-              owner: `Seller Account`,
-              status: s.status === 'PENDING' ? 'Pending KYC' : s.status === 'APPROVED' ? 'Approved' : 'Rejected',
-              commission: s.commission_rate,
-              date: new Date(s.created_at).toLocaleDateString(),
-              rating: 4.5
-            })));
-          }
-        }
-      } catch (e) {
-        console.warn("Failed to fetch sellers:", e);
       }
 
       try {
@@ -279,6 +293,19 @@ export default function AdminMainPage() {
         }
       } catch (e) {
         console.warn("Failed to fetch notifications:", e);
+      }
+
+      // Fetch all wallet transactions from DB
+      try {
+        const walletResp = await fetch(`${API_URL}/api/wallet/transactions/`);
+        if (walletResp.ok) {
+          const walletData = await walletResp.json();
+          if (Array.isArray(walletData)) {
+            setWalletTransactions(walletData);
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to fetch wallet transactions:", e);
       }
 
     } catch (err) {
@@ -880,6 +907,155 @@ export default function AdminMainPage() {
     }
   };
 
+  const handleCreateProduct = async (productData: any) => {
+    try {
+      const resp = await fetch(`${API_URL}/api/products/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(productData)
+      });
+      if (resp.ok) {
+        alert("Product created successfully!");
+        refreshAllAdminData();
+      } else {
+        const errorData = await resp.json();
+        alert(`Failed to create product: ${errorData.detail || 'Server error'}`);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error creating product on backend.");
+    }
+  };
+
+  const handleGeneralImageUpload = async (file: File): Promise<string | null> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const resp = await fetch(`${API_URL}/api/upload/`, {
+        method: 'POST',
+        body: formData
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        return data.url;
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    return null;
+  };
+
+  const handleUpdateCategory = async (catId: string, name: string, description: string) => {
+    try {
+      const resp = await fetch(`${API_URL}/api/categories/${catId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, description })
+      });
+      if (resp.ok) {
+        alert("Category updated successfully!");
+        refreshAllAdminData();
+      } else {
+        alert("Failed to update category.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error updating category");
+    }
+  };
+
+  const handleUpdateSeller = async (sellerId: string, businessName: string, commission: number, status: string) => {
+    try {
+      const resp = await fetch(`${API_URL}/api/sellers/${sellerId}?business_name=${encodeURIComponent(businessName)}&commission_rate=${commission}&status=${encodeURIComponent(status)}`, {
+        method: 'PUT'
+      });
+      if (resp.ok) {
+        alert("Seller updated successfully!");
+        refreshAllAdminData();
+      } else {
+        alert("Failed to update seller.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error updating seller");
+    }
+  };
+
+  const handleDeleteSeller = async (sellerId: string) => {
+    try {
+      const resp = await fetch(`${API_URL}/api/sellers/${sellerId}`, {
+        method: 'DELETE'
+      });
+      if (resp.ok) {
+        alert("Seller deleted successfully!");
+        refreshAllAdminData();
+      } else {
+        alert("Failed to delete seller.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error deleting seller");
+    }
+  };
+
+  const handleCreateSeller = async (sellerData: any) => {
+    try {
+      const resp = await fetch(`${API_URL}/api/sellers/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sellerData)
+      });
+      if (resp.ok) {
+        alert("Merchant registered successfully!");
+        refreshAllAdminData();
+      } else {
+        const errorData = await resp.json();
+        alert(`Failed to register merchant: ${errorData.detail || 'Server error'}`);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error registering merchant");
+    }
+  };
+
+  const handleDeleteWalletTx = async (txId: string) => {
+    try {
+      const resp = await fetch(`${API_URL}/api/wallet/transactions/${txId}`, {
+        method: 'DELETE'
+      });
+      if (resp.ok) {
+        alert("Wallet transaction deleted successfully!");
+        refreshAllAdminData();
+      } else {
+        alert("Failed to delete wallet transaction.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error deleting wallet transaction");
+    }
+  };
+
+  const handleEditWalletTxSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedWalletTx) return;
+    try {
+      const resp = await fetch(`${API_URL}/api/wallet/transactions/${selectedWalletTx.id}?amount=${parseFloat(editWalletAmount)}&description=${encodeURIComponent(editWalletDesc)}&type=${encodeURIComponent(editWalletType)}`, {
+        method: 'PUT'
+      });
+      if (resp.ok) {
+        alert("Wallet transaction updated successfully!");
+        setShowEditWalletModal(false);
+        setSelectedWalletTx(null);
+        refreshAllAdminData();
+      } else {
+        alert("Failed to update wallet transaction.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error updating wallet transaction");
+    }
+  };
+
   // Preloader / SSR Hydration Shield
   if (!hasMounted || isLoading || isAdminLoggedIn === null) {
     return (
@@ -955,7 +1131,7 @@ export default function AdminMainPage() {
       case 'dashboard': return 'Dashboard Command Center';
       case 'users': return 'User Directory';
       case 'products': return 'Products Catalog';
-      case 'kyc': return 'Seller KYC Approvals';
+      case 'merchants': return 'Merchant Directory';
       case 'financials': return 'Wallet & Audit Logs';
       case 'logistics': return 'Logistics Integrations';
       case 'disputes': return 'Dispute & Anomaly Center';
@@ -1000,6 +1176,44 @@ export default function AdminMainPage() {
     } else {
       setVoucherSortKey(key);
       setVoucherSortOrder('asc');
+    }
+  };
+
+  // Filter & Sort Wallet Transactions
+  const filteredWalletTransactions = walletTransactions.filter((tx: any) => {
+    const s = walletSearchTerm.toLowerCase();
+    return (
+      (tx.description || '').toLowerCase().includes(s) ||
+      (tx.type || '').toLowerCase().includes(s) ||
+      (tx.user_id || '').toLowerCase().includes(s) ||
+      (tx.id || '').toLowerCase().includes(s)
+    );
+  });
+
+  const sortedWalletTransactions = [...filteredWalletTransactions].sort((a: any, b: any) => {
+    if (!walletSortKey) return 0;
+    let aVal = a[walletSortKey];
+    let bVal = b[walletSortKey];
+
+    if (walletSortKey === 'amount') {
+      aVal = Number(aVal) || 0;
+      bVal = Number(bVal) || 0;
+    } else {
+      aVal = String(aVal || '').toLowerCase();
+      bVal = String(bVal || '').toLowerCase();
+    }
+
+    if (aVal < bVal) return walletSortOrder === 'asc' ? -1 : 1;
+    if (aVal > bVal) return walletSortOrder === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const handleWalletSort = (key: string) => {
+    if (walletSortKey === key) {
+      setWalletSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setWalletSortKey(key);
+      setWalletSortOrder('asc');
     }
   };
 
@@ -1064,12 +1278,12 @@ export default function AdminMainPage() {
 
             <li>
               <button 
-                onClick={() => { setActiveTab('kyc'); setIsAdminSidebarOpen(false); }} 
-                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2 rounded-full transition-all duration-250 ${activeTab === 'kyc' ? 'bg-secondary-container text-on-secondary-container font-bold' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
-                title="Seller KYC"
+                onClick={() => { setActiveTab('merchants'); setIsAdminSidebarOpen(false); }} 
+                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2 rounded-full transition-all duration-250 ${activeTab === 'merchants' ? 'bg-secondary-container text-on-secondary-container font-bold' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
+                title="Merchant Directory"
               >
-                <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: activeTab === 'kyc' ? "'FILL' 1" : "'FILL' 0" }}>verified_user</span>
-                {!isSidebarReduced && <span className="text-sm font-semibold">Seller KYC</span>}
+                <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: activeTab === 'merchants' ? "'FILL' 1" : "'FILL' 0" }}>storefront</span>
+                {!isSidebarReduced && <span className="text-sm font-semibold">Merchant Directory</span>}
               </button>
             </li>
             
@@ -1284,100 +1498,175 @@ export default function AdminMainPage() {
             />
           )}
 
-          {/* TAB 3: SELLER KYC */}
-          {activeTab === 'kyc' && (
-            <div className="space-y-6">
-              <div>
-                <h1 className="text-2xl font-bold font-heading">KYC Verification Queue</h1>
-                <p className="text-sm text-zinc-500 mt-1">Review business credentials, licenses, and approve vendors.</p>
-              </div>
-
-              <div className="space-y-4">
-                {sellers.filter(s => s.status === 'Pending KYC').map(s => (
-                  <div key={s.id} className="bg-white dark:bg-[#15131b] p-6 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b] flex justify-between items-center text-xs">
-                    <div>
-                      <h4 className="font-bold text-sm">{s.businessName}</h4>
-                      <p className="text-zinc-500 mt-1">Owner: {s.owner} | Applied: {s.date}</p>
-                    </div>
-                    <button 
-                      onClick={() => handleApproveKYC(s.id)}
-                      className="bg-charcoal text-white px-3 py-1.5 rounded hover:bg-opacity-90 font-bold"
-                    >
-                      Approve Merchant
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* TAB 4: WALLLETS & AUDITS */}
+          {/* TAB 3: MERCHANT DIRECTORY */}
+          {activeTab === 'merchants' && (
+            <AdminSellers 
+              sellers={sellers}
+              onDeleteSeller={handleDeleteSeller}
+              onUpdateSeller={handleUpdateSeller}
+              onCreateSeller={handleCreateSeller}
+                {/* TAB 4: WALLLETS & AUDITS */}
           {activeTab === 'financials' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 space-y-6">
-                <div className="bg-white dark:bg-[#15131b] p-6 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b]">
-                  <h3 className="text-sm font-bold uppercase tracking-wider mb-4">Manual Wallet Adjustment Override</h3>
-                  <form onSubmit={handleWalletAdjustment} className="space-y-4 text-xs">
-                    <div>
-                      <label className="block text-zinc-400 font-bold uppercase mb-1">Target Account ID (User or Seller)</label>
-                      <input 
-                        type="text" 
-                        value={adjustId} 
-                        onChange={(e) => setAdjustId(e.target.value)} 
-                        placeholder="USR-10293" 
-                        className="w-full bg-zinc-50 dark:bg-zinc-800 border border-[#e8e1dd] dark:border-[#2f2b3b] rounded-lg px-3 py-2 outline-none font-mono" 
-                      />
-                    </div>
-                    <div className="flex gap-4">
-                      <div className="flex-1">
-                        <label className="block text-zinc-400 font-bold uppercase mb-1">Type</label>
-                        <select 
-                          value={adjustType} 
-                          onChange={(e) => setAdjustType(e.target.value)} 
-                          className="w-full bg-zinc-50 dark:bg-zinc-800 border border-[#e8e1dd] dark:border-[#2f2b3b] rounded-lg px-3 py-2 outline-none"
-                        >
-                          <option>Credit</option>
-                          <option>Debit</option>
-                        </select>
-                      </div>
-                      <div className="flex-1">
-                        <label className="block text-zinc-400 font-bold uppercase mb-1">Amount (INR)</label>
+            <div className="space-y-6">
+              {/* Upper row: Grid with Manual Override (col-span-2) and Payouts Queue (col-span-1) */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                  <div className="bg-white dark:bg-[#15131b] p-6 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b]">
+                    <h3 className="text-sm font-bold uppercase tracking-wider mb-4">Manual Wallet Adjustment Override</h3>
+                    <form onSubmit={handleWalletAdjustment} className="space-y-4 text-xs">
+                      <div>
+                        <label className="block text-zinc-400 font-bold uppercase mb-1">Target Account ID (User or Seller)</label>
                         <input 
-                          type="number" 
-                          value={adjustAmount} 
-                          onChange={(e) => setAdjustAmount(e.target.value)} 
-                          placeholder="250" 
+                          type="text" 
+                          value={adjustId} 
+                          onChange={(e) => setAdjustId(e.target.value)} 
+                          placeholder="USR-10293" 
                           className="w-full bg-zinc-50 dark:bg-zinc-800 border border-[#e8e1dd] dark:border-[#2f2b3b] rounded-lg px-3 py-2 outline-none font-mono" 
                         />
                       </div>
+                      <div className="flex gap-4">
+                        <div className="flex-1">
+                          <label className="block text-zinc-400 font-bold uppercase mb-1">Type</label>
+                          <select 
+                            value={adjustType} 
+                            onChange={(e) => setAdjustType(e.target.value)} 
+                            className="w-full bg-zinc-50 dark:bg-zinc-800 border border-[#e8e1dd] dark:border-[#2f2b3b] rounded-lg px-3 py-2 outline-none"
+                          >
+                            <option>Credit</option>
+                            <option>Debit</option>
+                          </select>
+                        </div>
+                        <div className="flex-1">
+                          <label className="block text-zinc-400 font-bold uppercase mb-1">Amount (INR)</label>
+                          <input 
+                            type="number" 
+                            value={adjustAmount} 
+                            onChange={(e) => setAdjustAmount(e.target.value)} 
+                            placeholder="250" 
+                            className="w-full bg-zinc-50 dark:bg-zinc-800 border border-[#e8e1dd] dark:border-[#2f2b3b] rounded-lg px-3 py-2 outline-none font-mono" 
+                          />
+                        </div>
+                      </div>
+                      <button type="submit" className="w-full bg-charcoal text-white py-2 rounded-lg font-bold">Apply Override</button>
+                    </form>
+                  </div>
+                </div>
+
+                {/* Payouts queue */}
+                <div className="space-y-6">
+                  <div className="bg-white dark:bg-[#15131b] p-6 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b]">
+                    <h3 className="text-sm font-bold uppercase tracking-wider mb-4">Pending Seller Payouts</h3>
+                    <div className="space-y-4">
+                      {payouts.filter(p => p.status === 'Pending').map(p => (
+                        <div key={p.id} className="border-b pb-3 text-xs space-y-1">
+                          <div className="flex justify-between font-bold">
+                            <span>{p.id}</span>
+                            <span>₹{p.amount}</span>
+                          </div>
+                          <p className="text-zinc-500 text-[10px]">Seller: {p.sellerId}</p>
+                          <button 
+                            onClick={() => handlePayout(p.id)}
+                            className="bg-charcoal text-white px-2 py-1 rounded text-[10px] font-bold"
+                          >
+                            Release Funds
+                          </button>
+                        </div>
+                      ))}
                     </div>
-                    <button type="submit" className="w-full bg-charcoal text-white py-2 rounded-lg font-bold">Apply Override</button>
-                  </form>
+                  </div>
                 </div>
               </div>
 
-              {/* Payouts queue */}
-              <div className="space-y-6">
-                <div className="bg-white dark:bg-[#15131b] p-6 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b]">
-                  <h3 className="text-sm font-bold uppercase tracking-wider mb-4">Pending Seller Payouts</h3>
-                  <div className="space-y-4">
-                    {payouts.filter(p => p.status === 'Pending').map(p => (
-                      <div key={p.id} className="border-b pb-3 text-xs space-y-1">
-                        <div className="flex justify-between font-bold">
-                          <span>{p.id}</span>
-                          <span>₹{p.amount}</span>
-                        </div>
-                        <p className="text-zinc-500 text-[10px]">Seller: {p.sellerId}</p>
-                        <button 
-                          onClick={() => handlePayout(p.id)}
-                          className="bg-charcoal text-white px-2 py-1 rounded text-[10px] font-bold"
-                        >
-                          Release Funds
-                        </button>
-                      </div>
-                    ))}
+              {/* Lower row: Full width Wallet Transactions Log */}
+              <div className="bg-white dark:bg-[#15131b] p-6 rounded-2xl border border-[#e8e1dd] dark:border-[#2f2b3b] space-y-4 flex flex-col gap-4">
+                <div className="flex justify-between items-center bg-zinc-50 dark:bg-[#110e16] p-4 rounded-xl border border-zinc-250 dark:border-zinc-800">
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-zinc-400 text-xs">🔍</span>
+                    <input
+                      type="text"
+                      placeholder="Search wallet logs..."
+                      value={walletSearchTerm}
+                      onChange={(e) => setWalletSearchTerm(e.target.value)}
+                      className="pl-8 pr-4 py-2 w-64 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-xs outline-none focus:border-primary"
+                    />
+                  </div>
+                  <div className="text-zinc-400 text-xs">
+                    Showing {sortedWalletTransactions.length} of {walletTransactions.length} records
                   </div>
                 </div>
+
+                <h3 className="text-md font-bold font-heading">Wallet Transactions Log</h3>
+                <div className="overflow-x-auto w-full">
+                  <table className="w-full text-left text-xs font-semibold min-w-[800px]">
+                    <thead>
+                      <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-400 font-bold uppercase tracking-wider text-[10px] select-none">
+                        <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleWalletSort('id')}>
+                          Tx ID {walletSortKey === 'id' ? (walletSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
+                        </th>
+                        <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleWalletSort('user_id')}>
+                          User ID {walletSortKey === 'user_id' ? (walletSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
+                        </th>
+                        <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleWalletSort('amount')}>
+                          Amount {walletSortKey === 'amount' ? (walletSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
+                        </th>
+                        <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleWalletSort('type')}>
+                          Type {walletSortKey === 'type' ? (walletSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
+                        </th>
+                        <th className="py-2.5">Description</th>
+                        <th className="py-2.5">Date</th>
+                        <th className="py-2.5 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedWalletTransactions.map((tx: any) => (
+                        <tr key={tx.id} className="border-b border-zinc-150 dark:border-zinc-900">
+                          <td className="py-3 font-mono font-bold text-zinc-800 dark:text-zinc-200">{tx.id.substring(0,8)}...</td>
+                          <td className="py-3 font-mono text-zinc-500">{tx.user_id.substring(0,8)}...</td>
+                          <td className={`py-3 font-mono font-bold ${tx.amount >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                            ₹{tx.amount}
+                          </td>
+                          <td className="py-3 font-semibold">{tx.type}</td>
+                          <td className="py-3 text-zinc-600 dark:text-zinc-400">{tx.description}</td>
+                          <td className="py-3 text-zinc-500">{new Date(tx.created_at).toLocaleDateString()}</td>
+                          <td className="py-3 text-right">
+                            <div className="flex justify-end gap-1.5">
+                              <button 
+                                onClick={() => {
+                                  setSelectedWalletTx(tx);
+                                  setEditWalletAmount(tx.amount.toString());
+                                  setEditWalletDesc(tx.description || '');
+                                  setEditWalletType(tx.type);
+                                  setShowEditWalletModal(true);
+                                }}
+                                className="bg-charcoal dark:bg-zinc-800 text-white dark:text-zinc-200 px-2 py-1 rounded text-[10px] font-bold hover:opacity-90"
+                              >
+                                Edit
+                              </button>
+                              <button 
+                                onClick={() => {
+                                  if (confirm(`Are you sure you want to delete transaction "${tx.id}"?`)) {
+                                    handleDeleteWalletTx(tx.id);
+                                  }
+                                }}
+                                className="bg-red-500 hover:bg-red-655 text-white px-2 py-1 rounded text-[10px] font-bold"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {sortedWalletTransactions.length === 0 && (
+                        <tr>
+                          <td colSpan={7} className="py-6 text-center text-zinc-400">No transactions recorded.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}>
               </div>
             </div>
           )}
@@ -1535,6 +1824,7 @@ export default function AdminMainPage() {
             <AdminProducts 
               products={products}
               categories={categories}
+              sellers={sellers}
               setSelectedProduct={setSelectedProduct}
               setEditProductName={setEditProductName}
               setEditProductPrice={setEditProductPrice}
@@ -1549,6 +1839,9 @@ export default function AdminMainPage() {
               newCatDesc={newCatDesc}
               setNewCatDesc={setNewCatDesc}
               onCreateCategory={handleCreateCategory}
+              onCreateProduct={handleCreateProduct}
+              onUpdateCategory={handleUpdateCategory}
+              onUploadImage={handleGeneralImageUpload}
             />
           )}
 
@@ -2026,6 +2319,68 @@ export default function AdminMainPage() {
                 <button 
                   type="button" 
                   onClick={() => { setShowEditCouponModal(false); setSelectedCoupon(null); }}
+                  className="px-4 py-2 border border-zinc-300 dark:border-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="px-4 py-2 bg-charcoal text-white rounded-lg hover:bg-opacity-90 font-bold"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT WALLET TRANSACTION MODAL */}
+      {showEditWalletModal && selectedWalletTx && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-[#fff8f4] dark:bg-[#15131b] border border-[#e8e1dd] dark:border-[#2f2b3b] rounded-2xl w-full max-w-md p-6 shadow-2xl relative text-zinc-900 dark:text-zinc-100">
+            <h3 className="text-lg font-bold font-heading mb-4">Edit Wallet Transaction</h3>
+            <form onSubmit={handleEditWalletTxSubmit} className="space-y-4 text-xs font-semibold">
+              <div>
+                <label className="block text-zinc-500 mb-1">Amount (₹)</label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  value={editWalletAmount} 
+                  onChange={(e) => setEditWalletAmount(e.target.value)} 
+                  className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm outline-none font-mono"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-zinc-500 mb-1">Type</label>
+                <select
+                  value={editWalletType}
+                  onChange={(e) => setEditWalletType(e.target.value)}
+                  className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm outline-none"
+                  required
+                >
+                  <option value="REFERRAL">REFERRAL</option>
+                  <option value="PURCHASE">PURCHASE</option>
+                  <option value="TOPUP">TOPUP</option>
+                  <option value="REFUND">REFUND</option>
+                  <option value="ADMIN_ADJUSTMENT">ADMIN_ADJUSTMENT</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-zinc-500 mb-1">Description</label>
+                <textarea 
+                  value={editWalletDesc} 
+                  onChange={(e) => setEditWalletDesc(e.target.value)} 
+                  rows={3}
+                  className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm outline-none"
+                  required
+                />
+              </div>
+              <div className="flex gap-3 justify-end pt-4">
+                <button 
+                  type="button" 
+                  onClick={() => { setShowEditWalletModal(false); setSelectedWalletTx(null); }}
                   className="px-4 py-2 border border-zinc-300 dark:border-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900"
                 >
                   Cancel

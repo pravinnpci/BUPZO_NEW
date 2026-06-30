@@ -9,6 +9,7 @@ interface User {
   tier: string;
   status: string;
   risk: string;
+  isSeller?: boolean;
 }
 
 interface AdminUsersProps {
@@ -56,6 +57,9 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
     if (sortKey === 'wallet') {
       aVal = Number(aVal) || 0;
       bVal = Number(bVal) || 0;
+    } else if (sortKey === 'isSeller') {
+      aVal = a.isSeller ? 1 : 0;
+      bVal = b.isSeller ? 1 : 0;
     } else {
       aVal = String(aVal || '').toLowerCase();
       bVal = String(bVal || '').toLowerCase();
@@ -109,7 +113,8 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
                 <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('email')}>Email <SortIndicator k="email" /></th>
                 <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('wallet')}>Wallet <SortIndicator k="wallet" /></th>
                 <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('tier')}>Tier <SortIndicator k="tier" /></th>
-                <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('status')}>Status <SortIndicator k="status" /></th>
+                 <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('status')}>Status <SortIndicator k="status" /></th>
+                <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('isSeller')}>Merchant <SortIndicator k="isSeller" /></th>
                 <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('risk')}>Risk <SortIndicator k="risk" /></th>
                 <th className="py-2.5 text-right">Actions</th>
               </tr>
@@ -124,6 +129,11 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
                   <td className="py-3 font-mono font-bold">₹{u.wallet}</td>
                   <td className="py-3">{u.tier}</td>
                   <td className="py-3">{u.status}</td>
+                  <td className="py-3">
+                    <span className={`px-2 py-0.5 rounded font-bold ${u.isSeller ? 'bg-amber-100/10 text-amber-500' : 'bg-zinc-100/10 text-zinc-400 dark:text-zinc-500'}`}>
+                      {u.isSeller ? 'Yes' : 'No'}
+                    </span>
+                  </td>
                   <td className="py-3">
                      <span className={`px-2 py-0.5 rounded font-bold ${u.risk === 'Low' ? 'bg-green-100 text-green-700' : u.risk === 'Medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
                       {u.risk}
@@ -153,7 +163,7 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
               ))}
               {sortedUsers.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="py-8 text-center text-zinc-400">No users found.</td>
+                  <td colSpan={10} className="py-8 text-center text-zinc-400">No users found.</td>
                 </tr>
               )}
             </tbody>

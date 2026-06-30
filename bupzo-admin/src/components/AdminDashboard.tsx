@@ -12,7 +12,7 @@ export const AdminDashboard: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         
         {/* Card: Total Orders */}
-        <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/60 p-6 flex flex-col justify-between min-h-[140px] shadow-sm relative overflow-hidden group hover:border-primary/60 hover:shadow-md transition-all duration-300">
+        <div className="bg-surface-container-lowest dark:bg-[#15131b] rounded-2xl border border-[#e8e1dd] dark:border-[#2f2b3b] p-6 flex flex-col justify-between min-h-[140px] shadow-sm relative overflow-hidden group hover:border-primary/60 hover:shadow-md transition-all duration-300">
           <div className="flex flex-col gap-1 relative z-10">
             <span className="text-[10px] uppercase font-extrabold tracking-wider text-outline">Total Orders</span>
             <span className="text-3xl font-black font-heading text-on-surface mt-1">1,42,837</span>
@@ -25,7 +25,7 @@ export const AdminDashboard: React.FC = () => {
         </div>
 
         {/* Card: GMV Today */}
-        <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/60 p-6 flex flex-col justify-between min-h-[140px] shadow-sm relative overflow-hidden group hover:border-primary/60 hover:shadow-md transition-all duration-300">
+        <div className="bg-surface-container-lowest dark:bg-[#15131b] rounded-2xl border border-[#e8e1dd] dark:border-[#2f2b3b] p-6 flex flex-col justify-between min-h-[140px] shadow-sm relative overflow-hidden group hover:border-primary/60 hover:shadow-md transition-all duration-300">
           <div className="flex flex-col gap-1 relative z-10">
             <span className="text-[10px] uppercase font-extrabold tracking-wider text-outline">GMV Today</span>
             <span className="text-3xl font-black font-heading text-on-surface mt-1">₹38.4L</span>
@@ -38,7 +38,7 @@ export const AdminDashboard: React.FC = () => {
         </div>
 
         {/* Card: Active Sellers */}
-        <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/60 p-6 flex flex-col justify-between min-h-[140px] shadow-sm relative overflow-hidden group hover:border-primary/60 hover:shadow-md transition-all duration-300">
+        <div className="bg-surface-container-lowest dark:bg-[#15131b] rounded-2xl border border-[#e8e1dd] dark:border-[#2f2b3b] p-6 flex flex-col justify-between min-h-[140px] shadow-sm relative overflow-hidden group hover:border-primary/60 hover:shadow-md transition-all duration-300">
           <div className="flex flex-col gap-1 relative z-10">
             <span className="text-[10px] uppercase font-extrabold tracking-wider text-outline">Active Sellers</span>
             <span className="text-3xl font-black font-heading text-on-surface mt-1">4,219</span>
@@ -67,7 +67,7 @@ export const AdminDashboard: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* GMV Sales Trend Chart */}
-        <div className="lg:col-span-2 bg-surface-container-lowest rounded-2xl border border-outline-variant/60 p-6 shadow-sm flex flex-col gap-4">
+        <div className="lg:col-span-2 bg-surface-container-lowest dark:bg-[#15131b] rounded-2xl border border-[#e8e1dd] dark:border-[#2f2b3b] p-6 shadow-sm flex flex-col gap-4">
           <div className="flex justify-between items-center">
             <h3 className="text-xs uppercase font-extrabold tracking-wider text-outline">GMV Sales Trend (Past 7 Days)</h3>
             <span className="material-symbols-outlined text-outline-variant text-[20px] cursor-pointer">more_horiz</span>
@@ -120,7 +120,7 @@ export const AdminDashboard: React.FC = () => {
         </div>
 
         {/* Logistics SLA Breakdown */}
-        <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/60 p-6 shadow-sm flex flex-col gap-6 justify-between">
+        <div className="bg-surface-container-lowest dark:bg-[#15131b] rounded-2xl border border-[#e8e1dd] dark:border-[#2f2b3b] p-6 shadow-sm flex flex-col gap-6 justify-between">
           <div>
             <h3 className="text-xs uppercase font-extrabold tracking-wider text-outline mb-4">Logistics SLA Breakdown</h3>
             <div className="flex flex-col gap-4">
@@ -163,7 +163,7 @@ export const AdminDashboard: React.FC = () => {
       </div>
 
       {/* Recent Transactions Registry */}
-      <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/60 p-6 shadow-sm">
+      <div className="bg-surface-container-lowest dark:bg-[#15131b] rounded-2xl border border-[#e8e1dd] dark:border-[#2f2b3b] p-6 shadow-sm">
         <div className="mb-4">
           <h3 className="text-xs uppercase font-extrabold tracking-wider text-outline">Recent Transactions Registry</h3>
           <p className="text-[10px] text-zinc-400 font-sans mt-0.5">Ledger audit of orders synced from checkout aggregators.</p>
