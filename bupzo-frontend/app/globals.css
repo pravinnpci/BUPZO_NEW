@@ -4,14 +4,120 @@
 
 @layer base {
   body {
-    @apply bg-[#D6CFCB] dark:bg-[#1a191e] text-[#565264] dark:text-[#f3f4f6] font-sans antialiased;
+    @apply bg-[#F5F5F5] text-gray-900 font-sans antialiased;
+  }
+  html {
+    @apply dark:bg-gray-900 dark:text-gray-100;
   }
 }
 
-.input-inset {
-  box-shadow: inset 0 2px 4px rgba(0,0,0,0.06);
-}
-
-.ai-glow {
-  box-shadow: 0 0 15px rgba(0, 122, 255, 0.15);
+@layer components {
+  .dark .card {
+    @apply bg-gray-800 border-gray-700;
+  }
+  .dark .card-header {
+    @apply bg-gray-700;
+  }
+  .dark .input {
+    @apply bg-gray-800 border-gray-600 text-gray-100;
+  }
+  .dark .input:focus {
+    @apply ring-gray-500;
+  }
+  .dark .button {
+    @apply bg-gray-700 hover:bg-gray-600 text-gray-100;
+  }
+  .dark .button-primary {
+    @apply bg-blue-600 hover:bg-blue-500 text-white;
+  }
+  .dark .label {
+    @apply text-gray-300;
+  }
+  .dark .nav-link {
+    @apply text-gray-300 hover:text-white;
+  }
+  .dark .dropdown-menu {
+    @apply bg-gray-700 border-gray-600;
+  }
+  .dark .dropdown-item {
+    @apply text-gray-200 hover:text-white;
+  }
+  .dark .alert {
+    @apply bg-gray-800 border-gray-700;
+  }
+  .dark .alert-title {
+    @apply text-gray-100;
+  }
+  .dark .alert-description {
+    @apply text-gray-300;
+  }
+  .dark .badge {
+    @apply bg-gray-700 text-gray-100;
+  }
+  .dark .table {
+    @apply border-gray-700;
+  }
+  .dark .table th {
+    @apply bg-gray-700 text-gray-200;
+  }
+  .dark .table td {
+    @apply text-gray-300;
+  }
+  .dark .table-striped tbody tr:nth-of-type(odd) {
+    @apply bg-gray-800;
+  }
+  .dark .table-striped tbody tr:nth-of-type(even) {
+    @apply bg-gray-900;
+  }
+  .dark .modal {
+    @apply bg-gray-800 border-gray-700;
+  }
+  .dark .modal-content {
+    @apply bg-gray-900 text-gray-100;
+  }
+  .dark .modal-header {
+    @apply bg-gray-700 text-gray-100;
+  }
+  .dark .modal-footer {
+    @apply bg-gray-700 text-gray-100;
+  }
+  .dark .breadcrumb {
+    @apply text-gray-300;
+  }
+  .dark .breadcrumb a {
+    @apply text-gray-400 hover:text-gray-300;
+  }
+  .dark .breadcrumb a:hover {
+    @apply text-gray-300;
+  }
+  .dark .breadcrumb .active {
+    @apply text-gray-100;
+  }
+  .dark .pagination {
+    @apply text-gray-300;
+  }
+  .dark .pagination a {
+    @apply text-gray-400 hover:text-gray-300;
+  }
+  .dark .pagination .active {
+    @apply bg-gray-700 text-gray-100;
+  }
+  .dark .pagination .disabled {
+    @apply text-gray-500;
+  }
+  .dark .pagination .disabled:hover {
+    @apply text-gray-500;
+  }
+  .dark .pagination .icon {
+    @apply text-gray-400;
+  }
+  .dark .pagination .icon:hover {
+    @apply text-gray-300;
+  }
+  .dark .pagination .icon:disabled {
+    @apply text-gray-500;
+  }
+  .dark .pagination .icon:active {
+    @apply text-gray-300;
+  }
 }

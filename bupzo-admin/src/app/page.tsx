@@ -211,13 +211,15 @@ export default function AdminMainPage() {
               tier: u.is_premium ? 'Premium' : 'Normal',
               status: 'Active',
               risk: parseFloat(u.wallet_balance) > 4000 ? 'Medium' : 'Low',
-              isSeller: sellersData.some((s: any) => s.user_id === u.id)
+              isSeller: u.is_seller === true,
+              isAdmin: u.is_admin === true,
             })));
           }
         }
       } catch (e) {
         console.warn("Failed to fetch users:", e);
       }
+
 
       try {
         const payoutsResp = await fetch(`${API_URL}/api/payouts/`);
@@ -363,12 +365,15 @@ export default function AdminMainPage() {
           const usersData = await usersResp.json();
           setUsers(usersData.map((u: any) => ({
             id: u.id,
+            name: u.name || 'Bupzo Patron',
             phone: u.phone,
             email: u.email || 'N/A',
             wallet: u.wallet_balance,
             tier: u.is_premium ? 'Premium' : 'Normal',
             status: 'Active',
-            risk: parseFloat(u.wallet_balance) > 4000 ? 'Medium' : 'Low'
+            risk: parseFloat(u.wallet_balance) > 4000 ? 'Medium' : 'Low',
+            isSeller: u.is_seller === true,
+            isAdmin: u.is_admin === true,
           })));
         }
 
@@ -695,7 +700,9 @@ export default function AdminMainPage() {
             wallet: u.wallet_balance,
             tier: u.is_premium ? 'Premium' : 'Normal',
             status: 'Active',
-            risk: parseFloat(u.wallet_balance) > 4000 ? 'Medium' : 'Low'
+            risk: parseFloat(u.wallet_balance) > 4000 ? 'Medium' : 'Low',
+            isSeller: u.is_seller === true,
+            isAdmin: u.is_admin === true
           })));
         } else {
           // Local fallback
@@ -708,7 +715,9 @@ export default function AdminMainPage() {
               wallet: parseFloat(newUserWallet) || 0,
               tier: newUser.is_premium ? 'Premium' : 'Normal',
               status: 'Active',
-              risk: (parseFloat(newUserWallet) || 0) > 4000 ? 'Medium' : 'Low'
+              risk: (parseFloat(newUserWallet) || 0) > 4000 ? 'Medium' : 'Low',
+              isSeller: false,
+              isAdmin: false
             },
             ...prev
           ]);
@@ -738,7 +747,9 @@ export default function AdminMainPage() {
           wallet: parseFloat(newUserWallet) || 0,
           tier: newUserTier,
           status: 'Active',
-          risk: (parseFloat(newUserWallet) || 0) > 4000 ? 'Medium' : 'Low'
+          risk: (parseFloat(newUserWallet) || 0) > 4000 ? 'Medium' : 'Low',
+          isSeller: false,
+          isAdmin: false
         },
         ...prev
       ]);
@@ -1230,7 +1241,7 @@ export default function AdminMainPage() {
       <aside className={`fixed inset-y-0 left-0 ${isSidebarReduced ? 'md:w-20' : 'md:w-[280px]'} w-[280px] z-50 shadow-lg bg-surface flex flex-col h-full py-6 px-4 border-r border-outline-variant transition-all duration-300 ease-in-out transform ${isAdminSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:static`}>
         <div className="flex items-center justify-between mb-8 px-2">
           <h2 className="text-xl font-extrabold text-primary tracking-tight">
-            {isSidebarReduced ? 'PHX' : 'PHOENIX ADMIN'}
+            {isSidebarReduced ? 'BUP' : 'BUPZO ADMIN'}
           </h2>
           <button 
             onClick={() => setIsAdminSidebarOpen(false)}
@@ -1505,7 +1516,10 @@ export default function AdminMainPage() {
               onDeleteSeller={handleDeleteSeller}
               onUpdateSeller={handleUpdateSeller}
               onCreateSeller={handleCreateSeller}
-                {/* TAB 4: WALLLETS & AUDITS */}
+            />
+          )}
+
+          {/* TAB 4: WALLLETS & AUDITS */}
           {activeTab === 'financials' && (
             <div className="space-y-6">
               {/* Upper row: Grid with Manual Override (col-span-2) and Payouts Queue (col-span-1) */}
@@ -1664,9 +1678,6 @@ export default function AdminMainPage() {
                     </tbody>
                   </table>
                 </div>
-              </div>
-            </div>
-          )}>
               </div>
             </div>
           )}

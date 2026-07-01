@@ -24,16 +24,9 @@ export default function Home() {
   const [kycStatus, setKycStatus] = useState<'Pending' | 'Uploaded' | 'Approved'>('Pending');
   const [loading, setLoading] = useState(true);
 
-  // Mock Orders and Disputes for Seller Operations
-  const [orders, setOrders] = useState([
-    { id: "BUP-99283", customer: "Ravi K.", product: "Nagore Ghee Halwa", quantity: 2, total: 598, status: "Pending", date: "2026-06-27" },
-    { id: "BUP-99280", customer: "Meera S.", product: "Handcrafted Ceramic Mug", quantity: 1, total: 399, status: "Processing", date: "2026-06-26" },
-    { id: "BUP-99275", customer: "Anitha P.", product: "Premium Dry Fruit Combo", quantity: 1, total: 799, status: "Dispatched", date: "2026-06-25" },
-    { id: "BUP-99270", customer: "Karthik G.", product: "Educational Robot Toy", quantity: 1, total: 1299, status: "Delivered", date: "2026-06-24" }
-  ]);
-  const [disputes, setDisputes] = useState([
-    { id: "DISP-5421", orderId: "BUP-99280", customer: "Meera S.", reason: "Slight crack on mug handle", status: "Open", date: "2026-06-27" }
-  ]);
+  // Real Orders and Disputes for Seller Operations
+  const [orders, setOrders] = useState<any[]>([]);
+  const [disputes, setDisputes] = useState<any[]>([]);
 
   // Form States for adding product
   const [newProductName, setNewProductName] = useState('');
@@ -813,9 +806,10 @@ export default function Home() {
             </div>
             <div className={`text-[10px] text-zinc-400 ${isSidebarReduced ? 'md:hidden' : ''}`}>© 2026 BUPZO Ecom</div>
           </aside>
+          )}
 
           {/* Customer Content */}
-          <div className="ml-0 p-4 md:p-8 flex-1 min-h-screen transition-all duration-300">
+          <div className={`${customerTab === 'home' ? 'w-full' : 'ml-0 flex-1'} p-0 md:p-0 min-h-screen transition-all duration-300 bg-brand-gray-light`}>
             {/* Mobile Navigation Header */}
             <div className="flex items-center gap-3 md:hidden mb-6 bg-white dark:bg-[#141824] p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm justify-between">
               <button 
@@ -831,34 +825,36 @@ export default function Home() {
               
               {/* TAB: HOME */}
               {customerTab === 'home' && (
-                <div className="space-y-8">
-                  {/* AI Semantic Search bar */}
-                  <form onSubmit={handleAISearch} className="flex gap-2">
-                    <div className="flex-1 relative">
-                      <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search specialties semantically... (e.g. delicious ghee wheat sweets)"
-                        className="w-full px-4 py-3 rounded-xl bg-white dark:bg-[#15131b] border border-zinc-200 dark:border-zinc-800 text-xs outline-none shadow-sm focus:border-dusty-mauve"
-                      />
-                      {isSearching && (
-                        <button
-                          type="button"
-                          onClick={handleClearSearch}
-                          className="absolute right-3 top-3 text-[10px] text-zinc-400 hover:text-charcoal font-bold"
-                        >
-                          Clear
-                        </button>
-                      )}
-                    </div>
-                    <button
-                      type="submit"
-                      className="bg-charcoal text-white px-6 py-3 rounded-xl text-xs font-bold shadow hover:bg-opacity-95 flex items-center gap-1"
-                    >
-                      AI Search
-                    </button>
-                  </form>
+                <div className="space-y-0 w-full">
+                  {/* AI Semantic Search bar (Moved out of CustomerHome for layout reasons, but styled cleanly) */}
+                  <div className="w-full bg-white border-b border-gray-200 px-4 py-4 mb-0 flex justify-center">
+                    <form onSubmit={handleAISearch} className="flex gap-2 w-full max-w-3xl">
+                      <div className="flex-1 relative">
+                        <input
+                          type="text"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          placeholder="Search semantically using AI... (e.g. durable comfortable shoes)"
+                          className="w-full px-4 py-3 rounded-l border border-gray-300 text-sm outline-none shadow-sm focus:border-brand-blue"
+                        />
+                        {isSearching && (
+                          <button
+                            type="button"
+                            onClick={handleClearSearch}
+                            className="absolute right-3 top-3 text-[10px] text-gray-400 hover:text-charcoal font-bold"
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
+                      <button
+                        type="submit"
+                        className="bg-brand-yellow text-brand-blue px-6 py-3 rounded-r text-sm font-bold shadow hover:bg-yellow-500 flex items-center gap-1"
+                      >
+                        AI Search
+                      </button>
+                    </form>
+                  </div>
 
                   {loading ? (
                     <div className="text-center py-12 text-zinc-400 font-medium">Loading catalog items...</div>

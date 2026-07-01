@@ -85,7 +85,7 @@ CREATE TABLE IF NOT EXISTS wallet_transactions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
     amount NUMERIC(12, 2) NOT NULL, -- Positive for credits, negative for debits
-    type VARCHAR(30) CHECK (type IN ('REFERRAL', 'PURCHASE', 'TOPUP', 'REFUND', 'ADMIN_ADJUSTMENT')) NOT NULL,
+    type VARCHAR(30) CHECK (type IN ('REFERRAL', 'PURCHASE', 'TOPUP', 'REFUND', 'ADMIN_ADJUSTMENT', 'ADMIN_REFUND')) NOT NULL,
     description TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
@@ -164,6 +164,8 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     user_id UUID REFERENCES users(id) ON DELETE SET NULL, -- Admin or User executing action
     action VARCHAR(255) NOT NULL,
     details JSONB DEFAULT '{}'::jsonb NOT NULL,
+    ip_address VARCHAR(45),
+    user_agent TEXT,
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 

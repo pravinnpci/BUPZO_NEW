@@ -217,6 +217,8 @@ class UserCreate(BaseModel):
     referred_by: Optional[UUID] = None
     privacy_accepted: bool = False
 
+ADMIN_PHONES = ['+919876543210', '9876543210']
+
 class UserResponse(BaseModel):
     id: UUID
     name: Optional[str] = None
@@ -227,6 +229,8 @@ class UserResponse(BaseModel):
     wallet_balance: float
     privacy_accepted: bool
     created_at: datetime
+    is_seller: bool = False
+    is_admin: bool = False
 
     class Config:
         from_attributes = True
@@ -540,11 +544,21 @@ async def create_user(user: UserCreate):
 @app.get("/api/users/", response_model=List[UserResponse])
 async def read_users():
     query = """
-    SELECT id, name, phone, email, is_premium, signup_platform, wallet_balance, privacy_accepted, created_at
-    FROM users
+    SELECT
+        u.id, u.name, u.phone, u.email, u.is_premium, u.signup_platform,
+        u.wallet_balance, u.privacy_accepted, u.created_at,
+        CASE WHEN s.id IS NOT NULL THEN TRUE ELSE FALSE END AS is_seller
+    FROM users u
+    LEFT JOIN sellers s ON s.user_id = u.id
+    ORDER BY u.created_at DESC
     """
-    results = await execute_query(query)
-    return results
+    rows = await execute_query(query)
+    result = []
+    for row in rows:
+        d = dict(row)
+        d['is_admin'] = d.get('phone', '') in ADMIN_PHONES
+        result.append(d)
+    return result
 
 @app.put("/api/users/{user_id}", response_model=UserResponse)
 async def update_user(user_id: UUID, payload: UserUpdate):
@@ -1284,14 +1298,32 @@ async def reject_seller(seller_id: UUID):
 @app.put("/api/sellers/{seller_id}")
 async def update_seller(seller_id: UUID, business_name: str, commission_rate: float, status: str):
     query = """
-    UPDATE sellers 
-    SET business_name = $1, commission_rate = $2, status = $3, updated_at = NOW() 
-    WHERE id = $4 
+    UPDATE sellers
+    SET business_name = $1, commission_rate = $2, status = $3, updated_at = NOW()
+    WHERE id = $4
     RETURNING id, user_id, business_name, commission_rate, status, created_at, updated_at
     """
     res = await execute_query_one(query, business_name, commission_rate, status, seller_id)
     if not res:
         raise HTTPException(status_code=404, detail="Seller not found")
+
+    # Send notification for commission rate updates
+    if commission_rate != 10.0:  # Default rate is 10.0
+        async with pool.acquire() as conn:
+            seller_info = await conn.fetchrow("SELECT business_name FROM sellers WHERE id = $1", seller_id)
+            biz_name = seller_info['business_name'] if seller_info else "A Seller"
+            await conn.execute(
+                """
+                INSERT INTO notifications (id, title, body, target_tab, read, created_at)
+                VALUES ($1, $2, $3, $4, FALSE, NOW())
+                """,
+                uuid4(),
+                "Commission Rate Updated",
+                f"Seller '{biz_name}' updated commission rate to {commission_rate}%.",
+                "merchants"
+            )
+        await clear_cache_keys("cache:notifications")
+
     return {
         "id": res['id'],
         "user_id": res['user_id'],

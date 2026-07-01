@@ -10,6 +10,7 @@ interface User {
   status: string;
   risk: string;
   isSeller?: boolean;
+  isAdmin?: boolean;
 }
 
 interface AdminUsersProps {
@@ -51,8 +52,8 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
 
   const sortedUsers = [...filteredUsers].sort((a, b) => {
     if (!sortKey) return 0;
-    let aVal = a[sortKey];
-    let bVal = b[sortKey];
+    let aVal: any = a[sortKey];
+    let bVal: any = b[sortKey];
 
     if (sortKey === 'wallet') {
       aVal = Number(aVal) || 0;
@@ -60,6 +61,9 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
     } else if (sortKey === 'isSeller') {
       aVal = a.isSeller ? 1 : 0;
       bVal = b.isSeller ? 1 : 0;
+    } else if (sortKey === 'isAdmin') {
+      aVal = a.isAdmin ? 1 : 0;
+      bVal = b.isAdmin ? 1 : 0;
     } else {
       aVal = String(aVal || '').toLowerCase();
       bVal = String(bVal || '').toLowerCase();
@@ -73,6 +77,29 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
   const SortIndicator = ({ k }: { k: keyof User }) => {
     if (sortKey !== k) return <span className="ml-1 text-zinc-400 text-[10px] select-none">⇅</span>;
     return sortOrder === 'asc' ? <span className="ml-1 text-primary text-[10px] select-none">▲</span> : <span className="ml-1 text-primary text-[10px] select-none">▼</span>;
+  };
+
+  // Derive role label + style
+  const getRoleBadge = (u: User) => {
+    if (u.isAdmin) {
+      return (
+        <span className="px-2 py-0.5 rounded font-bold bg-purple-100/20 text-purple-400 border border-purple-500/30">
+          Admin
+        </span>
+      );
+    }
+    if (u.isSeller) {
+      return (
+        <span className="px-2 py-0.5 rounded font-bold bg-amber-100/10 text-amber-500 border border-amber-500/30">
+          Seller
+        </span>
+      );
+    }
+    return (
+      <span className="px-2 py-0.5 rounded font-bold bg-zinc-100/10 text-zinc-400 dark:text-zinc-500">
+        Customer
+      </span>
+    );
   };
 
   return (
@@ -104,7 +131,7 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
 
       <div className="bg-white dark:bg-[#15131b] p-6 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b]">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs min-w-[800px]">
+          <table className="w-full text-left text-xs min-w-[900px]">
             <thead>
               <tr className="border-b border-zinc-200 dark:border-zinc-700 text-zinc-400 select-none">
                 <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('id')}>User ID <SortIndicator k="id" /></th>
@@ -113,24 +140,32 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
                 <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('email')}>Email <SortIndicator k="email" /></th>
                 <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('wallet')}>Wallet <SortIndicator k="wallet" /></th>
                 <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('tier')}>Tier <SortIndicator k="tier" /></th>
-                 <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('status')}>Status <SortIndicator k="status" /></th>
-                <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('isSeller')}>Merchant <SortIndicator k="isSeller" /></th>
+                <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('status')}>Status <SortIndicator k="status" /></th>
+                <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('isSeller')}>Role <SortIndicator k="isSeller" /></th>
+                <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('isSeller')}>Seller <SortIndicator k="isSeller" /></th>
                 <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('risk')}>Risk <SortIndicator k="risk" /></th>
                 <th className="py-2.5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {sortedUsers.map(u => (
-                <tr key={u.id} className="border-b border-zinc-100 dark:border-zinc-800">
+                <tr key={u.id} className="border-b border-zinc-100 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
                   <td className="py-3 font-mono">{u.id ? `${u.id.substring(0, 8)}...` : ''}</td>
                   <td className="py-3 font-semibold text-[#3874ff]">{u.name || 'Bupzo Patron'}</td>
                   <td className="py-3">{u.phone}</td>
                   <td className="py-3">{u.email}</td>
                   <td className="py-3 font-mono font-bold">₹{u.wallet}</td>
                   <td className="py-3">{u.tier}</td>
-                  <td className="py-3">{u.status}</td>
                   <td className="py-3">
-                    <span className={`px-2 py-0.5 rounded font-bold ${u.isSeller ? 'bg-amber-100/10 text-amber-500' : 'bg-zinc-100/10 text-zinc-400 dark:text-zinc-500'}`}>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${u.status === 'Active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700'}`}>
+                      {u.status}
+                    </span>
+                  </td>
+                  <td className="py-3">
+                    {getRoleBadge(u)}
+                  </td>
+                  <td className="py-3">
+                    <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${u.isSeller ? 'bg-amber-100/10 text-amber-500' : 'bg-zinc-100/10 text-zinc-400 dark:text-zinc-500'}`}>
                       {u.isSeller ? 'Yes' : 'No'}
                     </span>
                   </td>
@@ -163,7 +198,7 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
               ))}
               {sortedUsers.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="py-8 text-center text-zinc-400">No users found.</td>
+                  <td colSpan={11} className="py-8 text-center text-zinc-400">No users found.</td>
                 </tr>
               )}
             </tbody>
