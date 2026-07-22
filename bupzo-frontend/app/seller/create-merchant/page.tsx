@@ -20,8 +20,10 @@ export default function CreateMerchant() {
     setIsLoading(true);
     setNotification(null);
 
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+
     try {
-      const response = await fetch("http://localhost:8004/api/users/", {
+      const response = await fetch(`${API_BASE_URL}/api/users/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

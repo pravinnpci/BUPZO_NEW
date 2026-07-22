@@ -1,242 +1,221 @@
--- Enable Required PostgreSQL Extensions
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "vector"; -- pgvector for semantic search
-
--- 1. USERS TABLE
-CREATE TABLE IF NOT EXISTS users (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    phone VARCHAR(20) UNIQUE NOT NULL,
-    email VARCHAR(255) UNIQUE,
-    is_premium BOOLEAN DEFAULT FALSE NOT NULL,
-    signup_platform VARCHAR(10) CHECK (signup_platform IN ('WEB', 'APP')) NOT NULL,
-    referred_by UUID REFERENCES users(id) ON DELETE SET NULL,
-    wallet_balance NUMERIC(12, 2) DEFAULT 0.00 CHECK (wallet_balance >= 0.00) NOT NULL,
-    privacy_accepted BOOLEAN DEFAULT FALSE NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+-- CreateTable users
+CREATE TABLE "users" (
+    "id" SERIAL PRIMARY KEY,
+    "phone" VARCHAR(20) UNIQUE NOT NULL,
+    "email" VARCHAR(255) UNIQUE,
+    "is_premium" BOOLEAN NOT NULL DEFAULT FALSE,
+    "signup_platform" VARCHAR(50) NOT NULL, -- WEB/APP
+    "referred_by" INTEGER,
+    "wallet_balance" DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+    "privacy_accepted" BOOLEAN NOT NULL DEFAULT FALSE,
+    "created_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY ("referred_by") REFERENCES "users"("id")
 );
 
--- Index for phone lookups during login/OTP
-CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);
-
--- 2. CATEGORIES TABLE
-CREATE TABLE IF NOT EXISTS categories (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name VARCHAR(100) UNIQUE NOT NULL,
-    description VARCHAR(255),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+-- CreateTable categories
+CREATE TABLE "categories" (
+    "id" SERIAL PRIMARY KEY,
+    "name" VARCHAR(255) UNIQUE NOT NULL
 );
 
--- 3. SELLERS TABLE
-CREATE TABLE IF NOT EXISTS sellers (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE UNIQUE NOT NULL,
-    business_name VARCHAR(255) UNIQUE NOT NULL,
-    commission_rate NUMERIC(5, 2) DEFAULT 10.00 CHECK (commission_rate >= 0.00 AND commission_rate <= 100.00) NOT NULL,
-    status VARCHAR(20) CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED')) DEFAULT 'PENDING' NOT NULL,
-    kyc_details JSONB DEFAULT '{}'::jsonb NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+-- CreateTable sellers
+CREATE TABLE "sellers" (
+    "id" SERIAL PRIMARY KEY,
+    "user_id" INTEGER UNIQUE NOT NULL,
+    "business_name" VARCHAR(255) NOT NULL,
+    "commission_rate" DECIMAL(5, 2) NOT NULL,
+    "status" VARCHAR(50) NOT NULL DEFAULT 'PENDING', -- PENDING/APPROVED/REJECTED
+    "kyc_details" JSONB,
+    "created_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY ("user_id") REFERENCES "users"("id")
 );
 
--- 4. PRODUCTS TABLE
-CREATE TABLE IF NOT EXISTS products (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name VARCHAR(255) NOT NULL,
-    category_id UUID REFERENCES categories(id) ON DELETE RESTRICT NOT NULL,
-    price NUMERIC(12, 2) NOT NULL CHECK (price >= 0.00),
-    weight_grams NUMERIC(10, 2) NOT NULL CHECK (weight_grams > 0.00),
-    image_url VARCHAR(1024),
-    is_combo BOOLEAN DEFAULT FALSE NOT NULL,
-    stock_quantity INT DEFAULT 0 CHECK (stock_quantity >= 0) NOT NULL,
-    seller_id UUID REFERENCES sellers(id) ON DELETE CASCADE NOT NULL,
-    description TEXT,
-    embedding VECTOR(1536), -- Vector dimensions matching standard models (e.g. text-embedding-3-small)
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+-- CreateTable products
+CREATE TABLE "products" (
+    "id" SERIAL PRIMARY KEY,
+    "name" VARCHAR(255) NOT NULL,
+    "category_id" INTEGER NOT NULL,
+    "price" DECIMAL(10, 2) NOT NULL,
+    "weight_grams" INTEGER NOT NULL,
+    "image_url" TEXT, -- S3 link
+    "is_combo" BOOLEAN NOT NULL DEFAULT FALSE,
+    "stock_quantity" INTEGER NOT NULL DEFAULT 0,
+    "seller_id" INTEGER NOT NULL,
+    "created_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY ("category_id") REFERENCES "categories"("id"),
+    FOREIGN KEY ("seller_id") REFERENCES "sellers"("id")
 );
 
--- Index for vector similarity searches
-CREATE INDEX IF NOT EXISTS idx_products_embedding ON products USING hnsw (embedding vector_cosine_ops);
-
--- 5. ORDERS TABLE
-CREATE TABLE IF NOT EXISTS orders (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id) ON DELETE RESTRICT NOT NULL,
-    seller_id UUID REFERENCES sellers(id) ON DELETE RESTRICT NOT NULL,
-    total_amount NUMERIC(12, 2) NOT NULL CHECK (total_amount >= 0.00),
-    status VARCHAR(30) CHECK (status IN ('pending', 'paid', 'failed', 'processing', 'shipped', 'delivered', 'cancelled', 'disputed')) DEFAULT 'pending' NOT NULL,
-    tracking_id VARCHAR(100),
-    order_source VARCHAR(10) CHECK (order_source IN ('WEB', 'APP')) NOT NULL,
-    shipping_partner VARCHAR(50),
-    payment_gateway VARCHAR(50),
-    trust_donation_amount NUMERIC(8, 2) DEFAULT 0.00 CHECK (trust_donation_amount >= 0.00) NOT NULL,
-    currency VARCHAR(10) DEFAULT 'ZAR' NOT NULL, -- Stitch gateway standard
-    exchange_rate NUMERIC(12, 6) DEFAULT 1.000000 NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+-- CreateTable orders
+CREATE TABLE "orders" (
+    "id" SERIAL PRIMARY KEY,
+    "user_id" INTEGER NOT NULL,
+    "seller_id" INTEGER NOT NULL,
+    "total_amount" DECIMAL(10, 2) NOT NULL,
+    "status" VARCHAR(50) NOT NULL,
+    "tracking_id" VARCHAR(255),
+    "order_source" VARCHAR(50) NOT NULL, -- WEB/APP
+    "shipping_partner" VARCHAR(100),
+    "payment_gateway" VARCHAR(100),
+    "trust_donation_amount" DECIMAL(10, 2) DEFAULT 0.00,
+    "currency" VARCHAR(10) NOT NULL DEFAULT 'INR',
+    "exchange_rate" DECIMAL(10, 4) DEFAULT 1.0000,
+    "created_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY ("user_id") REFERENCES "users"("id"),
+    FOREIGN KEY ("seller_id") REFERENCES "sellers"("id")
 );
 
-CREATE INDEX IF NOT EXISTS idx_orders_user_id ON orders(user_id);
-CREATE INDEX IF NOT EXISTS idx_orders_seller_id ON orders(seller_id);
-
--- 6. WALLET TRANSACTIONS TABLE
-CREATE TABLE IF NOT EXISTS wallet_transactions (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
-    amount NUMERIC(12, 2) NOT NULL, -- Positive for credits, negative for debits
-    type VARCHAR(30) CHECK (type IN ('REFERRAL', 'PURCHASE', 'TOPUP', 'REFUND', 'ADMIN_ADJUSTMENT', 'ADMIN_REFUND')) NOT NULL,
-    description TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+-- CreateTable wallet_transactions
+CREATE TABLE "wallet_transactions" (
+    "id" SERIAL PRIMARY KEY,
+    "user_id" INTEGER NOT NULL,
+    "amount" DECIMAL(10, 2) NOT NULL,
+    "type" VARCHAR(50) NOT NULL, -- REFERRAL, PURCHASE, TOPUP, REFUND, ADMIN_ADJUSTMENT
+    "description" TEXT,
+    "transaction_date" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY ("user_id") REFERENCES "users"("id")
 );
 
--- 7. PAYMENT LOGS TABLE
-CREATE TABLE IF NOT EXISTS payment_logs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    order_id UUID REFERENCES orders(id) ON DELETE CASCADE NOT NULL,
-    gateway_name VARCHAR(50) NOT NULL,
-    amount NUMERIC(12, 2) NOT NULL,
-    status VARCHAR(50) NOT NULL,
-    transaction_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+-- CreateTable payment_logs
+CREATE TABLE "payment_logs" (
+    "id" SERIAL PRIMARY KEY,
+    "order_id" INTEGER NOT NULL,
+    "gateway_name" VARCHAR(100) NOT NULL,
+    "amount" DECIMAL(10, 2) NOT NULL,
+    "status" VARCHAR(50) NOT NULL,
+    "transaction_date" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY ("order_id") REFERENCES "orders"("id")
 );
 
--- 8. SHIPPING LOGS TABLE
-CREATE TABLE IF NOT EXISTS shipping_logs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    order_id UUID REFERENCES orders(id) ON DELETE CASCADE NOT NULL,
-    courier_partner VARCHAR(50) NOT NULL,
-    shipping_cost NUMERIC(12, 2) NOT NULL CHECK (shipping_cost >= 0.00),
-    delivery_status VARCHAR(50) NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+-- CreateTable shipping_logs
+CREATE TABLE "shipping_logs" (
+    "id" SERIAL PRIMARY KEY,
+    "order_id" INTEGER NOT NULL,
+    "courier_partner" VARCHAR(100) NOT NULL,
+    "shipping_cost" DECIMAL(10, 2) NOT NULL,
+    "delivery_status" VARCHAR(50) NOT NULL,
+    "created_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY ("order_id") REFERENCES "orders"("id")
 );
 
--- 9. REVIEWS TABLE
-CREATE TABLE IF NOT EXISTS reviews (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    product_id UUID REFERENCES products(id) ON DELETE CASCADE NOT NULL,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
-    rating INT CHECK (rating >= 1 AND rating <= 5) NOT NULL,
-    comment TEXT,
-    image_urls JSONB DEFAULT '[]'::jsonb NOT NULL, -- Array of S3/MinIO links
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    UNIQUE (product_id, user_id) -- Allows only one review per user per product
+-- Additional tables from requirements (simplified for boilerplate)
+-- reviews, banners, system_alerts, coupons, audit_logs, seller_products, seller_payouts, referrals, product_views, spin_win_rewards, wishlist, flash_sales, admin_settings
+
+CREATE TABLE "reviews" (
+    "id" SERIAL PRIMARY KEY,
+    "product_id" INTEGER NOT NULL,
+    "user_id" INTEGER NOT NULL,
+    "rating" INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    "comment" TEXT,
+    "image_urls" TEXT[], -- Array of S3 links
+    "created_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY ("product_id") REFERENCES "products"("id"),
+    FOREIGN KEY ("user_id") REFERENCES "users"("id")
 );
 
--- 10. BANNERS TABLE
-CREATE TABLE IF NOT EXISTS banners (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    image_url VARCHAR(1024) NOT NULL,
-    start_date TIMESTAMP WITH TIME ZONE NOT NULL,
-    end_date TIMESTAMP WITH TIME ZONE NOT NULL,
-    link_url VARCHAR(1024),
-    is_active BOOLEAN DEFAULT TRUE NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    CONSTRAINT check_banner_dates CHECK (start_date <= end_date)
+CREATE TABLE "banners" (
+    "id" SERIAL PRIMARY KEY,
+    "image_url" TEXT NOT NULL, -- S3
+    "start_date" TIMESTAMP WITH TIME ZONE NOT NULL,
+    "end_date" TIMESTAMP WITH TIME ZONE NOT NULL,
+    "link_url" TEXT,
+    "is_active" BOOLEAN NOT NULL DEFAULT TRUE
 );
 
--- 11. SYSTEM ALERTS TABLE
-CREATE TABLE IF NOT EXISTS system_alerts (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    message TEXT NOT NULL,
-    is_active BOOLEAN DEFAULT TRUE NOT NULL,
-    start_date TIMESTAMP WITH TIME ZONE NOT NULL,
-    end_date TIMESTAMP WITH TIME ZONE NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    CONSTRAINT check_alert_dates CHECK (start_date <= end_date)
+CREATE TABLE "system_alerts" (
+    "id" SERIAL PRIMARY KEY,
+    "message" TEXT NOT NULL,
+    "is_active" BOOLEAN NOT NULL DEFAULT TRUE,
+    "start_date" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    "end_date" TIMESTAMP WITH TIME ZONE
 );
 
--- 12. COUPONS TABLE
-CREATE TABLE IF NOT EXISTS coupons (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    code VARCHAR(50) UNIQUE NOT NULL,
-    discount_percent NUMERIC(5, 2) NOT NULL CHECK (discount_percent > 0.00 AND discount_percent <= 100.00),
-    is_premium_only BOOLEAN DEFAULT FALSE NOT NULL,
-    expiry_date TIMESTAMP WITH TIME ZONE NOT NULL,
-    usage_limit INT CHECK (usage_limit >= 0), -- NULL or -1 can represent unlimited
-    min_order_value NUMERIC(12, 2) DEFAULT 0.00 CHECK (min_order_value >= 0.00) NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+CREATE TABLE "coupons" (
+    "id" SERIAL PRIMARY KEY,
+    "code" VARCHAR(50) UNIQUE NOT NULL,
+    "discount_percent" DECIMAL(5, 2) NOT NULL,
+    "is_premium_only" BOOLEAN NOT NULL DEFAULT FALSE,
+    "expiry_date" TIMESTAMP WITH TIME ZONE NOT NULL,
+    "usage_limit" INTEGER,
+    "min_order_value" DECIMAL(10, 2)
 );
 
--- 13. AUDIT LOGS TABLE
-CREATE TABLE IF NOT EXISTS audit_logs (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id) ON DELETE SET NULL, -- Admin or User executing action
-    action VARCHAR(255) NOT NULL,
-    details JSONB DEFAULT '{}'::jsonb NOT NULL,
-    ip_address VARCHAR(45),
-    user_agent TEXT,
-    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+CREATE TABLE "audit_logs" (
+    "id" SERIAL PRIMARY KEY,
+    "user_id" INTEGER,
+    "action" VARCHAR(255) NOT NULL,
+    "details" JSONB,
+    "timestamp" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 14. SELLER PAYOUTS TABLE
-CREATE TABLE IF NOT EXISTS seller_payouts (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    seller_id UUID REFERENCES sellers(id) ON DELETE CASCADE NOT NULL,
-    amount NUMERIC(12, 2) NOT NULL CHECK (amount > 0.00),
-    status VARCHAR(30) CHECK (status IN ('PENDING', 'PROCESSED', 'FAILED')) DEFAULT 'PENDING' NOT NULL,
-    request_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    processed_date TIMESTAMP WITH TIME ZONE
+-- Junction table for many-to-many if a product can have multiple sellers, or if products are unique to sellers.
+-- The current 'products' table design implies a product belongs to a single seller.
+-- If a product can be sold by multiple sellers with different prices/stock, a 'seller_products' table would be needed.
+-- For now, sticking to the 'products' table having a direct seller_id.
+
+CREATE TABLE "seller_payouts" (
+    "id" SERIAL PRIMARY KEY,
+    "seller_id" INTEGER NOT NULL,
+    "amount" DECIMAL(10, 2) NOT NULL,
+    "status" VARCHAR(50) NOT NULL, -- PENDING, PROCESSED, FAILED
+    "request_date" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    "processed_date" TIMESTAMP WITH TIME ZONE,
+    FOREIGN KEY ("seller_id") REFERENCES "sellers"("id")
 );
 
--- 15. REFERRALS TABLE
-CREATE TABLE IF NOT EXISTS referrals (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    referrer_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
-    referee_id UUID REFERENCES users(id) ON DELETE CASCADE UNIQUE NOT NULL,
-    bonus_amount NUMERIC(12, 2) NOT NULL CHECK (bonus_amount >= 0.00),
-    status VARCHAR(30) CHECK (status IN ('PENDING', 'CREDITED')) DEFAULT 'PENDING' NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+CREATE TABLE "referrals" (
+    "id" SERIAL PRIMARY KEY,
+    "referrer_id" INTEGER NOT NULL,
+    "referee_id" INTEGER UNIQUE NOT NULL,
+    "bonus_amount" DECIMAL(10, 2) NOT NULL,
+    "status" VARCHAR(50) NOT NULL, -- PENDING, CLAIMED
+    "created_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY ("referrer_id") REFERENCES "users"("id"),
+    FOREIGN KEY ("referee_id") REFERENCES "users"("id")
 );
 
--- 16. PRODUCT VIEWS TABLE
-CREATE TABLE IF NOT EXISTS product_views (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    product_id UUID REFERENCES products(id) ON DELETE CASCADE NOT NULL,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE, -- Optional for guests
-    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+CREATE TABLE "product_views" (
+    "id" SERIAL PRIMARY KEY,
+    "product_id" INTEGER NOT NULL,
+    "user_id" INTEGER, -- Can be NULL for anonymous views
+    "timestamp" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY ("product_id") REFERENCES "products"("id"),
+    FOREIGN KEY ("user_id") REFERENCES "users"("id")
 );
 
--- 17. SPIN WIN REWARDS TABLE
-CREATE TABLE IF NOT EXISTS spin_win_rewards (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
-    reward_type VARCHAR(50) NOT NULL, -- e.g., 'CASHBACK', 'COUPON', 'SHIPPING_DISCOUNT'
-    reward_value NUMERIC(12, 2) NOT NULL,
-    claimed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
+CREATE TABLE "spin_win_rewards" (
+    "id" SERIAL PRIMARY KEY,
+    "user_id" INTEGER NOT NULL,
+    "reward_type" VARCHAR(100) NOT NULL, -- e.g., 'DISCOUNT', 'WALLET_CREDIT', 'FREE_SHIPPING'
+    "reward_value" TEXT NOT NULL, -- e.g., '10%', '50.00', 'true'
+    "claimed_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY ("user_id") REFERENCES "users"("id")
 );
 
--- 18. WISHLIST TABLE
-CREATE TABLE IF NOT EXISTS wishlist (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
-    product_id UUID REFERENCES products(id) ON DELETE CASCADE NOT NULL,
-    added_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    UNIQUE (user_id, product_id)
+CREATE TABLE "wishlist" (
+    "id" SERIAL PRIMARY KEY,
+    "user_id" INTEGER NOT NULL,
+    "product_id" INTEGER NOT NULL,
+    "added_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE ("user_id", "product_id"), -- A user can only add a product once to wishlist
+    FOREIGN KEY ("user_id") REFERENCES "users"("id"),
+    FOREIGN KEY ("product_id") REFERENCES "products"("id")
 );
 
--- 19. FLASH SALES TABLE
-CREATE TABLE IF NOT EXISTS flash_sales (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    product_id UUID REFERENCES products(id) ON DELETE CASCADE NOT NULL,
-    discount_percent NUMERIC(5, 2) NOT NULL CHECK (discount_percent > 0.00 AND discount_percent <= 100.00),
-    start_time TIMESTAMP WITH TIME ZONE NOT NULL,
-    end_time TIMESTAMP WITH TIME ZONE NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    CONSTRAINT check_flash_dates CHECK (start_time <= end_time)
+CREATE TABLE "flash_sales" (
+    "id" SERIAL PRIMARY KEY,
+    "product_id" INTEGER NOT NULL,
+    "discount_percent" DECIMAL(5, 2) NOT NULL,
+    "start_time" TIMESTAMP WITH TIME ZONE NOT NULL,
+    "end_time" TIMESTAMP WITH TIME ZONE NOT NULL,
+    FOREIGN KEY ("product_id") REFERENCES "products"("id")
 );
 
--- 20. ADMIN SETTINGS TABLE
-CREATE TABLE IF NOT EXISTS admin_settings (
-    key VARCHAR(100) PRIMARY KEY,
-    value JSONB NOT NULL
-);
-
--- 21. ORDER ITEMS TABLE
-CREATE TABLE IF NOT EXISTS order_items (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    order_id UUID REFERENCES orders(id) ON DELETE CASCADE NOT NULL,
-    product_id UUID REFERENCES products(id) ON DELETE RESTRICT NOT NULL,
-    quantity INT NOT NULL CHECK (quantity > 0),
-    price_at_purchase NUMERIC(12, 2) NOT NULL CHECK (price_at_purchase >= 0.00)
+CREATE TABLE "admin_settings" (
+    "key" VARCHAR(255) PRIMARY KEY,
+    "value" TEXT NOT NULL
 );

@@ -1,0 +1,42 @@
+# BUPZO - Project Requirements & Features Document
+
+## Platform Overview
+Bupzo is a comprehensive, AI-powered multi-vendor marketplace platform. It facilitates seamless interactions between Customers, Sellers, and Administrators, providing robust features for onboarding, product discovery, payments, messaging, and dispute resolution.
+
+## 1. Core Architectures
+- **Frontend Frameworks:** Next.js (React), Tailwind CSS, TypeScript, `next-themes` (Dark/Light mode support).
+- **Backend Infrastructure:** FastAPI (Python), PostgreSQL with `pgvector` for advanced AI-driven semantic searches.
+- **Database Architecture:** Optimized schema design separating Users, Products, Categories, Orders, Cart, Wishlist, Vouchers, KYC, Messages, Escrow, and Notifications.
+- **Containerization:** Fully containerized microservices via Docker (`docker-compose`).
+
+## 2. Customer Features
+- **Authentication:** Standard authentication & Firebase Auth (Google Sign-In) with user profile initialization (Phone, Address, Pincode).
+- **Product Discovery:** Advanced catalog browsing, search functionality (including AI semantic search integration), and categorization.
+- **Cart & Checkout:** Dynamic cart management, Google Maps integration for exact delivery location (latitude/longitude), and secure payments via **Stitch API**.
+- **Wishlist & Wallet:** Dedicated user wishlist, and a dynamic Bupzo Wallet system tracking top-ups, refunds, and adjustments.
+- **Customer Inbox:** Real-time messaging platform enabling customers to initiate chats with sellers or admins directly from their dashboard.
+
+## 3. Seller (Merchant) Features
+- **Seller KYC Onboarding:** Comprehensive document upload system (GST, PAN, FSSAI) with Admin approval workflows.
+- **Product Management (Seller):** Intuitive UI to create/edit products, manage stock, set pricing, and generate dynamic AI product descriptions and SEO tags.
+- **Order Fulfillment:** Live dashboard to accept, process, and update the status of customer orders.
+- **Escrow & Commissions:** Revenue is securely held in Escrow pending delivery confirmation, with automated platform commission deduction upon settlement.
+- **Dispute System:** Dedicated channel for raising and resolving disputes between sellers and customers/platform.
+
+## 4. Admin Management Console
+- **User & Merchant Auditing:** Live tables to review, search, and sort all registered users and seller accounts. Approve/Reject KYC applications in real-time.
+- **Product Oversight:** Master controls to monitor all platform listings, disable violating products, and assign merchants.
+- **Promo Vouchers Console:** Generate sitewide discount vouchers and loyalty coupons (with expiry date enforcement, minimum spend constraints, and premium-only toggles).
+- **Affiliate Engine:** Dynamic affiliate link generation pointing to specific `/product/[id]?ref=...` targets to accurately track influencer conversions.
+
+## 5. Integrations & Automation
+- **AI Integration (Gemini & Mistral):** Utilized for AI Product Studio (auto-generating descriptions) and semantic search (pgvector).
+- **Communication Pipelines:**
+  - **Email:** Transactional emails powered by Brevo.
+  - **WhatsApp:** Automated business messaging via Meta Cloud WhatsApp API.
+  - **Push Notifications:** App notifications driven by Firebase Cloud Messaging.
+- **Security:** reCAPTCHA v3 integrated for bot protection on sensitive endpoints.
+
+## Future Roadmap (Prepared)
+- Enhanced Kubernetes (K8s) deployment scripts for massive scalability.
+- Extended microservice segregation for dedicated notification/chat engines.

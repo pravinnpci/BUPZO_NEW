@@ -117,11 +117,6 @@ services:
       NEXT_PUBLIC_PORT: 3013 # Port for Next.js dev server
       NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL} # Loaded from .env
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY} # Loaded from .env
-    depends_on:
-      backend-api:
-        condition: service_started
-      mcp-server:
-        condition: service_started
     volumes:
       - ./bupzo-frontend:/app
       - /app/node_modules # Avoids re-installing node_modules inside container
@@ -140,11 +135,6 @@ services:
       NEXT_PUBLIC_PORT: 3015
       NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL} # Loaded from .env
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY} # Loaded from .env
-    depends_on:
-      backend-api:
-        condition: service_started
-      mcp-server:
-        condition: service_started
     volumes:
       - ./bupzo-admin:/app # Mount admin code
       - /app/node_modules # Avoids re-installing node_modules inside container

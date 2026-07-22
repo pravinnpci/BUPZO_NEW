@@ -7,31 +7,7 @@ import { AdminUsers } from '@/components/AdminUsers';
 import { AdminProducts } from '@/components/AdminProducts';
 import { AdminSellers } from '@/components/AdminSellers';
 
-// Mock Data
-const initialUsers = [
-  { id: "USR-10293", name: "Ravi Kumar", phone: "+919876543210", email: "ravi@gmail.com", wallet: 450, tier: "Premium", status: "Active", risk: "Low" },
-  { id: "USR-10294", name: "Anitha Pandian", phone: "+918876543210", email: "anitha@gmail.com", wallet: 50, tier: "Normal", status: "Active", risk: "Low" },
-  { id: "USR-10295", name: "Karthik Ganesan", phone: "+917876543210", email: "karthik@gmail.com", wallet: 1200, tier: "Premium", status: "Active", risk: "Medium" },
-  { id: "USR-10296", name: "Subhashini M.", phone: "+916876543210", email: "subha@gmail.com", wallet: 0, tier: "Normal", status: "Suspended", risk: "High" }
-];
-
-const initialSellers = [
-  { id: "SEL-1029", businessName: "Nagore Halwa Palace", owner: "Mohamed R.", status: "Pending KYC", commission: 8, date: "2026-06-25", rating: 4.8 },
-  { id: "SEL-8402", businessName: "ToyKingdom Pvt Ltd", owner: "Subash C.", status: "Pending KYC", commission: 10, date: "2026-06-26", rating: 4.2 },
-  { id: "SEL-5541", businessName: "Siva Ceramics & Crafts", owner: "Sivakumar P.", status: "Approved", commission: 6, date: "2026-05-12", rating: 4.9 },
-  { id: "SEL-3392", businessName: "Alpha Electronics", owner: "Arun K.", status: "Approved", commission: 9, date: "2026-06-01", rating: 3.9 }
-];
-
-const initialPayouts = [
-  { id: "PAY-9921", sellerId: "SEL-5541", amount: 4250.00, balance: 12400.50, date: "2026-06-26 14:30", status: "Pending" },
-  { id: "PAY-8832", sellerId: "SEL-3392", amount: 890.00, balance: 950.00, date: "2026-06-26 11:15", status: "Pending" }
-];
-
-const initialDisputes = [
-  { id: "DISP-10482", customer: "Meera S.", seller: "Nagore Halwa Palace", amount: 2499, risk: 82, status: "Under Review", desc: "Mismatched shipping address + high quantity order of premium Halwa." },
-  { id: "DISP-10480", customer: "Anitha P.", seller: "Siva Ceramics & Crafts", amount: 899, risk: 15, status: "Resolved", desc: "Minor crack in ceramic base, refund completed to wallet." },
-  { id: "DISP-10485", customer: "Ravi K.", seller: "Alpha Electronics", amount: 5120, risk: 65, status: "Under Review", desc: "Third transaction failure follow-up." }
-];
+// Mock Data removed
 
 export default function AdminMainPage() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -40,13 +16,14 @@ export default function AdminMainPage() {
   const [hasMounted, setHasMounted] = useState(false);
   const router = useRouter();
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+  const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+  const API_URL = rawApiUrl.split('#')[0].trim().replace(/\/$/, '');
 
-  // Data states (fallback to mock)
-  const [users, setUsers] = useState(initialUsers);
-  const [sellers, setSellers] = useState(initialSellers);
-  const [payouts, setPayouts] = useState(initialPayouts);
-  const [disputes, setDisputes] = useState(initialDisputes);
+  // Data states
+  const [users, setUsers] = useState<any[]>([]);
+  const [sellers, setSellers] = useState<any[]>([]);
+  const [payouts, setPayouts] = useState<any[]>([]);
+  const [disputes, setDisputes] = useState<any[]>([]);
   
   // Interactive adjustment state
   const [adjustId, setAdjustId] = useState('');
@@ -77,21 +54,27 @@ export default function AdminMainPage() {
   const [selectedUser, setSelectedUser] = useState<any>(null);
 
   // Forms states
+  const [newUserName, setNewUserName] = useState('');
   const [newUserPhone, setNewUserPhone] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserTier, setNewUserTier] = useState('Normal');
   const [newUserWallet, setNewUserWallet] = useState('0.00');
+  const [newUserRole, setNewUserRole] = useState('Customer');
 
   // Coupon/Voucher States
   const [coupons, setCoupons] = useState<any[]>([]);
   const [newCouponCode, setNewCouponCode] = useState('');
   const [newCouponDiscount, setNewCouponDiscount] = useState('');
   const [newCouponMinSpend, setNewCouponMinSpend] = useState('');
+  const [newCouponExpiry, setNewCouponExpiry] = useState('');
   const [voucherSearchTerm, setVoucherSearchTerm] = useState('');
   const [voucherSortKey, setVoucherSortKey] = useState<string>('');
   const [voucherSortOrder, setVoucherSortOrder] = useState<'asc' | 'desc'>('asc');
   // Wallet Transactions States
   const [walletTransactions, setWalletTransactions] = useState<any[]>([]);
+  const [walletCurrentPage, setWalletCurrentPage] = useState(1);
+  const walletItemsPerPage = 10;
   const [walletSearchTerm, setWalletSearchTerm] = useState('');
   const [walletSortKey, setWalletSortKey] = useState<string>('');
   const [walletSortOrder, setWalletSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -101,9 +84,16 @@ export default function AdminMainPage() {
   const [editWalletDesc, setEditWalletDesc] = useState('');
   const [editWalletType, setEditWalletType] = useState('REFERRAL');
 
+  // Wallet Account Edit
+  const [showWalletAccountEditModal, setShowWalletAccountEditModal] = useState(false);
+  const [selectedWalletAccountUser, setSelectedWalletAccountUser] = useState<any>(null);
+  const [newWalletBalance, setNewWalletBalance] = useState('');
+  const [walletAccountSearchTerm, setWalletAccountSearchTerm] = useState('');
   // Products & Categories States
   const [products, setProducts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
+  const [messages, setMessages] = useState<any[]>([]);
+  const [reviews, setReviews] = useState<any[]>([]);
   const [newCatName, setNewCatName] = useState('');
   const [newCatDesc, setNewCatDesc] = useState('');
   const [showEditProductModal, setShowEditProductModal] = useState(false);
@@ -121,14 +111,24 @@ export default function AdminMainPage() {
   const [editCouponDiscount, setEditCouponDiscount] = useState('');
   const [editCouponMinSpend, setEditCouponMinSpend] = useState('');
   const [editCouponIsPremiumOnly, setEditCouponIsPremiumOnly] = useState(false);
+  const [editCouponStatus, setEditCouponStatus] = useState('APPROVED');
+  const [editCouponExpiry, setEditCouponExpiry] = useState('');
 
-  const [newUserName, setNewUserName] = useState('');
   const [editUserName, setEditUserName] = useState('');
 
   const [editUserPhone, setEditUserPhone] = useState('');
   const [editUserEmail, setEditUserEmail] = useState('');
   const [editUserTier, setEditUserTier] = useState('Normal');
-  const [editUserWallet, setEditUserWallet] = useState('0.00');
+  const [settingsFilterStatus, setSettingsFilterStatus] = useState('All');
+
+  // Messages state
+  const [showAdminReplyModal, setShowAdminReplyModal] = useState(false);
+  const [adminReplyTo, setAdminReplyTo] = useState<any>(null);
+  const [adminReplyContent, setAdminReplyContent] = useState('');
+
+  // Preview states
+  const [previewWalletTx, setPreviewWalletTx] = useState<any>(null);
+  const [previewCoupon, setPreviewCoupon] = useState<any>(null);
 
   // Notifications State
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -136,6 +136,9 @@ export default function AdminMainPage() {
   const [isAdminSidebarOpen, setIsAdminSidebarOpen] = useState(false);
   const [isSidebarReduced, setIsSidebarReduced] = useState(false);
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean | null>(null);
+
+  const [previewUser, setPreviewUser] = useState<any>(null);
+  const [userToDelete, setUserToDelete] = useState<any>(null);
 
   // Set mount state
   useEffect(() => {
@@ -175,25 +178,33 @@ export default function AdminMainPage() {
     try {
       let sellersData: any[] = [];
       try {
-        const sellersResp = await fetch(`${API_URL}/api/sellers/`);
+        const sellersResp = await fetch(`${API_URL}/api/sellers/`, { cache: 'no-store' });
         if (sellersResp.ok) {
           sellersData = await sellersResp.json();
-          if (Array.isArray(sellersData) && sellersData.length > 0) {
+          if (Array.isArray(sellersData)) {
             setSellers(sellersData.map((s: any) => ({
               id: s.id,
               user_id: s.user_id,
               businessName: s.business_name,
-              owner: `Seller Account`,
+              owner: s.user_name || 'Seller Account',
+              owner_phone: s.user_phone,
+              owner_email: s.user_email,
               status: s.status === 'PENDING' ? 'Pending KYC' : s.status === 'APPROVED' ? 'Approved' : 'Rejected',
               commission: s.commission_rate,
               date: new Date(s.created_at).toLocaleDateString(),
               rating: 4.5,
               kyc_details: s.kyc_details
             })));
+          } else {
+            setSellers([]);
           }
+        } else {
+          setSellers([]);
+          console.warn(`Failed to fetch sellers: ${sellersResp.status} ${sellersResp.statusText}`);
         }
       } catch (e) {
         console.warn("Failed to fetch sellers:", e);
+        setSellers([]);
       }
 
       let usersData: any[] = [];
@@ -201,7 +212,7 @@ export default function AdminMainPage() {
         const usersResp = await fetch(`${API_URL}/api/users/`);
         if (usersResp.ok) {
           usersData = await usersResp.json();
-          if (Array.isArray(usersData) && usersData.length > 0) {
+          if (Array.isArray(usersData)) {
             setUsers(usersData.map((u: any) => ({
               id: u.id,
               name: u.name || 'Bupzo Patron',
@@ -213,11 +224,20 @@ export default function AdminMainPage() {
               risk: parseFloat(u.wallet_balance) > 4000 ? 'Medium' : 'Low',
               isSeller: u.is_seller === true,
               isAdmin: u.is_admin === true,
+              address: u.address || u.Address,
+              pincode: u.pincode || u.Pincode,
+              state: u.state || u.State,
             })));
+          } else {
+            setUsers([]);
           }
+        } else {
+          setUsers([]);
+          console.warn(`Failed to fetch users: ${usersResp.status} ${usersResp.statusText}`);
         }
       } catch (e) {
         console.warn("Failed to fetch users:", e);
+        setUsers([]);
       }
 
 
@@ -244,31 +264,44 @@ export default function AdminMainPage() {
       try {
         const couponsResp = await fetch(`${API_URL}/api/coupons/`);
         if (couponsResp.ok) {
-          couponsData = await couponsResp.json();
+          const fetchedCoupons = await couponsResp.json();
+          couponsData = Array.isArray(fetchedCoupons) ? fetchedCoupons : [];
           setCoupons(couponsData);
+        } else {
+          console.warn(`Failed to fetch coupons: ${couponsResp.status} ${couponsResp.statusText}`);
+          setCoupons([]);
         }
       } catch (e) {
         console.warn("Failed to fetch coupons:", e);
+        setCoupons([]);
       }
 
       try {
-        const productsResp = await fetch(`${API_URL}/api/products/`);
+        const productsResp = await fetch(`${API_URL}/api/products/?all=true`, { cache: 'no-store' });
         if (productsResp.ok) {
           const productsData = await productsResp.json();
-          setProducts(productsData);
+          setProducts(Array.isArray(productsData) ? productsData : []);
+        } else {
+          console.warn(`Failed to fetch products: ${productsResp.status} ${productsResp.statusText}`);
+          setProducts([]);
         }
       } catch (e) {
         console.warn("Failed to fetch products:", e);
+        setProducts([]);
       }
 
       try {
-        const categoriesResp = await fetch(`${API_URL}/api/categories/`);
+        const categoriesResp = await fetch(`${API_URL}/api/categories/`, { cache: 'no-store' });
         if (categoriesResp.ok) {
           const categoriesData = await categoriesResp.json();
-          setCategories(categoriesData);
+          setCategories(Array.isArray(categoriesData) ? categoriesData : []);
+        } else {
+          console.warn(`Failed to fetch categories: ${categoriesResp.status} ${categoriesResp.statusText}`);
+          setCategories([]);
         }
       } catch (e) {
         console.warn("Failed to fetch categories:", e);
+        setCategories([]);
       }
 
       // Fetch disputes from DB
@@ -286,7 +319,7 @@ export default function AdminMainPage() {
 
       // Fetch notifications from DB
       try {
-        const notifsResp = await fetch(`${API_URL}/api/notifications/`);
+        const notifsResp = await fetch(`${API_URL}/api/notifications/`, { cache: 'no-store' });
         if (notifsResp.ok) {
           const notifsData = await notifsResp.json();
           if (Array.isArray(notifsData)) {
@@ -308,6 +341,32 @@ export default function AdminMainPage() {
         }
       } catch (e) {
         console.warn("Failed to fetch wallet transactions:", e);
+      }
+
+      // Fetch messages
+      try {
+        const msgResp = await fetch(`${API_URL}/api/messages/`);
+        if (msgResp.ok) {
+          const msgData = await msgResp.json();
+          if (Array.isArray(msgData)) {
+            setMessages(msgData);
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to fetch messages:", e);
+      }
+
+      // Fetch reviews
+      try {
+        const revResp = await fetch(`${API_URL}/api/reviews/`);
+        if (revResp.ok) {
+          const revData = await revResp.json();
+          if (Array.isArray(revData)) {
+            setReviews(revData);
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to fetch reviews:", e);
       }
 
     } catch (err) {
@@ -415,6 +474,46 @@ export default function AdminMainPage() {
     setAdjustReason('');
   };
 
+  const handleWalletAccountEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedWalletAccountUser || !newWalletBalance) return;
+    
+    const newBal = parseFloat(newWalletBalance);
+    const currBal = parseFloat(selectedWalletAccountUser.wallet);
+    const difference = newBal - currBal;
+    
+    if (difference === 0) {
+      alert("No changes made.");
+      setShowWalletAccountEditModal(false);
+      return;
+    }
+    
+    const adjustType = difference > 0 ? 'Credit' : 'Debit';
+    const amt = Math.abs(difference);
+    
+    try {
+      const resp = await fetch(`${API_URL}/api/users/${selectedWalletAccountUser.id}/wallet/adjust`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: amt, type: adjustType, reason: 'Admin Table Edit' })
+      });
+      if (resp.ok) {
+        alert("Wallet balance updated successfully!");
+        refreshAllAdminData();
+      } else {
+        const err = await resp.json();
+        alert(`Failed to update: ${err.detail || 'Unknown error'}`);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Network error updating wallet balance.");
+    }
+    
+    setShowWalletAccountEditModal(false);
+    setSelectedWalletAccountUser(null);
+    setNewWalletBalance('');
+  };
+
   const handleAddCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCouponCode || !newCouponDiscount) {
@@ -429,8 +528,9 @@ export default function AdminMainPage() {
           code: newCouponCode,
           discount_percent: parseFloat(newCouponDiscount),
           is_premium_only: false,
-          min_order_value: parseFloat(newCouponMinSpend) || 100.0,
-          expiry_date: new Date(Date.now() + 86400000 * 30).toISOString()
+          min_order_value: parseFloat(newCouponMinSpend) || 0,
+          expiry_date: newCouponExpiry ? new Date(newCouponExpiry).toISOString() : new Date(Date.now() + 30*24*60*60*1000).toISOString(),
+          status: 'PENDING'
         })
       });
       if (resp.ok) {
@@ -493,16 +593,20 @@ export default function AdminMainPage() {
     e.preventDefault();
     if (!selectedProduct) return;
     try {
+      const productData = {
+        name: editProductName,
+        price: parseFloat(editProductPrice),
+        stock_quantity: parseInt(editProductQty),
+        description: editProductDesc,
+        image_url: editProductImage ? editProductImage.split(',')[0].trim() : null,
+        images: editProductImage ? editProductImage.split(',').map(u => u.trim()).filter(u => u) : [],
+        category_id: selectedProduct.category_id,
+        is_combo: selectedProduct.is_combo
+      };
       const resp = await fetch(`${API_URL}/api/products/${selectedProduct.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: editProductName,
-          price: parseFloat(editProductPrice),
-          stock_quantity: parseInt(editProductQty),
-          description: editProductDesc,
-          image_url: editProductImage
-        })
+        body: JSON.stringify(productData)
       });
       if (resp.ok) {
         const prod = await resp.json();
@@ -530,7 +634,9 @@ export default function AdminMainPage() {
           code: editCouponCode,
           discount_percent: parseFloat(editCouponDiscount),
           min_order_value: parseFloat(editCouponMinSpend),
-          is_premium_only: editCouponIsPremiumOnly
+          is_premium_only: editCouponIsPremiumOnly,
+          status: editCouponStatus,
+          expiry_date: editCouponExpiry ? new Date(editCouponExpiry).toISOString() : new Date(Date.now() + 30*24*60*60*1000).toISOString()
         })
       });
       if (resp.ok) {
@@ -549,29 +655,35 @@ export default function AdminMainPage() {
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, type: 'product' | 'seller') => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
     
-    const formData = new FormData();
-    formData.append('file', file);
+    let uploadedUrls: string[] = [];
     
-    try {
-      const resp = await fetch(`${API_URL}/api/upload/`, {
-        method: 'POST',
-        body: formData
-      });
-      if (resp.ok) {
-        const data = await resp.json();
-        alert("Image uploaded to MinIO successfully!");
-        if (type === 'product') {
-          setEditProductImage(data.url);
+    for (let i = 0; i < files.length; i++) {
+      const formData = new FormData();
+      formData.append('file', files[i]);
+      try {
+        const resp = await fetch(`${API_URL}/api/upload/`, {
+          method: 'POST',
+          body: formData
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          uploadedUrls.push(data.url);
         }
-      } else {
-        alert("Failed to upload image to MinIO.");
+      } catch (err) {
+        console.error("Upload error", err);
       }
-    } catch (err) {
-      console.error(err);
-      alert("Error uploading image.");
+    }
+    
+    if (uploadedUrls.length > 0) {
+      alert(`${uploadedUrls.length} image(s) uploaded to MinIO successfully!`);
+      if (type === 'product') {
+        setEditProductImage(uploadedUrls.join(','));
+      }
+    } else {
+      alert("Failed to upload images.");
     }
   };
 
@@ -669,6 +781,11 @@ export default function AdminMainPage() {
       alert("Phone number is required.");
       return;
     }
+    
+    let finalPhone = newUserPhone.trim();
+    if (/^\d{10}$/.test(finalPhone)) {
+      finalPhone = '+91' + finalPhone;
+    }
 
     try {
       const resp = await fetch(`${API_URL}/api/users/`, {
@@ -676,16 +793,49 @@ export default function AdminMainPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: newUserName || 'Bupzo Patron',
-          phone: newUserPhone,
+          phone: finalPhone,
           email: newUserEmail || null,
           is_premium: newUserTier === 'Premium',
           signup_platform: 'WEB',
-          privacy_accepted: true
+          privacy_accepted: true,
+          password: newUserPassword || null
         })
       });
 
       if (resp.ok) {
         const newUser = await resp.json();
+        
+        if (newUserRole === 'Seller') {
+          // Register as seller immediately after user creation
+          const sellerResp = await fetch(`${API_URL}/api/sellers/`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              phone: finalPhone,
+              email: newUser.email,
+              business_name: `${newUser.name}'s Store`,
+              kyc_details: { status: 'mock_verified_by_admin' }
+            })
+          });
+          
+          if (!sellerResp.ok) {
+            console.warn("Failed to register seller profile for new user");
+          }
+        }
+
+        const initialWallet = parseFloat(newUserWallet);
+        if (initialWallet > 0) {
+          await fetch(`${API_URL}/api/users/${newUser.id}/wallet/adjust`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              amount: initialWallet,
+              type: 'ADMIN_ADJUSTMENT',
+              description: 'Initial wallet balance set by admin'
+            })
+          });
+        }
+
         alert("User created successfully!");
         
         // Refresh users
@@ -701,7 +851,7 @@ export default function AdminMainPage() {
             tier: u.is_premium ? 'Premium' : 'Normal',
             status: 'Active',
             risk: parseFloat(u.wallet_balance) > 4000 ? 'Medium' : 'Low',
-            isSeller: u.is_seller === true,
+            isSeller: u.is_seller === true || newUserRole === 'Seller',
             isAdmin: u.is_admin === true
           })));
         } else {
@@ -716,7 +866,7 @@ export default function AdminMainPage() {
               tier: newUser.is_premium ? 'Premium' : 'Normal',
               status: 'Active',
               risk: (parseFloat(newUserWallet) || 0) > 4000 ? 'Medium' : 'Low',
-              isSeller: false,
+              isSeller: newUserRole === 'Seller',
               isAdmin: false
             },
             ...prev
@@ -728,11 +878,13 @@ export default function AdminMainPage() {
         setNewUserPhone('');
         setNewUserEmail('');
         setNewUserTier('Normal');
+        setNewUserRole('Customer');
         setNewUserWallet('0.00');
         setShowAddUserModal(false);
       } else {
         const errData = await resp.json();
-        alert(`Error: ${errData.detail || 'Failed to create user'}`);
+        const errDetail = Array.isArray(errData.detail) ? errData.detail.map((e: any) => e.msg).join(', ') : errData.detail;
+        alert(`Error: ${errDetail || 'Failed to create user'}`);
       }
     } catch (err) {
       console.error(err);
@@ -748,7 +900,7 @@ export default function AdminMainPage() {
           tier: newUserTier,
           status: 'Active',
           risk: (parseFloat(newUserWallet) || 0) > 4000 ? 'Medium' : 'Low',
-          isSeller: false,
+          isSeller: newUserRole === 'Seller',
           isAdmin: false
         },
         ...prev
@@ -792,7 +944,7 @@ export default function AdminMainPage() {
     setEditUserPhone(user.phone);
     setEditUserEmail(user.email === 'N/A' ? '' : user.email);
     setEditUserTier(user.tier);
-    setEditUserWallet(user.wallet.toString());
+    setNewUserWallet(user.wallet.toString());
     setShowEditUserModal(true);
   };
 
@@ -810,7 +962,7 @@ export default function AdminMainPage() {
           phone: editUserPhone,
           email: editUserEmail || null,
           is_premium: editUserTier === 'Premium',
-          wallet_balance: parseFloat(editUserWallet) || 0
+          wallet_balance: parseFloat(newUserWallet) || 0
         })
       });
 
@@ -831,13 +983,33 @@ export default function AdminMainPage() {
         name: editUserName,
         phone: editUserPhone,
         email: editUserEmail || 'N/A',
-        wallet: parseFloat(editUserWallet) || 0,
+        wallet: parseFloat(newUserWallet) || 0,
         tier: editUserTier,
-        risk: (parseFloat(editUserWallet) || 0) > 4000 ? 'Medium' : 'Low'
+        risk: (parseFloat(newUserWallet) || 0) > 4000 ? 'Medium' : 'Low'
       } : u));
       alert("Offline Mode: User profile updated locally.");
       setShowEditUserModal(false);
       setSelectedUser(null);
+    }
+  };
+
+  const handleApproveProduct = async (productId: string, is_approved: boolean, rejection_reason?: string) => {
+    try {
+      const resp = await fetch(`${API_URL}/api/products/${productId}/approve`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_approved, rejection_reason: rejection_reason || null })
+      });
+      if (resp.ok) {
+        alert("Product approval status updated!");
+        refreshAllAdminData();
+      } else {
+        alert("Failed to update product approval on backend.");
+      }
+    } catch (e) {
+      console.error(e);
+      setProducts(prev => prev.map(p => p.id === productId ? { ...p, is_approved } : p));
+      alert("Updated locally.");
     }
   };
 
@@ -919,6 +1091,10 @@ export default function AdminMainPage() {
   };
 
   const handleCreateProduct = async (productData: any) => {
+    if (!productData.category_id || !productData.seller_id) {
+      alert('Please select a valid category and seller before creating a product.');
+      return false;
+    }
     try {
       const resp = await fetch(`${API_URL}/api/products/`, {
         method: 'POST',
@@ -928,13 +1104,20 @@ export default function AdminMainPage() {
       if (resp.ok) {
         alert("Product created successfully!");
         refreshAllAdminData();
+        return true;
       } else {
         const errorData = await resp.json();
-        alert(`Failed to create product: ${errorData.detail || 'Server error'}`);
+        let errorMsg = 'Server error';
+        if (errorData.detail) {
+          errorMsg = typeof errorData.detail === 'string' ? errorData.detail : JSON.stringify(errorData.detail);
+        }
+        alert(`Failed to create product: ${errorMsg}`);
+        return false;
       }
     } catch (e) {
       console.error(e);
       alert("Error creating product on backend.");
+      return false;
     }
   };
 
@@ -975,10 +1158,30 @@ export default function AdminMainPage() {
     }
   };
 
-  const handleUpdateSeller = async (sellerId: string, businessName: string, commission: number, status: string) => {
+  const handleUpdateProduct = async (id: string, data: any) => {
     try {
-      const resp = await fetch(`${API_URL}/api/sellers/${sellerId}?business_name=${encodeURIComponent(businessName)}&commission_rate=${commission}&status=${encodeURIComponent(status)}`, {
-        method: 'PUT'
+      const resp = await fetch(`${API_URL}/api/products/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (resp.ok) {
+        refreshAllAdminData();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      console.error(e);
+      return false;
+    }
+  };
+
+  const handleUpdateSeller = async (sellerId: string, businessName: string, commission: number, status: string, kycDetails?: any) => {
+    try {
+      const resp = await fetch(`${API_URL}/api/sellers/${sellerId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ business_name: businessName, commission_rate: commission, status, kyc_details: kycDetails })
       });
       if (resp.ok) {
         alert("Seller updated successfully!");
@@ -1009,6 +1212,32 @@ export default function AdminMainPage() {
     }
   };
 
+  const handleAdminReplyMessage = async () => {
+    if (!adminReplyContent.trim()) return;
+    try {
+      const resp = await fetch(`${API_URL}/api/messages/?user_id=a01b1234-5678-abcd-ef01-1234567890aa`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sender_id: 'a01b1234-5678-abcd-ef01-1234567890aa',
+          receiver_id: adminReplyTo.sender_id,
+          subject: `Re: ${adminReplyTo.subject}`,
+          content: adminReplyContent
+        })
+      });
+      if (resp.ok) {
+        alert("Reply sent!");
+        setShowAdminReplyModal(false);
+        setAdminReplyContent('');
+        refreshAllAdminData();
+      } else {
+        alert("Failed to send reply.");
+      }
+    } catch (e) {
+      alert("Error sending reply.");
+    }
+  };
+
   const handleCreateSeller = async (sellerData: any) => {
     try {
       const resp = await fetch(`${API_URL}/api/sellers/`, {
@@ -1019,13 +1248,16 @@ export default function AdminMainPage() {
       if (resp.ok) {
         alert("Merchant registered successfully!");
         refreshAllAdminData();
+        return true;
       } else {
         const errorData = await resp.json();
         alert(`Failed to register merchant: ${errorData.detail || 'Server error'}`);
+        return false;
       }
     } catch (e) {
       console.error(e);
       alert("Error registering merchant");
+      return false;
     }
   };
 
@@ -1149,6 +1381,8 @@ export default function AdminMainPage() {
       case 'whatsapp': return 'WhatsApp Marketing';
       case 'vouchers': return 'Promo Vouchers';
       case 'health': return 'System Health Telemetry';
+      case 'reviews': return 'Reviews Management';
+      case 'messages': return 'Messages Center';
       default: return 'Phoenix Telemetry';
     }
   };
@@ -1219,6 +1453,9 @@ export default function AdminMainPage() {
     return 0;
   });
 
+  const walletTotalPages = Math.ceil(sortedWalletTransactions.length / walletItemsPerPage);
+  const paginatedWalletTransactions = sortedWalletTransactions.slice((walletCurrentPage - 1) * walletItemsPerPage, walletCurrentPage * walletItemsPerPage);
+
   const handleWalletSort = (key: string) => {
     if (walletSortKey === key) {
       setWalletSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
@@ -1229,7 +1466,7 @@ export default function AdminMainPage() {
   };
 
   return (
-    <div className={`${!hasMounted ? 'bg-[#f9fbfd] text-[#141824]' : (darkMode ? 'dark bg-[#0f111a] text-[#e3e6ed]' : 'bg-[#f9fbfd] text-[#141824]')} min-h-screen font-sans transition-colors duration-300 flex overflow-hidden w-full`}>
+    <div className={`min-h-screen font-sans transition-colors duration-300 flex overflow-hidden w-full ${!hasMounted ? 'bg-[#f9fbfd] text-[#141824]' : (darkMode ? 'bg-[#0f111a] text-[#e3e6ed]' : 'bg-[#f9fbfd] text-[#141824]')}`}>
       
       {/* Sidebar Navigation */}
       {isAdminSidebarOpen && (
@@ -1238,14 +1475,14 @@ export default function AdminMainPage() {
           className="fixed inset-0 bg-on-surface/20 z-40 transition-opacity backdrop-blur-xs"
         />
       )}
-      <aside className={`fixed inset-y-0 left-0 ${isSidebarReduced ? 'md:w-20' : 'md:w-[280px]'} w-[280px] z-50 shadow-lg bg-surface flex flex-col h-full py-6 px-4 border-r border-outline-variant transition-all duration-300 ease-in-out transform ${isAdminSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:static`}>
+      <aside className={`fixed inset-y-0 left-0 ${isSidebarReduced ? 'md:w-20' : 'md:w-[280px]'} w-[280px] z-50 shadow-lg bg-white dark:bg-[#0f111a] flex flex-col h-full py-6 px-4 border-r border-gray-200 dark:border-gray-800 transition-all duration-300 ease-in-out transform ${isAdminSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:static`}>
         <div className="flex items-center justify-between mb-8 px-2">
-          <h2 className="text-xl font-extrabold text-primary tracking-tight">
+          <h2 className="text-xl font-extrabold text-blue-700 dark:text-blue-400 tracking-tight">
             {isSidebarReduced ? 'BUP' : 'BUPZO ADMIN'}
           </h2>
           <button 
             onClick={() => setIsAdminSidebarOpen(false)}
-            className="text-on-surface-variant p-2 hover:bg-surface-container-high rounded-full flex items-center justify-center transition-colors md:hidden"
+            className="text-gray-600 dark:text-gray-400 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full flex items-center justify-center transition-colors md:hidden"
             title="Close navigation"
           >
             <span className="material-symbols-outlined text-[20px]">close</span>
@@ -1257,7 +1494,7 @@ export default function AdminMainPage() {
             <li>
               <button 
                 onClick={() => { setActiveTab('dashboard'); setIsAdminSidebarOpen(false); }} 
-                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2 rounded-full transition-all duration-250 ${activeTab === 'dashboard' ? 'bg-secondary-container text-on-secondary-container font-bold' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
+                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2 rounded-full transition-all duration-250 ${activeTab === 'dashboard' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                 title="Dashboard"
               >
                 <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: activeTab === 'dashboard' ? "'FILL' 1" : "'FILL' 0" }}>dashboard</span>
@@ -1268,7 +1505,7 @@ export default function AdminMainPage() {
             <li>
               <button 
                 onClick={() => { setActiveTab('users'); setIsAdminSidebarOpen(false); }} 
-                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2 rounded-full transition-all duration-250 ${activeTab === 'users' ? 'bg-secondary-container text-on-secondary-container font-bold' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
+                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2 rounded-full transition-all duration-250 ${activeTab === 'users' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                 title="User Directory"
               >
                 <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: activeTab === 'users' ? "'FILL' 1" : "'FILL' 0" }}>group</span>
@@ -1279,7 +1516,7 @@ export default function AdminMainPage() {
             <li>
               <button 
                 onClick={() => { setActiveTab('products'); setIsAdminSidebarOpen(false); }} 
-                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2 rounded-full transition-all duration-250 ${activeTab === 'products' ? 'bg-secondary-container text-on-secondary-container font-bold' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
+                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2 rounded-full transition-all duration-250 ${activeTab === 'products' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                 title="Products Catalog"
               >
                 <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: activeTab === 'products' ? "'FILL' 1" : "'FILL' 0" }}>inventory</span>
@@ -1290,7 +1527,7 @@ export default function AdminMainPage() {
             <li>
               <button 
                 onClick={() => { setActiveTab('merchants'); setIsAdminSidebarOpen(false); }} 
-                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2 rounded-full transition-all duration-250 ${activeTab === 'merchants' ? 'bg-secondary-container text-on-secondary-container font-bold' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
+                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2 rounded-full transition-all duration-250 ${activeTab === 'merchants' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                 title="Merchant Directory"
               >
                 <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: activeTab === 'merchants' ? "'FILL' 1" : "'FILL' 0" }}>storefront</span>
@@ -1301,7 +1538,7 @@ export default function AdminMainPage() {
             <li>
               <button 
                 onClick={() => { setActiveTab('financials'); setIsAdminSidebarOpen(false); }} 
-                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2 rounded-full transition-all duration-250 ${activeTab === 'financials' ? 'bg-secondary-container text-on-secondary-container font-bold' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
+                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2 rounded-full transition-all duration-250 ${activeTab === 'financials' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                 title="Wallet & Audits"
               >
                 <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: activeTab === 'financials' ? "'FILL' 1" : "'FILL' 0" }}>account_balance_wallet</span>
@@ -1312,7 +1549,7 @@ export default function AdminMainPage() {
             <li>
               <button 
                 onClick={() => { setActiveTab('logistics'); setIsAdminSidebarOpen(false); }} 
-                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2 rounded-full transition-all duration-250 ${activeTab === 'logistics' ? 'bg-secondary-container text-on-secondary-container font-bold' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
+                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2 rounded-full transition-all duration-250 ${activeTab === 'logistics' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                 title="Logistics API"
               >
                 <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: activeTab === 'logistics' ? "'FILL' 1" : "'FILL' 0" }}>local_shipping</span>
@@ -1323,7 +1560,7 @@ export default function AdminMainPage() {
             <li>
               <button 
                 onClick={() => { setActiveTab('disputes'); setIsAdminSidebarOpen(false); }} 
-                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2 rounded-full transition-all duration-250 ${activeTab === 'disputes' ? 'bg-secondary-container text-on-secondary-container font-bold' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
+                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2 rounded-full transition-all duration-250 ${activeTab === 'disputes' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                 title="AI Fraud Center"
               >
                 <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: activeTab === 'disputes' ? "'FILL' 1" : "'FILL' 0" }}>gavel</span>
@@ -1334,7 +1571,7 @@ export default function AdminMainPage() {
             <li>
               <button 
                 onClick={() => { setActiveTab('whatsapp'); setIsAdminSidebarOpen(false); }} 
-                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2 rounded-full transition-all duration-250 ${activeTab === 'whatsapp' ? 'bg-secondary-container text-on-secondary-container font-bold' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
+                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2 rounded-full transition-all duration-250 ${activeTab === 'whatsapp' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                 title="Marketing Blaster"
               >
                 <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: activeTab === 'whatsapp' ? "'FILL' 1" : "'FILL' 0" }}>campaign</span>
@@ -1345,7 +1582,7 @@ export default function AdminMainPage() {
             <li>
               <button 
                 onClick={() => { setActiveTab('vouchers'); setIsAdminSidebarOpen(false); }} 
-                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2 rounded-full transition-all duration-250 ${activeTab === 'vouchers' ? 'bg-secondary-container text-on-secondary-container font-bold' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
+                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2 rounded-full transition-all duration-250 ${activeTab === 'vouchers' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                 title="Promo Vouchers"
               >
                 <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: activeTab === 'vouchers' ? "'FILL' 1" : "'FILL' 0" }}>local_activity</span>
@@ -1356,11 +1593,31 @@ export default function AdminMainPage() {
             <li>
               <button 
                 onClick={() => { setActiveTab('health'); setIsAdminSidebarOpen(false); }} 
-                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2 rounded-full transition-all duration-250 ${activeTab === 'health' ? 'bg-secondary-container text-on-secondary-container font-bold' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
+                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2 rounded-full transition-all duration-250 ${activeTab === 'health' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                 title="System Telemetry"
               >
                 <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: activeTab === 'health' ? "'FILL' 1" : "'FILL' 0" }}>monitoring</span>
                 {!isSidebarReduced && <span className="text-sm font-semibold">System Telemetry</span>}
+              </button>
+            </li>
+            <li>
+              <button 
+                onClick={() => { setActiveTab('reviews'); setIsAdminSidebarOpen(false); }} 
+                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2 rounded-full transition-all duration-250 ${activeTab === 'reviews' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                title="Reviews Management"
+              >
+                <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: activeTab === 'reviews' ? "'FILL' 1" : "'FILL' 0" }}>reviews</span>
+                {!isSidebarReduced && <span className="text-sm font-semibold">Reviews Management</span>}
+              </button>
+            </li>
+            <li>
+              <button 
+                onClick={() => { setActiveTab('messages'); setIsAdminSidebarOpen(false); }} 
+                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2 rounded-full transition-all duration-250 ${activeTab === 'messages' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                title="Messages Center"
+              >
+                <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: activeTab === 'messages' ? "'FILL' 1" : "'FILL' 0" }}>forum</span>
+                {!isSidebarReduced && <span className="text-sm font-semibold">Messages Center</span>}
               </button>
             </li>
           </ul>
@@ -1394,7 +1651,7 @@ export default function AdminMainPage() {
       {/* Main Container */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Top Navbar */}
-        <header className="h-16 border-b border-[#e8e1dd] dark:border-[#2f2b3b] bg-white/80 dark:bg-[#15131b]/80 backdrop-blur-xl flex items-center justify-between px-8 transition-colors duration-300">
+        <header className="h-16 border-b border-[#e8e1dd] dark:border-[#2f2b3b] bg-white/80 dark:bg-[#15131b]/80 backdrop-blur-xl flex items-center justify-between px-8 transition-colors duration-300 z-50">
           <div className="flex items-center gap-4 flex-1">
             <button 
               onClick={() => {
@@ -1496,7 +1753,14 @@ export default function AdminMainPage() {
           
           {/* TAB 1: DASHBOARD */}
           {activeTab === 'dashboard' && (
-            <AdminDashboard />
+            <AdminDashboard
+              userCount={users.length}
+              sellerCount={sellers.length}
+              productCount={products.length}
+              couponCount={coupons.length}
+              pendingPayoutCount={payouts.filter(p => p.status === 'Pending').length}
+              walletTransactionCount={walletTransactions.length}
+            />
           )}
 
           {/* TAB 2: USER DIRECTORY */}
@@ -1591,6 +1855,82 @@ export default function AdminMainPage() {
                 </div>
               </div>
 
+              {/* Wallet Accounts Overview */}
+              <div className="bg-white dark:bg-[#15131b] p-6 rounded-2xl border border-[#e8e1dd] dark:border-[#2f2b3b] space-y-4 flex flex-col gap-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-md font-bold font-heading">Wallet Accounts Overview</h3>
+                  <div className="relative w-64">
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-[18px]">search</span>
+                    <input 
+                      type="text" 
+                      placeholder="Search users..." 
+                      value={walletAccountSearchTerm}
+                      onChange={(e) => setWalletAccountSearchTerm(e.target.value)}
+                      className="w-full pl-9 pr-4 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-sm outline-none focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+                <div className="overflow-x-auto w-full">
+                  <table className="w-full text-left text-xs font-semibold min-w-[600px]">
+                    <thead>
+                      <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-400 font-bold uppercase tracking-wider text-[10px] select-none">
+                        <th className="py-2.5">User ID</th>
+                        <th className="py-2.5">Name</th>
+                        <th className="py-2.5">Mobile</th>
+                        <th className="py-2.5">Role</th>
+                        <th className="py-2.5 text-right">Balance (INR)</th>
+                        <th className="py-2.5 text-center">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {users.filter((u: any) => 
+                        u.name?.toLowerCase().includes(walletAccountSearchTerm.toLowerCase()) ||
+                        u.email?.toLowerCase().includes(walletAccountSearchTerm.toLowerCase()) ||
+                        u.phone?.toLowerCase().includes(walletAccountSearchTerm.toLowerCase())
+                      ).slice(0, 10).map((u: any) => (
+                        <tr key={u.id} className="border-b border-zinc-150 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
+                          <td className="py-3 font-mono">{u.id ? `${u.id.substring(0, 8)}...` : ''}</td>
+                          <td className="py-3 font-bold text-[#3874ff] cursor-pointer hover:underline" onClick={() => setPreviewUser(u)}>{u.name}</td>
+                          <td className="py-3">{u.phone}</td>
+                          <td className="py-3">
+                            <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${u.isSeller ? 'bg-amber-100/10 text-amber-500' : 'bg-zinc-100/10 text-zinc-400 dark:text-zinc-500'}`}>
+                              {u.isSeller ? 'Seller' : 'Customer'}
+                            </span>
+                          </td>
+                          <td className="py-3 font-mono font-bold text-right text-green-600 dark:text-green-400">₹{u.wallet}</td>
+                          <td className="py-3 text-center">
+                            <div className="flex justify-center gap-1.5">
+                              <button 
+                                onClick={() => setPreviewUser(u)}
+                                className="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded-md text-[10px] font-bold transition-colors"
+                              >
+                                Preview
+                              </button>
+                              <button 
+                                onClick={() => {
+                                  setSelectedWalletAccountUser(u);
+                                  setNewWalletBalance(u.wallet);
+                                  setShowWalletAccountEditModal(true);
+                                }}
+                                className="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 px-2 py-1 rounded-md text-[10px] font-bold transition-colors"
+                              >
+                                Edit
+                              </button>
+                              <button 
+                                onClick={() => setUserToDelete(u)}
+                                className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded-md text-[10px] font-bold transition-colors"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
               {/* Lower row: Full width Wallet Transactions Log */}
               <div className="bg-white dark:bg-[#15131b] p-6 rounded-2xl border border-[#e8e1dd] dark:border-[#2f2b3b] space-y-4 flex flex-col gap-4">
                 <div className="flex justify-between items-center bg-zinc-50 dark:bg-[#110e16] p-4 rounded-xl border border-zinc-250 dark:border-zinc-800">
@@ -1620,6 +1960,7 @@ export default function AdminMainPage() {
                         <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleWalletSort('user_id')}>
                           User ID {walletSortKey === 'user_id' ? (walletSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
                         </th>
+                        <th className="py-2.5">Mobile No.</th>
                         <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleWalletSort('amount')}>
                           Amount {walletSortKey === 'amount' ? (walletSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
                         </th>
@@ -1632,10 +1973,16 @@ export default function AdminMainPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {sortedWalletTransactions.map((tx: any) => (
+                      {paginatedWalletTransactions.map((tx: any) => (
                         <tr key={tx.id} className="border-b border-zinc-150 dark:border-zinc-900">
-                          <td className="py-3 font-mono font-bold text-zinc-800 dark:text-zinc-200">{tx.id.substring(0,8)}...</td>
+                          <td 
+                            className="py-3 font-mono font-bold text-[#3874ff] cursor-pointer hover:underline"
+                            onClick={() => setPreviewWalletTx(tx)}
+                          >
+                            {tx.id.substring(0,8)}...
+                          </td>
                           <td className="py-3 font-mono text-zinc-500">{tx.user_id.substring(0,8)}...</td>
+                          <td className="py-3 font-mono text-zinc-500">{tx.mobile_number || 'N/A'}</td>
                           <td className={`py-3 font-mono font-bold ${tx.amount >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                             ₹{tx.amount}
                           </td>
@@ -1678,6 +2025,58 @@ export default function AdminMainPage() {
                     </tbody>
                   </table>
                 </div>
+
+                {walletTotalPages > 1 && (
+                  <div className="flex justify-between items-center mt-4 text-xs font-semibold text-zinc-500">
+                    <span>Page {walletCurrentPage} of {walletTotalPages}</span>
+                    <div className="flex gap-2">
+                      <button disabled={walletCurrentPage === 1} onClick={() => setWalletCurrentPage(c => c - 1)} className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded transition-colors disabled:opacity-50">Prev</button>
+                      <button disabled={walletCurrentPage === walletTotalPages} onClick={() => setWalletCurrentPage(c => c + 1)} className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded transition-colors disabled:opacity-50">Next</button>
+                    </div>
+                  </div>
+                )}
+                
+                {previewWalletTx && (
+                  <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-zinc-900 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800">
+                      <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center">
+                        <h3 className="font-bold font-heading text-lg">Transaction Details</h3>
+                        <button 
+                          onClick={() => setPreviewWalletTx(null)}
+                          className="w-8 h-8 flex justify-center items-center bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 rounded-full hover:bg-zinc-300 dark:hover:bg-zinc-600 font-bold"
+                        >✕</button>
+                      </div>
+                      <div className="p-6 text-sm text-zinc-700 dark:text-zinc-300 space-y-3">
+                        <div className="flex justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                          <span className="font-bold text-zinc-500">Transaction ID:</span>
+                          <span className="font-mono">{previewWalletTx.id}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                          <span className="font-bold text-zinc-500">User ID:</span>
+                          <span className="font-mono">{previewWalletTx.user_id}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                          <span className="font-bold text-zinc-500">Amount:</span>
+                          <span className={`font-mono font-bold ${previewWalletTx.amount >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                            ₹{previewWalletTx.amount}
+                          </span>
+                        </div>
+                        <div className="flex justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                          <span className="font-bold text-zinc-500">Type:</span>
+                          <span className="font-semibold">{previewWalletTx.type}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                          <span className="font-bold text-zinc-500">Date:</span>
+                          <span>{new Date(previewWalletTx.created_at).toLocaleString()}</span>
+                        </div>
+                        <div>
+                          <span className="font-bold text-zinc-500 block mb-1">Description:</span>
+                          <p className="bg-zinc-50 dark:bg-zinc-800 p-3 rounded-lg text-xs">{previewWalletTx.description}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1830,20 +2229,122 @@ export default function AdminMainPage() {
               </div>
             </div>
           )}
+
+          {/* TAB 9: REVIEWS MANAGEMENT */}
+          {activeTab === 'reviews' && (
+            <div className="space-y-6">
+              <div>
+                <h1 className="text-2xl font-bold font-heading">Reviews Management</h1>
+                <p className="text-sm text-zinc-500 mt-1">Moderate product and merchant reviews, filter spam, and track feedback metrics.</p>
+              </div>
+              <div className="bg-white dark:bg-[#15131b] p-6 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b]">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-zinc-50 dark:bg-zinc-800/50">
+                    <tr>
+                      <th className="px-4 py-3 font-bold text-zinc-500 uppercase">Customer</th>
+                      <th className="px-4 py-3 font-bold text-zinc-500 uppercase">Product</th>
+                      <th className="px-4 py-3 font-bold text-zinc-500 uppercase">Rating</th>
+                      <th className="px-4 py-3 font-bold text-zinc-500 uppercase">Comment</th>
+                      <th className="px-4 py-3 font-bold text-zinc-500 uppercase text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                    {reviews.length === 0 ? (
+                      <tr><td colSpan={5} className="px-4 py-8 text-center text-zinc-500">No reviews found.</td></tr>
+                    ) : reviews.map((r: any) => (
+                      <tr key={r.id}>
+                        <td className="px-4 py-3 font-bold">{r.user_name}</td>
+                        <td className="px-4 py-3 text-blue-600 font-medium">{r.product_name}</td>
+                        <td className="px-4 py-3 text-yellow-500 font-bold">{r.rating} / 5</td>
+                        <td className="px-4 py-3 max-w-xs truncate">{r.comment}</td>
+                        <td className="px-4 py-3 text-right">
+                          <button className="text-red-500 hover:underline font-semibold">Delete</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 10: MESSAGES CENTER */}
+          {activeTab === 'messages' && (
+            <div className="space-y-6">
+              <div>
+                <h1 className="text-2xl font-bold font-heading">Messages Center</h1>
+                <p className="text-sm text-zinc-500 mt-1">Direct communication with users, dispute resolutions, and automated bot transcripts.</p>
+              </div>
+              <div className="bg-white dark:bg-[#15131b] p-6 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b]">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-zinc-50 dark:bg-zinc-800/50">
+                    <tr>
+                      <th className="px-4 py-3 font-bold text-zinc-500 uppercase">From</th>
+                      <th className="px-4 py-3 font-bold text-zinc-500 uppercase">To</th>
+                      <th className="px-4 py-3 font-bold text-zinc-500 uppercase">Subject</th>
+                      <th className="px-4 py-3 font-bold text-zinc-500 uppercase">Content</th>
+                      <th className="px-4 py-3 font-bold text-zinc-500 uppercase">Date</th>
+                      <th className="px-4 py-3 font-bold text-zinc-500 uppercase text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+                    {messages.length === 0 ? (
+                      <tr><td colSpan={6} className="px-4 py-8 text-center text-zinc-500">No messages found.</td></tr>
+                    ) : messages.map((m: any) => (
+                      <tr key={m.id}>
+                        <td className="px-4 py-3 font-bold">{m.sender_name}</td>
+                        <td className="px-4 py-3 font-bold">{m.receiver_name}</td>
+                        <td className="px-4 py-3 text-zinc-600 dark:text-zinc-300">{m.subject}</td>
+                        <td className="px-4 py-3 max-w-xs truncate">{m.content}</td>
+                        <td className="px-4 py-3 text-zinc-500">{new Date(m.created_at).toLocaleString()}</td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button 
+                              onClick={() => {
+                                setAdminReplyTo(m);
+                                setShowAdminReplyModal(true);
+                              }}
+                              className="text-blue-500 hover:underline font-semibold"
+                            >
+                              Reply
+                            </button>
+                            <button className="text-red-500 hover:underline font-semibold">Delete</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              
+              {showAdminReplyModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                  <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-xl w-full max-w-md p-6">
+                    <h3 className="text-lg font-bold mb-4">Reply to {adminReplyTo?.sender_name}</h3>
+                    <textarea
+                      value={adminReplyContent}
+                      onChange={e => setAdminReplyContent(e.target.value)}
+                      className="w-full h-32 border p-3 rounded-lg text-sm mb-4 outline-none focus:border-blue-500 dark:bg-zinc-800 dark:border-zinc-700"
+                      placeholder="Type your reply..."
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button onClick={() => setShowAdminReplyModal(false)} className="px-4 py-2 text-sm font-bold text-gray-500 hover:text-gray-700">Cancel</button>
+                      <button onClick={handleAdminReplyMessage} className="px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded hover:bg-blue-700">Send Reply</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           {/* TAB: PRODUCTS CATALOG */}
           {activeTab === 'products' && (
             <AdminProducts 
               products={products}
               categories={categories}
               sellers={sellers}
-              setSelectedProduct={setSelectedProduct}
-              setEditProductName={setEditProductName}
-              setEditProductPrice={setEditProductPrice}
-              setEditProductQty={setEditProductQty}
-              setEditProductDesc={setEditProductDesc}
-              setEditProductImage={setEditProductImage}
-              setShowEditProductModal={setShowEditProductModal}
+              onUpdateProduct={handleUpdateProduct}
               onDeleteProduct={handleDeleteProduct}
+              onApproveProduct={handleApproveProduct}
               onDeleteCategory={handleDeleteCategory}
               newCatName={newCatName}
               setNewCatName={setNewCatName}
@@ -1904,6 +2405,15 @@ export default function AdminMainPage() {
                         className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-sm font-mono"
                       />
                     </div>
+                    <div>
+                      <label className="block text-zinc-500 mb-1">Expiry Date</label>
+                      <input 
+                        type="date" 
+                        value={newCouponExpiry}
+                        onChange={(e) => setNewCouponExpiry(e.target.value)}
+                        className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-sm"
+                      />
+                    </div>
                     <button 
                       type="submit" 
                       className="w-full bg-[#3f3b4c] dark:bg-[#ccc6dc] text-white dark:text-zinc-950 py-2.5 rounded-xl font-bold hover:opacity-90 active:scale-95 transition-all text-xs"
@@ -1960,7 +2470,12 @@ export default function AdminMainPage() {
                       <tbody>
                         {sortedCoupons.map((cp: any) => (
                           <tr key={cp.id} className="border-b border-zinc-100 dark:border-zinc-905">
-                            <td className="py-3 font-bold font-mono text-sm text-zinc-800 dark:text-zinc-200">{cp.code}</td>
+                            <td 
+                              className="py-3 font-semibold text-[#3874ff] cursor-pointer hover:underline"
+                              onClick={() => setPreviewCoupon(cp)}
+                            >
+                              {cp.code}
+                            </td>
                             <td className="py-3 font-mono">{cp.discount_percent}%</td>
                             <td className="py-3 font-mono">₹{cp.min_order_value}</td>
                             <td className="py-3 text-zinc-500">{new Date(cp.expiry_date).toLocaleDateString()}</td>
@@ -1983,6 +2498,8 @@ export default function AdminMainPage() {
                                     setEditCouponDiscount(cp.discount_percent.toString());
                                     setEditCouponMinSpend(cp.min_order_value.toString());
                                     setEditCouponIsPremiumOnly(cp.is_premium_only);
+                                    setEditCouponStatus(cp.status || 'APPROVED');
+                                    setEditCouponExpiry(cp.expiry_date ? new Date(cp.expiry_date).toISOString().split('T')[0] : '');
                                     setShowEditCouponModal(true);
                                   }}
                                   className="bg-charcoal dark:bg-zinc-800 text-white dark:text-zinc-200 px-2 py-1 rounded text-[10px] font-bold hover:opacity-90"
@@ -2026,10 +2543,49 @@ export default function AdminMainPage() {
                         )}
                       </tbody>
                     </table>
-                  </div>
                 </div>
 
+                {previewCoupon && (
+                  <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-zinc-900 w-full max-w-sm rounded-2xl shadow-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800">
+                      <div className="bg-zinc-50 dark:bg-zinc-800/50 p-4 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center">
+                        <h3 className="font-bold font-heading text-lg">Voucher Details</h3>
+                        <button 
+                          onClick={() => setPreviewCoupon(null)}
+                          className="w-8 h-8 flex justify-center items-center bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 rounded-full hover:bg-zinc-300 dark:hover:bg-zinc-600 font-bold"
+                        >✕</button>
+                      </div>
+                      <div className="p-6 text-sm text-zinc-700 dark:text-zinc-300 space-y-3">
+                        <div className="flex justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                          <span className="font-bold text-zinc-500">Code:</span>
+                          <span className="font-mono font-bold text-lg">{previewCoupon.code}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                          <span className="font-bold text-zinc-500">Discount:</span>
+                          <span className="font-mono font-bold text-green-600">{previewCoupon.discount_percent}%</span>
+                        </div>
+                        <div className="flex justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                          <span className="font-bold text-zinc-500">Min Spend:</span>
+                          <span className="font-mono">₹{previewCoupon.min_order_value}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                          <span className="font-bold text-zinc-500">Premium Only:</span>
+                          <span>{previewCoupon.is_premium_only ? 'Yes' : 'No'}</span>
+                        </div>
+                        <div className="flex justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                          <span className="font-bold text-zinc-500">Expiry Date:</span>
+                          <span>{new Date(previewCoupon.expiry_date).toLocaleDateString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="font-bold text-zinc-500">Status:</span>
+                          <span className="font-bold uppercase">{previewCoupon.status}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
+            </div>
             </div>
           )}
 
@@ -2072,6 +2628,27 @@ export default function AdminMainPage() {
                   placeholder="name@example.com"
                   className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm text-zinc-900 dark:text-zinc-100 outline-none"
                 />
+              </div>
+              <div>
+                <label className="block text-zinc-500 mb-1">Password</label>
+                <input 
+                  type="password" 
+                  value={newUserPassword} 
+                  onChange={(e) => setNewUserPassword(e.target.value)} 
+                  placeholder="Leave empty for no password"
+                  className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm text-zinc-900 dark:text-zinc-100 outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-zinc-500 mb-1">User Role</label>
+                <select 
+                  value={newUserRole} 
+                  onChange={(e) => setNewUserRole(e.target.value)}
+                  className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm text-zinc-900 dark:text-zinc-100 outline-none"
+                >
+                  <option value="Customer">Customer</option>
+                  <option value="Seller">Seller</option>
+                </select>
               </div>
               <div>
                 <label className="block text-zinc-500 mb-1">Membership Tier</label>
@@ -2173,8 +2750,8 @@ export default function AdminMainPage() {
                 <input 
                   type="number" 
                   step="0.01"
-                  value={editUserWallet} 
-                  onChange={(e) => setEditUserWallet(e.target.value)} 
+                  value={newUserWallet} 
+                  onChange={(e) => setNewUserWallet(e.target.value)} 
                   className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm text-zinc-900 dark:text-zinc-100 outline-none"
                 />
               </div>
@@ -2247,14 +2824,18 @@ export default function AdminMainPage() {
                 <label className="block text-zinc-500 mb-1">Product Image URL (Upload to MinIO)</label>
                 <input 
                   type="file" 
+                  multiple
                   accept="image/*"
                   onChange={(e) => handleImageUpload(e, 'product')} 
                   className="w-full text-xs text-zinc-500 border border-zinc-300 dark:border-zinc-800 rounded-lg p-2 bg-white dark:bg-zinc-950"
                 />
                 {editProductImage && (
-                  <div className="mt-2 flex items-center gap-2">
-                    <img src={editProductImage} alt="Preview" className="w-12 h-12 object-cover rounded-lg border" />
-                    <span className="text-[10px] text-zinc-500 truncate max-w-[200px]">{editProductImage}</span>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    {editProductImage.split(',').map((imgUrl, i) => (
+                      <div key={i} className="flex flex-col items-center">
+                        <img src={imgUrl.trim() || 'https://placehold.co/150/png'} alt="Preview" className="w-12 h-12 object-cover rounded-lg border" />
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -2290,7 +2871,18 @@ export default function AdminMainPage() {
                   type="text" 
                   value={editCouponCode} 
                   onChange={(e) => setEditCouponCode(e.target.value)} 
-                  className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm outline-none uppercase font-mono font-bold"
+                  disabled
+                  className="w-full px-3 py-2 bg-gray-100 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm outline-none uppercase font-mono font-bold cursor-not-allowed"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-red-500 font-bold mb-1">Expiry Date (Edit Mode)</label>
+                <input 
+                  type="date" 
+                  value={editCouponExpiry}
+                  onChange={(e) => setEditCouponExpiry(e.target.value)}
+                  className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border-2 border-red-500 rounded-lg text-sm font-bold shadow-sm"
                   required
                 />
               </div>
@@ -2302,7 +2894,8 @@ export default function AdminMainPage() {
                   max="100"
                   value={editCouponDiscount} 
                   onChange={(e) => setEditCouponDiscount(e.target.value)} 
-                  className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm outline-none font-mono"
+                  disabled
+                  className="w-full px-3 py-2 bg-gray-100 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm outline-none font-mono cursor-not-allowed"
                   required
                 />
               </div>
@@ -2312,19 +2905,34 @@ export default function AdminMainPage() {
                   type="number" 
                   value={editCouponMinSpend} 
                   onChange={(e) => setEditCouponMinSpend(e.target.value)} 
-                  className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm outline-none font-mono"
+                  disabled
+                  className="w-full px-3 py-2 bg-gray-100 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm outline-none font-mono cursor-not-allowed"
                   required
                 />
               </div>
+
               <div className="flex items-center gap-2 py-1">
                 <input 
                   type="checkbox" 
                   id="editCouponIsPremiumOnly"
                   checked={editCouponIsPremiumOnly}
                   onChange={(e) => setEditCouponIsPremiumOnly(e.target.checked)}
-                  className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-800 text-[#3874ff] focus:ring-[#3874ff] cursor-pointer"
+                  disabled
+                  className="w-4 h-4 rounded border-zinc-300 dark:border-zinc-800 text-[#3874ff] focus:ring-[#3874ff] cursor-not-allowed"
                 />
                 <label htmlFor="editCouponIsPremiumOnly" className="text-zinc-500 select-none cursor-pointer">Premium Only Voucher</label>
+              </div>
+              <div>
+                <label className="block text-zinc-500 mb-1">Status</label>
+                <select 
+                  value={editCouponStatus} 
+                  onChange={(e) => setEditCouponStatus(e.target.value)}
+                  className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm outline-none font-bold"
+                >
+                  <option value="APPROVED">APPROVED</option>
+                  <option value="PENDING">PENDING</option>
+                  <option value="REJECTED">REJECTED</option>
+                </select>
               </div>
               <div className="flex gap-3 justify-end pt-4">
                 <button 
@@ -2408,7 +3016,107 @@ export default function AdminMainPage() {
         </div>
       )}
 
-      {/* EDIT USER MODAL FOOTER */}
+      {/* EDIT WALLET ACCOUNT MODAL */}
+      {showWalletAccountEditModal && selectedWalletAccountUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-[#fff8f4] dark:bg-[#15131b] border border-[#e8e1dd] dark:border-[#2f2b3b] rounded-2xl w-full max-w-sm p-6 shadow-2xl relative text-zinc-900 dark:text-zinc-100">
+            <h3 className="text-lg font-bold font-heading mb-4">Edit Wallet Balance</h3>
+            <div className="mb-4 text-xs">
+              <p><span className="text-zinc-500">User:</span> {selectedWalletAccountUser.name} ({selectedWalletAccountUser.id.substring(0,8)}...)</p>
+              <p><span className="text-zinc-500">Current Balance:</span> ₹{selectedWalletAccountUser.wallet}</p>
+            </div>
+            <form onSubmit={handleWalletAccountEditSubmit} className="space-y-4 text-xs font-semibold">
+              <div>
+                <label className="block text-zinc-500 mb-1">New Balance (₹)</label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  value={newWalletBalance} 
+                  onChange={(e) => setNewWalletBalance(e.target.value)} 
+                  className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm outline-none font-mono"
+                  required
+                />
+              </div>
+              <div className="flex gap-3 justify-end pt-4">
+                <button 
+                  type="button" 
+                  onClick={() => { setShowWalletAccountEditModal(false); setSelectedWalletAccountUser(null); }}
+                  className="px-4 py-2 border border-zinc-300 dark:border-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="px-4 py-2 bg-charcoal text-white rounded-lg hover:bg-opacity-90 font-bold"
+                >
+                  Save Balance
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* PREVIEW USER MODAL */}
+      {previewUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-xl max-w-lg w-full p-6 text-zinc-900 dark:text-zinc-100">
+            <h3 className="text-xl font-bold mb-4">User Details - {previewUser.name}</h3>
+            <div className="space-y-3 text-sm">
+              <p><strong>ID:</strong> {previewUser.id}</p>
+              <p><strong>Name:</strong> {previewUser.name}</p>
+              <p><strong>Mobile:</strong> {previewUser.phone}</p>
+              <p><strong>Email:</strong> {previewUser.email || 'N/A'}</p>
+              <p><strong>Wallet:</strong> ₹{previewUser.wallet}</p>
+              <p><strong>Tier:</strong> {previewUser.tier}</p>
+              <p><strong>Status:</strong> {previewUser.status}</p>
+              <p><strong>Risk:</strong> {previewUser.risk}</p>
+              <p><strong>Role:</strong> {previewUser.isAdmin ? 'Admin' : previewUser.isSeller ? 'Seller' : 'Customer'}</p>
+              <p><strong>Address:</strong> {(previewUser as any).address || 'Not Provided'}</p>
+              <p><strong>Pincode:</strong> {(previewUser as any).pincode || 'Not Provided'}</p>
+              <p><strong>State:</strong> {(previewUser as any).state || 'Not Provided'}</p>
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button 
+                onClick={() => setPreviewUser(null)} 
+                className="bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 px-4 py-2 rounded-lg font-bold"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PERMANENT DELETE CONFIRMATION MODAL */}
+      {userToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-xl max-w-sm w-full p-6 text-zinc-900 dark:text-zinc-100">
+            <h3 className="text-lg font-bold text-red-600 mb-2">Permanent Delete</h3>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-6">
+              Are you sure you want to permanently delete user "{userToDelete.name}"? This will cascade across all DB tables and cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => setUserToDelete(null)} 
+                className="bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 px-4 py-2 rounded-lg font-bold text-sm"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => {
+                  handleDeleteUser(userToDelete.id);
+                  setUserToDelete(null);
+                }} 
+                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-bold text-sm"
+              >
+                Yes, Delete Permanently
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/lib/authStore';
 import { auth, signInWithPhoneNumber, RecaptchaVerifier } from '@/lib/firebase';
+import { loginUser } from '@/lib/api';
 
 export default function LoginPage() {
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -12,54 +13,22 @@ export default function LoginPage() {
   const [message, setMessage] = useState('');
   const [confirmResult, setConfirmResult] = useState<any>(null);
   const router = useRouter();
-  const { setUser } = useUser();
+  const { setUser, setTokens } = useUser();
 
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
-
-  const fetchUserProfile = async (phone: string) => {
+  const authenticateUser = async (phone: string, name?: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/users/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          phone: phone,
-          email: `${phone.replace(/[^a-zA-Z0-9]/g, '')}@bupzo.com`,
-          is_premium: phone === '+919876543210', // Auto-set premium for admin number
-          signup_platform: 'WEB',
-          referred_by: null,
-          privacy_accepted: true
-        })
+      const result = await loginUser({
+        username: phone,
+        password: 'password123', // Dummy password for now, since OTP handles auth
       });
-      if (response.ok) {
-        const userDb = await response.json();
-        setUser(userDb);
-        setMessage('Database authentication successful! Redirecting...');
-        setTimeout(() => {
-          router.push('/');
-        }, 1500);
-      } else {
-        const errData = await response.json();
-        setMessage(`Error syncing database: ${errData.detail}`);
-      }
-    } catch (err) {
-      console.warn('Backend sync failed, using mock local profile:', err);
-      const mockProfile = {
-        id: 'mock-id',
-        phone: phone,
-        email: 'localuser@bupzo.com',
-        isPremium: phone === '+919876543210',
-        signupPlatform: 'WEB',
-        walletBalance: 2500.00,
-        privacyAccepted: true,
-        createdAt: new Date().toISOString()
-      };
-      setUser(mockProfile);
-      setMessage('Database offline. Logged in locally.');
-      setTimeout(() => {
-        router.push('/');
-      }, 1500);
+
+      setTokens(result.access_token, result.refresh_token);
+      setUser(result.user);
+      setMessage('Authenticated successfully! Redirecting...');
+      setTimeout(() => router.push('/'), 1200);
+    } catch (err: any) {
+      console.warn('Auth login failed:', err);
+      setMessage(`Login error: ${err.message || 'Unable to sign in.'}`);
     }
   };
 
@@ -100,14 +69,14 @@ export default function LoginPage() {
 
     if (otp === '123456' || !confirmResult) {
       setMessage('OTP verified successfully!');
-      await fetchUserProfile(phoneNumber);
+      await authenticateUser(phoneNumber);
       return;
     }
 
     try {
       const credential = await confirmResult.confirm(otp);
       if (credential.user) {
-        await fetchUserProfile(credential.user.phoneNumber || phoneNumber);
+        await authenticateUser(credential.user.phoneNumber || phoneNumber);
       }
     } catch (err) {
       setMessage('Invalid OTP. Please check and retry.');
@@ -123,8 +92,9 @@ export default function LoginPage() {
         <div className="text-center space-y-3">
           <img src="/Bupzo-logo.png" alt="Bupzo Logo" className="w-16 h-16 mx-auto object-contain rounded-xl" />
           <div>
-            <h1 className="text-2xl font-bold font-heading">Secure Client Portal</h1>
-            <p className="text-xs text-zinc-400">Onboarding using WhatsApp OTP or Firebase Authentication</p>
+            <img src="/Bupzo-logo.png" alt="Bupzo Logo" className="w-16 h-16 mx-auto object-contain rounded-xl mb-2" />
+            <h1 className="text-2xl font-bold font-heading">BUPZO Customer Login</h1>
+            <p className="text-xs text-zinc-400">Secure OTP sign-in for customers and sellers.</p>
           </div>
         </div>
 

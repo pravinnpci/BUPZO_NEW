@@ -1,91 +1,109 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { topUpWallet } from '@/lib/api';
 
-interface WalletTransaction {
-  id: string;
-  amount: number;
-  transaction_type: 'CREDIT' | 'DEBIT';
-  description: string;
-  created_at: string;
-}
+export const CustomerWallet = ({ walletBalance, walletTransactions, user }: any) => {
+  const [showTopUp, setShowTopUp] = useState(false);
+  const [amount, setAmount] = useState(500);
+  const [loading, setLoading] = useState(false);
 
-interface CustomerWalletProps {
-  walletBalance: number;
-  walletTransactions: WalletTransaction[];
-  user: any;
-  mockUserId: string;
-  theme: string;
-}
+  const handleTopUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || amount <= 0) return;
+    setLoading(true);
+    try {
+      await topUpWallet(user.id, amount);
+      setShowTopUp(false);
+      alert("Wallet topped up successfully! Balance updated.");
+      window.location.reload();
+    } catch (err) {
+      alert("Top up failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-export const CustomerWallet: React.FC<CustomerWalletProps> = ({
-  walletBalance,
-  walletTransactions,
-  user,
-  mockUserId,
-  theme
-}) => {
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold font-heading">Stitch Escrow Wallet</h2>
-        <p className="text-sm text-zinc-500 mt-1">Manage sandbox token allocations, credit refunds, and trigger simulated pay-outs.</p>
+    <div className="w-full bg-white pb-20">
+      <div className="w-full bg-[#fce5df] py-12 flex flex-col items-center justify-center text-center mb-10">
+         <h1 className="text-4xl font-extrabold text-[#232f3e] uppercase tracking-wide mb-2">My Wallet</h1>
+         <p className="text-[#e52e06] font-bold text-sm uppercase">Home / Wallet</p>
+      </div>
+      <div className="container mx-auto px-4 max-w-4xl">
+         <div className="bg-[#232f3e] rounded-lg p-8 text-white flex justify-between items-center shadow-lg mb-8">
+            <div>
+               <p className="text-sm text-gray-400 font-bold uppercase tracking-wider mb-1">Available Balance</p>
+               <h2 className="text-5xl font-extrabold text-[#e52e06]">₹{walletBalance.toLocaleString()}</h2>
+            </div>
+            <div className="flex items-center gap-6">
+               <button 
+                 onClick={() => setShowTopUp(true)}
+                 className="bg-[#e52e06] hover:bg-[#c92805] text-white px-6 py-3 rounded font-bold transition flex items-center gap-2 shadow-md"
+               >
+                 <span className="material-symbols-outlined text-sm">add_circle</span>
+                 Top Up Wallet
+               </button>
+               <span className="material-symbols-outlined text-6xl text-[#e52e06] opacity-80 hidden md:block">account_balance_wallet</span>
+            </div>
+         </div>
+
+         <div className="bg-[#f8f8f8] rounded p-6 shadow-sm">
+            <h3 className="text-xl font-bold text-[#232f3e] uppercase mb-4 border-b border-gray-200 pb-2">Transaction History</h3>
+            {walletTransactions.length === 0 ? (
+               <div className="text-center py-10 text-gray-500 font-medium">No transactions found.</div>
+            ) : (
+               <div className="space-y-4">
+                 {walletTransactions.map((tx: any) => (
+                    <div key={tx.id} className="bg-white border border-gray-200 rounded p-4 flex justify-between items-center">
+                       <div>
+                         <p className="font-bold text-[#232f3e]">{tx.description || tx.type}</p>
+                         <p className="text-xs text-gray-500">{new Date(tx.created_at).toLocaleString()}</p>
+                       </div>
+                       <div className={`font-extrabold text-lg ${tx.type === 'CREDIT' ? 'text-green-600' : 'text-red-600'}`}>
+                         {tx.type === 'CREDIT' ? '+' : '-'}₹{Math.abs(tx.amount).toLocaleString()}
+                       </div>
+                    </div>
+                 ))}
+               </div>
+            )}
+         </div>
       </div>
 
-      {/* Wallet Card */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-[#3874ff] to-[#1d52cc] text-white p-6 rounded-2xl shadow-lg flex flex-col justify-between h-44">
-        <div className="flex justify-between items-start">
-          <div>
-            <span className="text-[10px] uppercase font-bold tracking-widest text-white/70">Available Sandbox Balance</span>
-            <div className="text-4xl font-extrabold font-heading mt-1">₹{walletBalance.toFixed(2)}</div>
+      {showTopUp && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 max-w-sm w-full shadow-2xl">
+            <h3 className="text-xl font-bold text-[#232f3e] mb-4">Top Up Wallet</h3>
+            <form onSubmit={handleTopUp}>
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Amount (₹)</label>
+                <input 
+                  type="number" 
+                  min="1"
+                  value={amount}
+                  onChange={(e) => setAmount(Number(e.target.value))}
+                  className="w-full border border-gray-300 rounded p-2 outline-none focus:border-[#e52e06]"
+                  required
+                />
+              </div>
+              <div className="flex justify-end gap-3">
+                <button 
+                  type="button" 
+                  onClick={() => setShowTopUp(false)}
+                  className="px-4 py-2 text-gray-500 hover:text-gray-700 font-bold"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={loading}
+                  className="px-4 py-2 bg-[#e52e06] text-white rounded font-bold hover:bg-[#c92805] disabled:opacity-50"
+                >
+                  {loading ? 'Processing...' : 'Confirm Top Up'}
+                </button>
+              </div>
+            </form>
           </div>
-          <span className="text-xs bg-white/20 px-3 py-1 rounded-full font-bold">Stitch Pay Shield</span>
         </div>
-        
-        <div className="flex justify-between items-end border-t border-white/10 pt-4">
-          <div>
-            <span className="text-[8px] uppercase font-bold tracking-wider text-white/60">Virtual Vault ID</span>
-            <p className="font-mono text-xs font-bold">{user?.id ? user.id.slice(0, 18) : mockUserId.slice(0, 18)}...</p>
-          </div>
-          <span className="text-[10px] font-bold text-white/90">Escrow Secured</span>
-        </div>
-      </div>
-
-      {/* Transactions Table */}
-      <div className="bg-white dark:bg-[#15131b] p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-4">
-        <h3 className="text-xs font-extrabold uppercase tracking-widest text-[#3f3b4c] dark:text-[#ccc6dc]">Audit Ledger</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs min-w-[500px]">
-            <thead>
-              <tr className="border-b border-zinc-100 dark:border-zinc-800 text-zinc-400 font-bold uppercase text-[9px] tracking-wider">
-                <th className="pb-3">Transaction ID</th>
-                <th className="pb-3">Type</th>
-                <th className="pb-3">Amount</th>
-                <th className="pb-3">Description</th>
-                <th className="pb-3">Timestamp</th>
-              </tr>
-            </thead>
-            <tbody>
-              {walletTransactions.map((tx) => (
-                <tr key={tx.id} className="border-b border-zinc-100 dark:border-zinc-800/50">
-                  <td className="py-3 font-mono text-[10px] font-bold text-[#3874ff]">{tx.id.substring(0, 8)}...</td>
-                  <td className="py-3">
-                    <span className={`px-2 py-0.5 rounded font-extrabold text-[9px] uppercase ${tx.transaction_type === 'CREDIT' ? 'bg-green-100/10 text-green-500' : 'bg-red-100/10 text-red-500'}`}>
-                      {tx.transaction_type}
-                    </span>
-                  </td>
-                  <td className="py-3 font-mono font-bold">₹{tx.amount}</td>
-                  <td className="py-3 text-zinc-600 dark:text-zinc-400 font-medium">{tx.description}</td>
-                  <td className="py-3 text-zinc-400 font-mono text-[10px]">{new Date(tx.created_at).toLocaleString()}</td>
-                </tr>
-              ))}
-              {walletTransactions.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="py-8 text-center text-zinc-400 font-medium">No ledger records found for this account.</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      )}
     </div>
   );
 };

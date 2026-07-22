@@ -1,17 +1,21 @@
-from fastapi import FastAPI, HTTPException, Depends, status, UploadFile, File, Request
+from fastapi import FastAPI, HTTPException, Depends, status, UploadFile, File, Request, Query, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import OAuth2PasswordBearer
 import os
 import io
 import json
 import redis.asyncio as aioredis
 import asyncpg
 from dotenv import load_dotenv
-from typing import Optional, List
-from datetime import datetime
+from typing import Optional, List, Any, Dict
+from app.shiprocket_service import fetch_shipping_rates
+from datetime import datetime, timedelta
 from pydantic import BaseModel, EmailStr
 from uuid import UUID, uuid4
+from jose import JWTError, jwt
 from minio import Minio
+from passlib.context import CryptContext
 
 load_dotenv()
 
@@ -20,11 +24,7 @@ app = FastAPI(title="BUPZO Core API", version="1.0.0")
 # CORS Configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:3013",
-        "http://localhost:3015",
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -72,6 +72,33 @@ except Exception as e:
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379")
 redis_client = None
 
+# JWT Authentication Configuration
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "bupzo_super_secret_key")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7
+REFRESH_TOKEN_EXPIRE_DAYS = 30
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def verify_password(plain_password, hashed_password):
+    if not hashed_password: return False
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password):
+    return pwd_context.hash(password)
+
+class AuthLoginRequest(BaseModel):
+    username: str
+    password: str
+
+class AuthRegisterRequest(BaseModel):
+    phone: str
+    password: str
+    name: str
+    email: Optional[EmailStr] = None
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+
 async def init_redis():
     global redis_client
     try:
@@ -114,6 +141,53 @@ async def clear_cache_keys(pattern: str):
         except Exception as e:
             print(f"Redis delete error: {e}")
 
+# JWT helpers
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + (expires_delta if expires_delta else timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    to_encode.update({"exp": expire, "type": "access"})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + (expires_delta if expires_delta else timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
+    to_encode.update({"exp": expire, "type": "refresh"})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+async def get_user_by_id(user_id: UUID):
+    query = """
+    SELECT u.id, u.name, u.phone, u.email, u.is_premium, u.signup_platform, u.wallet_balance, u.privacy_accepted, u.created_at, u.address, u.pincode,
+           CASE WHEN s.status = 'APPROVED' THEN TRUE ELSE FALSE END AS is_seller,
+           s.status as seller_status
+    FROM users u
+    LEFT JOIN sellers s ON s.user_id = u.id
+    WHERE u.id = $1
+    """
+    user = await execute_query_one(query, user_id)
+    if user:
+        user['is_admin'] = user.get('phone', '') in ADMIN_PHONES
+    return user
+
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload.get("user_id")
+        token_type = payload.get("type")
+        if user_id is None or token_type != "access":
+            raise credentials_exception
+        token_data = TokenData(user_id=UUID(user_id), token_type=token_type)
+    except (JWTError, ValueError):
+        raise credentials_exception
+    user = await get_user_by_id(token_data.user_id)
+    if not user:
+        raise credentials_exception
+    return user
+
 # Initialize asyncpg connection pool
 pool = None
 
@@ -137,6 +211,11 @@ async def startup_event():
         await conn.execute("ALTER TABLE coupons ADD COLUMN IF NOT EXISTS created_by_seller_id UUID REFERENCES sellers(id) ON DELETE CASCADE;")
         await conn.execute("ALTER TABLE coupons ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'PENDING';")
         await conn.execute("UPDATE coupons SET status = 'APPROVED' WHERE status IS NULL;")
+        await conn.execute("ALTER TABLE wallet_transactions DROP CONSTRAINT IF EXISTS wallet_transactions_type_check;")
+        await conn.execute("ALTER TABLE wallet_transactions ADD CONSTRAINT wallet_transactions_type_check CHECK (type IN ('REFERRAL','PURCHASE','TOPUP','REFUND','ADMIN_ADJUSTMENT','ADMIN_REFUND','SALE','PAYOUT'));")
+        
+        # Product images support
+        await conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]'::jsonb;")
         
         # Create disputes table
         await conn.execute("""
@@ -170,10 +249,16 @@ async def startup_event():
                 title VARCHAR(255) NOT NULL,
                 body TEXT NOT NULL,
                 target_tab VARCHAR(50),
+                target_id VARCHAR(100),
+                user_id VARCHAR(100),
                 created_at TIMESTAMP DEFAULT NOW(),
                 read BOOLEAN DEFAULT FALSE
             );
         """)
+
+        # Alter table in case it already exists
+        await conn.execute("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS target_id VARCHAR(100);")
+        await conn.execute("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS user_id VARCHAR(100);")
 
         # Seed mock notifications if empty
         notifs_count = await conn.fetchval("SELECT COUNT(*) FROM notifications;")
@@ -185,19 +270,47 @@ async def startup_event():
                 ('notif-seed-2', 'Seller KYC Pending', 'Merchant "Nagore Halwa Palace" is pending KYC approval.', 'kyc', FALSE);
             """)
 
-        # Seed Mock User so wishlist foreign keys work
+        # Seed Mock Users and merchants so storefront and admin populate immediately
         await conn.execute("""
-            DELETE FROM users 
-            WHERE phone = '+919876543210' 
-            AND id != 'a01b1234-5678-abcd-ef01-1234567890ab';
+            DELETE FROM users
+            WHERE id IN (
+                'a01b1234-5678-abcd-ef01-1234567890aa',
+                'a01b1234-5678-abcd-ef01-1234567890ab',
+                'a01b1234-5678-abcd-ef01-1234567890ac'
+            )
+            OR phone IN ('+919876543210', '+919876543211', '+919876543212');
         """)
         await conn.execute("""
             INSERT INTO users (id, phone, email, is_premium, signup_platform, privacy_accepted, wallet_balance, name)
-            VALUES ('a01b1234-5678-abcd-ef01-1234567890ab', '+919876543210', 'localadmin@bupzo.com', TRUE, 'WEB', TRUE, 2500.00, 'Bupzo Patron')
-            ON CONFLICT (id) DO UPDATE SET
-                phone = EXCLUDED.phone,
-                name = EXCLUDED.name,
-                wallet_balance = EXCLUDED.wallet_balance;
+            VALUES
+                ('a01b1234-5678-abcd-ef01-1234567890aa', '+919876543210', 'admin@bupzo.com', TRUE, 'WEB', TRUE, 2500.00, 'Bupzo Patron'),
+                ('a01b1234-5678-abcd-ef01-1234567890ab', '+919876543211', 'seller@bupzo.com', FALSE, 'WEB', TRUE, 5000.00, 'Bupzo Seller'),
+                ('a01b1234-5678-abcd-ef01-1234567890ac', '+919876543212', 'customer@bupzo.com', FALSE, 'WEB', TRUE, 250.00, 'Bupzo Customer');
+        """)
+
+        await conn.execute("""
+            INSERT INTO categories (id, name, description)
+            VALUES
+                ('d04b1234-5678-abcd-ef01-1234567890ab', 'Nagore Specialties', 'Traditional sweets and regional premium foods.'),
+                ('d04b1234-5678-abcd-ef01-1234567890ac', 'Artisan Gifts', 'Curated handcrafted items from local merchants.')
+            ON CONFLICT (name) DO UPDATE SET description = EXCLUDED.description;
+        """)
+
+        await conn.execute("""
+            INSERT INTO sellers (id, user_id, business_name, commission_rate, status, kyc_details)
+            VALUES
+                ('c03b1234-5678-abcd-ef01-1234567890ab', 'a01b1234-5678-abcd-ef01-1234567890ab', 'Nagore Halwa Palace', 8.00, 'APPROVED', '{"gstin": "33AAAAA1111A1Z1", "fssai": "10022020000001"}'),
+                ('c03b1234-5678-abcd-ef01-1234567890ac', 'a01b1234-5678-abcd-ef01-1234567890ac', 'Panna Crafts & Gifts', 10.00, 'APPROVED', '{"gstin": "33BBBBB2222B2Z2", "fssai": "10022020000002"}')
+            ON CONFLICT (business_name) DO NOTHING;
+        """)
+
+        await conn.execute("""
+            INSERT INTO products (id, name, category_id, price, weight_grams, image_url, is_combo, stock_quantity, seller_id, description)
+            VALUES
+                ('e05b1234-5678-abcd-ef01-1234567890aa', 'Nagore Ghee Halwa', 'd04b1234-5678-abcd-ef01-1234567890ab', 299.00, 500.00, 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=400&q=80', FALSE, 150, 'c03b1234-5678-abcd-ef01-1234567890ab', 'Traditional ghee halwa with cashews and premium saffron.'),
+                ('e05b1234-5678-abcd-ef01-1234567890ab', 'Premium Dry Fruit Combo', 'd04b1234-5678-abcd-ef01-1234567890ab', 799.00, 1000.00, 'https://images.unsplash.com/photo-1596560548464-f010689b771a?auto=format&fit=crop&w=400&q=80', TRUE, 80, 'c03b1234-5678-abcd-ef01-1234567890ab', 'Assorted premium dry fruits perfect for gifting.'),
+                ('e05b1234-5678-abcd-ef01-1234567890ac', 'Handcrafted Brass Lamp', 'd04b1234-5678-abcd-ef01-1234567890ac', 1249.00, 650.00, 'https://images.unsplash.com/photo-1542831371-d531d36971e6?auto=format&fit=crop&w=400&q=80', FALSE, 45, 'c03b1234-5678-abcd-ef01-1234567890ac', 'Elegant artisan brass lamp for home décor.')
+            ON CONFLICT (id) DO NOTHING;
         """)
 
 @app.on_event("shutdown")
@@ -216,10 +329,35 @@ class UserCreate(BaseModel):
     signup_platform: str # 'WEB' or 'APP'
     referred_by: Optional[UUID] = None
     privacy_accepted: bool = False
+    password: Optional[str] = None
+
+class AuthLoginRequest(BaseModel):
+    username: str
+    password: str
+
+class AuthRegisterRequest(BaseModel):
+    username: str
+    password: str
+    name: str
+    phone: str
+    is_premium: bool = False
+    signup_platform: str = 'WEB'
+    referred_by: Optional[UUID] = None
+    privacy_accepted: bool = True
+
+class AuthGoogleRequest(BaseModel):
+    email: EmailStr
+    name: str
+    google_token: str # Simplified mock for google token
+
+class TokenData(BaseModel):
+    user_id: Optional[UUID] = None
+    token_type: Optional[str] = None
 
 ADMIN_PHONES = ['+919876543210', '9876543210']
 
 class UserResponse(BaseModel):
+    seller_status: Optional[str] = None
     id: UUID
     name: Optional[str] = None
     phone: str
@@ -229,11 +367,20 @@ class UserResponse(BaseModel):
     wallet_balance: float
     privacy_accepted: bool
     created_at: datetime
+    address: Optional[str] = None
+    pincode: Optional[str] = None
     is_seller: bool = False
     is_admin: bool = False
 
     class Config:
         from_attributes = True
+
+class TokenResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = 'bearer'
+    expires_in: int
+    user: UserResponse
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
@@ -241,6 +388,8 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     is_premium: Optional[bool] = None
     wallet_balance: Optional[float] = None
+    address: Optional[str] = None
+    pincode: Optional[str] = None
 
 # Dispute Pydantic Models
 class DisputeResponse(BaseModel):
@@ -265,6 +414,7 @@ class NotificationResponse(BaseModel):
     title: str
     body: str
     targetTab: Optional[str] = None
+    target_id: Optional[str] = None
     read: bool
     created_at: datetime
     timestamp: str
@@ -276,6 +426,7 @@ class NotificationCreate(BaseModel):
     title: str
     body: str
     targetTab: Optional[str] = None
+    target_id: Optional[str] = None
 
 class CategoryCreate(BaseModel):
     name: str
@@ -338,6 +489,7 @@ class ProductCreate(BaseModel):
     stock_quantity: int = 0
     seller_id: UUID
     description: Optional[str] = None
+    images: Optional[List[str]] = []
 
 class ProductUpdate(BaseModel):
     name: Optional[str] = None
@@ -348,19 +500,28 @@ class ProductUpdate(BaseModel):
     is_combo: Optional[bool] = None
     stock_quantity: Optional[int] = None
     description: Optional[str] = None
+    images: Optional[List[str]] = None
+    seller_id: Optional[UUID] = None
+
+class ProductApprovalUpdate(BaseModel):
+    is_approved: Optional[bool] = None
+    rejection_reason: Optional[str] = None
 
 class ProductResponse(BaseModel):
     id: UUID
     name: str
     category_id: UUID
     price: float
-    weight_grams: float
-    image_url: Optional[str] = None
-    is_combo: bool
+    weight_grams: Optional[float]
+    image_url: Optional[str]
+    images: Optional[List[str]] = []
+    is_combo: Optional[bool] = False
     stock_quantity: int
     seller_id: UUID
     description: Optional[str] = None
     created_at: datetime
+    is_approved: Optional[bool] = None
+    rejection_reason: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -376,6 +537,7 @@ class WishlistItemResponse(BaseModel):
     added_at: datetime
     product_name: str
     product_price: float
+    product_image_url: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -401,7 +563,7 @@ class SellerRegisterRequest(BaseModel):
     email: Optional[str] = None
     business_name: str
     commission_rate: float = 10.0
-    status: str = "APPROVED"
+    status: str = "PENDING"
     kyc_details: Optional[dict] = {}
 
 class SellerResponse(BaseModel):
@@ -411,6 +573,9 @@ class SellerResponse(BaseModel):
     commission_rate: float
     status: str
     kyc_details: dict
+    user_name: Optional[str] = None
+    user_email: Optional[str] = None
+    user_phone: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -439,6 +604,7 @@ class WalletTransactionResponse(BaseModel):
     amount: float
     type: str
     description: Optional[str] = None
+    mobile_number: Optional[str] = None
     created_at: datetime
 
     class Config:
@@ -458,28 +624,33 @@ class OrderResponse(BaseModel):
     currency: str
     exchange_rate: float
     created_at: datetime
+    items: Optional[List[Dict[str, Any]]] = None
 
     class Config:
         from_attributes = True
 
 # Helper functions for database execution
+
+def normalize_args(args):
+    return [str(arg) if isinstance(arg, UUID) else arg for arg in args]
+
 async def execute_query(query: str, *args):
     async with pool.acquire() as conn:
-        rows = await conn.fetch(query, *args)
+        rows = await conn.fetch(query, *normalize_args(args))
         return [dict(row) for row in rows]
 
 async def execute_query_one(query: str, *args):
     async with pool.acquire() as conn:
-        row = await conn.fetchrow(query, *args)
+        row = await conn.fetchrow(query, *normalize_args(args))
         return dict(row) if row is not None else None
 
 async def execute_query_val(query: str, *args):
     async with pool.acquire() as conn:
-        return await conn.fetch_val(query, *args)
+        return await conn.fetch_val(query, *normalize_args(args))
 
 async def execute_query_none(query: str, *args):
     async with pool.acquire() as conn:
-        await conn.execute(query, *args)
+        await conn.execute(query, *normalize_args(args))
 
 # Root & Health Endpoints
 @app.get("/api/")
@@ -499,46 +670,48 @@ async def create_user(user: UserCreate):
         if not check_ref:
             raise HTTPException(status_code=400, detail="Referrer user not found.")
 
+    user_id = uuid4()
+    
+    password_hash = get_password_hash(user.password) if user.password else None
+
     query = """
     INSERT INTO users
-    (id, name, phone, email, is_premium, signup_platform, referred_by, privacy_accepted)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-    RETURNING id, name, phone, email, is_premium, signup_platform, wallet_balance, privacy_accepted, created_at
+    (id, name, phone, email, is_premium, signup_platform, referred_by, privacy_accepted, password_hash)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
     """
     values = (
-        uuid4(),
+        user_id,
         user.name,
         user.phone,
         user.email,
         user.is_premium,
         user.signup_platform,
         user.referred_by,
-        user.privacy_accepted
+        user.privacy_accepted,
+        password_hash
     )
     try:
-        result = await execute_query_one(query, *values)
-        
-        # If successfully referred, handle referral transaction logic (₹5 standard bonus)
-        if user.referred_by and result:
+        await execute_query_none(query, *values)
+        if user.referred_by:
             ref_bonus = 5.00
-            # Credit referrer
             await execute_query_none("UPDATE users SET wallet_balance = wallet_balance + $1 WHERE id = $2", ref_bonus, user.referred_by)
             await execute_query_none(
                 "INSERT INTO wallet_transactions (id, user_id, amount, type, description) VALUES ($1, $2, $3, 'REFERRAL', $4)",
                 uuid4(), user.referred_by, ref_bonus, f"Referral bonus for onboarding user {user.phone}"
             )
-            # Log referral
             await execute_query_none(
                 "INSERT INTO referrals (id, referrer_id, referee_id, bonus_amount, status) VALUES ($1, $2, $3, $4, 'CREDITED')",
-                uuid4(), user.referred_by, result['id'], ref_bonus
+                uuid4(), user.referred_by, user_id, ref_bonus
             )
-
-        return result
+        existing_user = await get_user_by_id(user_id)
+        return existing_user
     except asyncpg.exceptions.UniqueViolationError:
         existing_user = await execute_query_one(
-            "SELECT id, name, phone, email, is_premium, signup_platform, wallet_balance, privacy_accepted, created_at FROM users WHERE phone = $1",
+            "SELECT u.id, u.name, u.phone, u.email, u.is_premium, u.signup_platform, u.wallet_balance, u.privacy_accepted, u.created_at, u.address, u.pincode, CASE WHEN s.id IS NOT NULL THEN TRUE ELSE FALSE END AS is_seller FROM users u LEFT JOIN sellers s ON s.user_id = u.id WHERE u.phone = $1",
             user.phone
         )
+        if existing_user:
+            existing_user['is_admin'] = existing_user.get('phone', '') in ADMIN_PHONES
         return existing_user
 
 @app.get("/api/users/", response_model=List[UserResponse])
@@ -546,7 +719,7 @@ async def read_users():
     query = """
     SELECT
         u.id, u.name, u.phone, u.email, u.is_premium, u.signup_platform,
-        u.wallet_balance, u.privacy_accepted, u.created_at,
+        u.wallet_balance, u.privacy_accepted, u.created_at, u.address, u.pincode,
         CASE WHEN s.id IS NOT NULL THEN TRUE ELSE FALSE END AS is_seller
     FROM users u
     LEFT JOIN sellers s ON s.user_id = u.id
@@ -593,11 +766,20 @@ async def update_user(user_id: UUID, payload: UserUpdate):
         values.append(payload.wallet_balance)
         counter += 1
         
+    if payload.address is not None:
+        fields.append(f"address = ${counter}")
+        values.append(payload.address)
+        counter += 1
+    if payload.pincode is not None:
+        fields.append(f"pincode = ${counter}")
+        values.append(payload.pincode)
+        counter += 1
+        
     if not fields:
         raise HTTPException(status_code=400, detail="No fields provided to update")
         
     values.append(user_id)
-    query = f"UPDATE users SET {', '.join(fields)} WHERE id = ${counter} RETURNING id, name, phone, email, is_premium, signup_platform, wallet_balance, privacy_accepted, created_at"
+    query = f"UPDATE users SET {', '.join(fields)} WHERE id = ${counter} RETURNING id, name, phone, email, is_premium, signup_platform, wallet_balance, privacy_accepted, created_at, address, pincode"
     
     res = await execute_query_one(query, *values)
     return res
@@ -605,13 +787,16 @@ async def update_user(user_id: UUID, payload: UserUpdate):
 @app.get("/api/users/{user_id}", response_model=UserResponse)
 async def read_user(user_id: UUID):
     query = """
-    SELECT id, name, phone, email, is_premium, signup_platform, wallet_balance, privacy_accepted, created_at
-    FROM users
-    WHERE id = $1
+    SELECT u.id, u.name, u.phone, u.email, u.is_premium, u.signup_platform, u.wallet_balance, u.privacy_accepted, u.created_at, u.address, u.pincode,
+           CASE WHEN s.id IS NOT NULL THEN TRUE ELSE FALSE END AS is_seller
+    FROM users u
+    LEFT JOIN sellers s ON s.user_id = u.id
+    WHERE u.id = $1
     """
     result = await execute_query_one(query, user_id)
     if not result:
         raise HTTPException(status_code=404, detail="User not found")
+    result['is_admin'] = result.get('phone', '') in ADMIN_PHONES
     return result
 
 @app.delete("/api/users/{user_id}")
@@ -635,70 +820,248 @@ async def delete_user(user_id: UUID):
         # Delete wishlist
         await conn.execute("DELETE FROM wishlist WHERE user_id = $1", user_id)
         
+        # Delete messages
+        await conn.execute("DELETE FROM messages WHERE sender_id = $1 OR receiver_id = $1", user_id)
+
+        # Delete reviews
+        await conn.execute("DELETE FROM reviews WHERE user_id = $1", user_id)
+
+        # Delete wallet transactions
+        await conn.execute("DELETE FROM wallet_transactions WHERE user_id = $1", user_id)
+
+        # Delete addresses
+        await conn.execute("DELETE FROM addresses WHERE user_id = $1", user_id)
+        
         # Finally delete the user
         await conn.execute("DELETE FROM users WHERE id = $1", user_id)
         await invalidate_cache(["cache:users"])
         return {"success": True, "message": "User deleted successfully"}
 
-# Product Catalog Management
+
+
+def format_phone(phone_str: str) -> str:
+    if phone_str and len(phone_str.strip()) == 10 and phone_str.strip().isdigit():
+        return f"+91{phone_str.strip()}"
+    return phone_str.strip() if phone_str else phone_str
+
+@app.post("/api/auth/login", response_model=TokenResponse)
+async def auth_login(payload: AuthLoginRequest):
+    username = format_phone(payload.username)
+    user = await execute_query_one(
+        "SELECT u.id, u.password_hash FROM users u WHERE u.email = $1 OR u.phone = $1",
+        username
+    )
+    if not user or not verify_password(payload.password, user.get('password_hash')):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+        
+    full_user = await get_user_by_id(user['id'])
+    
+    access_token = create_access_token({"user_id": str(full_user['id'])})
+    refresh_token = create_refresh_token({"user_id": str(full_user['id'])})
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        "user": full_user
+    }
+
+@app.post("/api/auth/register", response_model=TokenResponse)
+async def auth_register(payload: AuthRegisterRequest):
+    formatted_phone = format_phone(payload.phone)
+    formatted_username = format_phone(payload.username)
+
+    user = await execute_query_one("SELECT id FROM users WHERE phone = $1", formatted_phone)
+    if user:
+        raise HTTPException(status_code=400, detail="Phone number already registered")
+
+    user_id = uuid4()
+    password_hash = get_password_hash(payload.password)
+    
+    email = formatted_username if '@' in formatted_username else None
+
+    query = """
+    INSERT INTO users
+    (id, name, phone, email, is_premium, signup_platform, referred_by, privacy_accepted, password_hash)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    """
+    await execute_query_none(
+        query, user_id, payload.name, formatted_phone, email, payload.is_premium,
+        payload.signup_platform, payload.referred_by, payload.privacy_accepted, password_hash
+    )
+    
+    full_user = await get_user_by_id(user_id)
+    
+    access_token = create_access_token({"user_id": str(full_user['id'])})
+    refresh_token = create_refresh_token({"user_id": str(full_user['id'])})
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        "user": full_user
+    }
+
+@app.post("/api/auth/google", response_model=TokenResponse)
+async def auth_google(payload: AuthGoogleRequest):
+    # Mock Google Auth Verification
+    if not payload.google_token or len(payload.google_token) < 5:
+        raise HTTPException(status_code=401, detail="Invalid Google Token")
+        
+    user = await execute_query_one(
+        "SELECT u.id FROM users u WHERE u.email = $1",
+        payload.email
+    )
+    if not user:
+        # Create user via Google
+        user_id = uuid4()
+        await execute_query_none(
+            "INSERT INTO users (id, name, phone, email, is_premium, signup_platform, privacy_accepted, wallet_balance) VALUES ($1, $2, $3, $4, $5, $6, $7, 0)",
+            user_id,
+            payload.name,
+            f"GOOG-{str(user_id)[:8]}", # Mock phone
+            payload.email,
+            False,
+            'WEB',
+            True
+        )
+        full_user = await get_user_by_id(user_id)
+    else:
+        full_user = await get_user_by_id(user['id'])
+        
+    access_token = create_access_token({"user_id": str(full_user['id'])})
+    refresh_token = create_refresh_token({"user_id": str(full_user['id'])})
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        "user": full_user
+    }
+
+@app.post("/api/auth/refresh", response_model=TokenResponse)
+async def auth_refresh(payload: dict):
+    refresh_token = payload.get("refresh_token")
+    if not refresh_token:
+        raise HTTPException(status_code=400, detail="Refresh token is required.")
+    try:
+        payload_data = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload_data.get("user_id")
+        token_type = payload_data.get("type")
+        if user_id is None or token_type != "refresh":
+            raise JWTError("Invalid refresh token type.")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid refresh token.")
+    user = await get_user_by_id(UUID(user_id))
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+    access_token = create_access_token({"user_id": str(user['id'])})
+    refresh_token = create_refresh_token({"user_id": str(user['id'])})
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        "user": user
+    }
+
+@app.get("/api/auth/me", response_model=UserResponse)
+async def auth_me(current_user: dict = Depends(get_current_user)):
+    return current_user
+
 @app.post("/api/products/", response_model=ProductResponse)
 async def create_product(product: ProductCreate):
     # Verify category and seller
-    cat_check = await execute_query_one("SELECT id FROM categories WHERE id = $1", product.category_id)
+    cat_check = await execute_query_one("SELECT id FROM categories WHERE id = $1", str(product.category_id))
     if not cat_check:
         raise HTTPException(status_code=400, detail="Category not found.")
     
-    sel_check = await execute_query_one("SELECT id FROM sellers WHERE id = $1", product.seller_id)
+    sel_check = await execute_query_one("SELECT id, business_name FROM sellers WHERE id = $1", str(product.seller_id))
     if not sel_check:
         raise HTTPException(status_code=400, detail="Seller not found.")
 
+    seller_name = sel_check.get('business_name', 'A Seller')
+
+    product_id = uuid4()
     query = """
-    INSERT INTO products
-    (id, name, category_id, price, weight_grams, image_url, is_combo, stock_quantity, seller_id, description)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-    RETURNING id, name, category_id, price, weight_grams, image_url, is_combo, stock_quantity, seller_id, description, created_at
+    INSERT INTO products (id, name, category_id, price, weight_grams, image_url, images, is_combo, stock_quantity, seller_id, description, is_approved) 
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NULL)
+    RETURNING id, name, category_id, price, weight_grams, image_url, images, is_combo, stock_quantity, seller_id, description, created_at, is_approved, rejection_reason
     """
     values = (
-        uuid4(),
+        str(product_id),
         product.name,
-        product.category_id,
+        str(product.category_id) if product.category_id else None,
         product.price,
         product.weight_grams,
         product.image_url,
+        json.dumps(product.images) if product.images else '[]',
         product.is_combo,
         product.stock_quantity,
-        product.seller_id,
+        str(product.seller_id) if product.seller_id else None,
         product.description
     )
     result = await execute_query_one(query, *values)
+    if result and isinstance(result.get('images'), str):
+        result = dict(result)
+        try:
+            result['images'] = json.loads(result['images'])
+        except:
+            result['images'] = []
     # Send Notification to Admin
     async with pool.acquire() as conn:
         await conn.execute(
             """
-            INSERT INTO notifications (id, title, body, target_tab, read, created_at)
-            VALUES ($1, $2, $3, $4, FALSE, NOW())
+            INSERT INTO notifications (id, title, body, target_tab, target_id, read, created_at)
+            VALUES ($1, $2, $3, $4, $5, FALSE, NOW())
             """,
-            uuid4(),
+            str(uuid4()),
             "New Product Created",
-            f"Seller '{sel_check['business_name']}' created product '{product.name}' (Price: ₹{product.price}).",
-            "products"
+            f"Seller '{seller_name}' created product '{product.name}' (Price: ₹{product.price}).",
+            "products",
+            str(result['id'])
         )
     await clear_cache_keys("cache:notifications")
     return result
 
 @app.get("/api/products/", response_model=List[ProductResponse])
-async def read_products():
-    query = """
-    SELECT id, name, category_id, price, weight_grams, image_url, is_combo, stock_quantity, seller_id, description, created_at
-    FROM products
-    """
-    results = await execute_query(query)
-    return results
+async def read_products(seller_id: Optional[UUID] = None, all: Optional[bool] = False):
+    if seller_id:
+        query = """
+        SELECT id, name, category_id, price, weight_grams, image_url, images, is_combo, stock_quantity, seller_id, description, created_at, is_approved, rejection_reason
+        FROM products WHERE seller_id = $1
+        """
+        results = await execute_query(query, seller_id)
+    else:
+        if all:
+            query = """
+            SELECT id, name, category_id, price, weight_grams, image_url, images, is_combo, stock_quantity, seller_id, description, created_at, is_approved, rejection_reason
+            FROM products
+            """
+        else:
+            query = """
+            SELECT id, name, category_id, price, weight_grams, image_url, images, is_combo, stock_quantity, seller_id, description, created_at, is_approved, rejection_reason
+            FROM products WHERE is_approved = TRUE
+            """
+        results = await execute_query(query)
+    import json
+    parsed_results = []
+    for r in results:
+        r_dict = dict(r)
+        if isinstance(r_dict.get('images'), str):
+            try:
+                r_dict['images'] = json.loads(r_dict['images'])
+            except:
+                r_dict['images'] = []
+        elif r_dict.get('images') is None:
+            r_dict['images'] = []
+        parsed_results.append(r_dict)
+    return parsed_results
 
 @app.get("/api/products/{product_id}", response_model=ProductResponse)
 async def read_product(product_id: UUID):
     query = """
-    SELECT id, name, category_id, price, weight_grams, image_url, is_combo, stock_quantity, seller_id, description, created_at
+    SELECT id, name, category_id, price, weight_grams, image_url, is_combo, stock_quantity, seller_id, description, created_at, is_approved, rejection_reason
     FROM products
     WHERE id = $1
     """
@@ -706,6 +1069,20 @@ async def read_product(product_id: UUID):
     if not result:
       raise HTTPException(status_code=404, detail="Product not found")
     return result
+
+@app.put("/api/products/{product_id}/approve", response_model=dict)
+async def approve_product(product_id: UUID, payload: ProductApprovalUpdate):
+    async with pool.acquire() as conn:
+        result = await conn.execute(
+            "UPDATE products SET is_approved = $1, rejection_reason = $2 WHERE id = $3", 
+            payload.is_approved, payload.rejection_reason, str(product_id)
+        )
+        if result == "UPDATE 0":
+            raise HTTPException(status_code=404, detail="Product not found")
+        status_text = "Approved" if payload.is_approved else ("Rejected" if payload.is_approved is False else "Pending")
+        nid = str(uuid4())
+        await conn.execute("INSERT INTO notifications (id, title, body, target_tab, target_id) VALUES ($1, $2, $3, $4, $5)", nid, "Product Status Changed", f"Product ID {product_id} was marked as {status_text}.", "products", str(product_id))
+        return {"success": True, "is_approved": payload.is_approved, "rejection_reason": payload.rejection_reason}
 
 @app.delete("/api/products/{product_id}")
 async def delete_product(product_id: UUID):
@@ -729,6 +1106,10 @@ async def delete_product(product_id: UUID):
 # Wishlist Management
 @app.post("/api/wishlist/", response_model=WishlistItemResponse)
 async def add_to_wishlist(item: WishlistItemCreate):
+    existing = await execute_query_one("SELECT id FROM wishlist WHERE user_id=$1 AND product_id=$2", item.user_id, item.product_id)
+    if existing:
+        raise HTTPException(status_code=400, detail="Item already in wishlist.")
+        
     # Verify user and product
     u_check = await execute_query_one("SELECT id FROM users WHERE id = $1", item.user_id)
     if not u_check:
@@ -763,7 +1144,7 @@ async def add_to_wishlist(item: WishlistItemCreate):
 async def get_wishlist(user_id: UUID):
     query = """
     SELECT w.id, w.user_id, w.product_id, w.added_at,
-           p.name as product_name, p.price as product_price
+           p.name as product_name, p.price as product_price, p.image_url as product_image_url
     FROM wishlist w
     JOIN products p ON w.product_id = p.id
     WHERE w.user_id = $1
@@ -777,6 +1158,14 @@ async def remove_from_wishlist(wishlist_id: UUID):
     await execute_query_none(query, wishlist_id)
     return {"success": True, "message": "Item removed from wishlist"}
 
+@app.get("/api/shipping-rates/")
+async def get_shipping_rates(delivery_pincode: str, weight_kg: float = 1.0, pickup_pincode: str = "110020"):
+    try:
+        rates = await fetch_shipping_rates(pickup_pincode, delivery_pincode, weight_kg)
+        return rates
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Order & Checkout Management
 @app.post("/api/checkout/", response_model=dict)
 async def create_checkout(payload: OrderCreate):
@@ -784,8 +1173,8 @@ async def create_checkout(payload: OrderCreate):
     u_check = await execute_query_one("SELECT id, wallet_balance FROM users WHERE id = $1", payload.user_id)
     if not u_check:
         raise HTTPException(status_code=400, detail="User not found.")
-    s_check = await execute_query_one("SELECT id FROM sellers WHERE id = $1", payload.seller_id)
-    if not s_check:
+    seller_info = await execute_query_one("SELECT id, user_id, business_name FROM sellers WHERE id = $1", payload.seller_id)
+    if not seller_info:
         raise HTTPException(status_code=400, detail="Seller not found.")
 
     # Automatically credit balance if insufficient (to guarantee smooth local dev workflow)
@@ -799,7 +1188,9 @@ async def create_checkout(payload: OrderCreate):
         )
 
     order_id = uuid4()
-    
+    seller_user_id = seller_info['user_id']
+    seller_name = seller_info['business_name'] or 'Seller'
+
     # Start Transaction block
     async with pool.acquire() as conn:
         async with conn.transaction():
@@ -809,10 +1200,10 @@ async def create_checkout(payload: OrderCreate):
                 payload.total_amount, payload.user_id
             )
 
-            # Log transaction
+            # Log buyer transaction
             await conn.execute(
                 "INSERT INTO wallet_transactions (id, user_id, amount, type, description) VALUES ($1, $2, $3, 'PURCHASE', $4)",
-                uuid4(), payload.user_id, -payload.total_amount, f"Checkout for order {order_id}"
+                str(uuid4()), str(payload.user_id), -payload.total_amount, f"Checkout for order {order_id}"
             )
 
             # 1. Create order as paid
@@ -822,9 +1213,9 @@ async def create_checkout(payload: OrderCreate):
             VALUES ($1, $2, $3, $4, 'paid', $5, $6, $7, $8, $9, $10)
             """
             order_values = (
-                order_id,
-                payload.user_id,
-                payload.seller_id,
+                str(order_id),
+                str(payload.user_id),
+                str(payload.seller_id),
                 payload.total_amount,
                 payload.order_source,
                 payload.shipping_partner,
@@ -846,7 +1237,7 @@ async def create_checkout(payload: OrderCreate):
                 # Insert order item
                 await conn.execute(
                     "INSERT INTO order_items (id, order_id, product_id, quantity, price_at_purchase) VALUES ($1, $2, $3, $4, $5)",
-                    uuid4(), order_id, item.product_id, item.quantity, product['price'] * item.quantity
+                    str(uuid4()), str(order_id), str(item.product_id), item.quantity, product['price'] * item.quantity
                 )
 
                 # Update stock
@@ -854,8 +1245,29 @@ async def create_checkout(payload: OrderCreate):
                     "UPDATE products SET stock_quantity = stock_quantity - $1 WHERE id = $2",
                     item.quantity, item.product_id
                 )
-                
-    return {"success": True, "message": "Order created in pending state.", "order_id": order_id}
+
+            # Credit seller wallet with sale proceeds
+            await conn.execute(
+                "UPDATE users SET wallet_balance = wallet_balance + $1 WHERE id = $2",
+                payload.total_amount, seller_user_id
+            )
+            await conn.execute(
+                "INSERT INTO wallet_transactions (id, user_id, amount, type, description) VALUES ($1, $2, $3, 'SALE', $4)",
+                str(uuid4()), str(seller_user_id), payload.total_amount, f"Sale earnings for order {order_id}"
+            )
+
+            # Notify seller of a new paid order
+            await conn.execute(
+                "INSERT INTO notifications (id, title, body, target_tab, target_id, read, created_at, user_id) VALUES ($1, $2, $3, $4, $5, FALSE, NOW(), $6)",
+                str(uuid4()),
+                "New Paid Order Received",
+                f"{seller_name} has a paid order {order_id} ready to process.",
+                "orders",
+                str(order_id),
+                str(seller_user_id)
+            )
+
+    return {"success": True, "message": "Order created and seller wallet credited.", "order_id": order_id}
 
 # Stitch Payment Integration Models
 class StitchPaymentRequest(BaseModel):
@@ -1048,6 +1460,17 @@ async def ai_search_products(payload: ProductSearchRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"pgvector query failed: {str(e)}")
 
+@app.post("/api/auth/forgot-password")
+async def forgot_password(email: str):
+    # Check if user exists
+    user = await execute_query_one("SELECT id FROM users WHERE email = $1", email)
+    if not user:
+        # To prevent email enumeration, we still return success message
+        return {"message": "Reset link sent if email exists."}
+    
+    # In a real app, generate a reset token and send an email
+    return {"message": "Reset link sent if email exists."}
+
 class CopywriterRequest(BaseModel):
     prompt: str
 
@@ -1194,7 +1617,7 @@ async def ai_fraud_check(payload: FraudAnalysisRequest):
 @app.get("/api/sellers/", response_model=List[SellerResponse])
 async def read_sellers():
     import json
-    query = "SELECT id, user_id, business_name, commission_rate, status, kyc_details, created_at, updated_at FROM sellers"
+    query = "SELECT s.id, s.user_id, s.business_name, s.commission_rate, s.status, s.kyc_details, s.created_at, s.updated_at, u.name as user_name, u.email as user_email, u.phone as user_phone FROM sellers s JOIN users u ON s.user_id = u.id"
     res = await execute_query(query)
     processed = []
     for row in res:
@@ -1211,10 +1634,40 @@ async def read_sellers():
             "commission_rate": float(row['commission_rate']),
             "status": row['status'],
             "kyc_details": kyc,
+            "user_name": row["user_name"],
+            "user_email": row["user_email"],
+            "user_phone": row["user_phone"],
             "created_at": row['created_at'],
             "updated_at": row['updated_at']
         })
     return processed
+
+@app.get("/api/sellers/{seller_id}", response_model=SellerResponse)
+async def read_seller(seller_id: UUID):
+    import json
+    query = "SELECT s.id, s.user_id, s.business_name, s.commission_rate, s.status, s.kyc_details, s.created_at, s.updated_at, u.name as user_name, u.email as user_email, u.phone as user_phone FROM sellers s JOIN users u ON s.user_id = u.id WHERE s.id = $1"
+    res = await execute_query_one(query, seller_id)
+    if not res:
+        raise HTTPException(status_code=404, detail="Seller not found")
+    kyc = res['kyc_details']
+    if isinstance(kyc, str):
+        try:
+            kyc = json.loads(kyc)
+        except Exception:
+            kyc = {}
+    return {
+        "id": res['id'],
+        "user_id": res['user_id'],
+        "business_name": res['business_name'],
+        "commission_rate": float(res['commission_rate']),
+        "status": res['status'],
+        "kyc_details": kyc,
+        "user_name": res["user_name"],
+        "user_email": res["user_email"],
+        "user_phone": res["user_phone"],
+        "created_at": res['created_at'],
+        "updated_at": res['updated_at']
+    }
 
 @app.post("/api/sellers/", response_model=SellerResponse)
 async def register_seller(payload: SellerRegisterRequest):
@@ -1255,11 +1708,10 @@ async def register_seller(payload: SellerRegisterRequest):
             res = await conn.fetchrow(query, seller_id, user_id, payload.business_name, payload.commission_rate, payload.status, kyc_payload)
             # Send Notification to Admin
             await conn.execute(
-                """
-                INSERT INTO notifications (id, title, body, target_tab, read, created_at)
+                """INSERT INTO notifications (id, title, body, target_tab, read, created_at)
                 VALUES ($1, $2, $3, $4, FALSE, NOW())
                 """,
-                uuid4(),
+                str(uuid4()),
                 "New Merchant Registered",
                 f"Merchant store '{payload.business_name}' has been created with status {payload.status}.",
                 "merchants"
@@ -1294,18 +1746,35 @@ async def reject_seller(seller_id: UUID):
         raise HTTPException(status_code=404, detail="Seller not found")
     return {"success": True, "seller_id": res['id'], "status": res['status']}
 
+class SellerUpdate(BaseModel):
+    business_name: str
+    commission_rate: float
+    status: str
+    kyc_details: Optional[dict] = None
+
 # Update Seller Details / Commission
 @app.put("/api/sellers/{seller_id}")
-async def update_seller(seller_id: UUID, business_name: str, commission_rate: float, status: str):
+async def update_seller(seller_id: UUID, data: SellerUpdate):
+    business_name = data.business_name
+    commission_rate = data.commission_rate
+    status = data.status
+    kyc_details = json.dumps(data.kyc_details) if data.kyc_details is not None else None
+    
     query = """
     UPDATE sellers
-    SET business_name = $1, commission_rate = $2, status = $3, updated_at = NOW()
-    WHERE id = $4
+    SET business_name = $1, commission_rate = $2, status = $3, kyc_details = COALESCE($4, kyc_details), updated_at = NOW()
+    WHERE id = $5
     RETURNING id, user_id, business_name, commission_rate, status, created_at, updated_at
     """
-    res = await execute_query_one(query, business_name, commission_rate, status, seller_id)
+    res = await execute_query_one(query, business_name, commission_rate, status, kyc_details, seller_id)
     if not res:
         raise HTTPException(status_code=404, detail="Seller not found")
+        
+    # Update users.is_seller
+    if status == 'APPROVED':
+        await execute_query_one("UPDATE users SET is_seller = TRUE WHERE id = $1 RETURNING id", res['user_id'])
+    else:
+        await execute_query_one("UPDATE users SET is_seller = FALSE WHERE id = $1 RETURNING id", res['user_id'])
 
     # Send notification for commission rate updates
     if commission_rate != 10.0:  # Default rate is 10.0
@@ -1313,11 +1782,10 @@ async def update_seller(seller_id: UUID, business_name: str, commission_rate: fl
             seller_info = await conn.fetchrow("SELECT business_name FROM sellers WHERE id = $1", seller_id)
             biz_name = seller_info['business_name'] if seller_info else "A Seller"
             await conn.execute(
-                """
-                INSERT INTO notifications (id, title, body, target_tab, read, created_at)
+                """INSERT INTO notifications (id, title, body, target_tab, read, created_at)
                 VALUES ($1, $2, $3, $4, FALSE, NOW())
                 """,
-                uuid4(),
+                str(uuid4()),
                 "Commission Rate Updated",
                 f"Seller '{biz_name}' updated commission rate to {commission_rate}%.",
                 "merchants"
@@ -1434,9 +1902,13 @@ async def update_category(category_id: UUID, payload: CategoryCreate):
 # Coupon/Voucher Management
 # Coupon/Voucher Management
 @app.get("/api/coupons/", response_model=List[CouponResponse])
-async def read_coupons():
-    query = "SELECT id, code, discount_percent, is_premium_only, expiry_date, usage_limit, min_order_value, created_at, created_by_seller_id, status FROM coupons ORDER BY created_at DESC"
-    return await execute_query(query)
+async def read_coupons(seller_id: Optional[UUID] = None):
+    if seller_id:
+        query = "SELECT id, code, discount_percent, is_premium_only, expiry_date, usage_limit, min_order_value, created_at, created_by_seller_id, status FROM coupons WHERE created_by_seller_id = $1 ORDER BY created_at DESC"
+        return await execute_query(query, seller_id)
+    else:
+        query = "SELECT id, code, discount_percent, is_premium_only, expiry_date, usage_limit, min_order_value, created_at, created_by_seller_id, status FROM coupons ORDER BY created_at DESC"
+        return await execute_query(query)
 
 @app.post("/api/coupons/", response_model=CouponResponse)
 async def create_coupon(payload: CouponCreate):
@@ -1466,13 +1938,14 @@ async def create_coupon(payload: CouponCreate):
         if assigned_status == 'PENDING':
             notif_id = f"notif-coupon-{res['id']}"
             await execute_query(
-                """INSERT INTO notifications (id, title, body, target_tab, read)
-                   VALUES ($1, $2, $3, $4, FALSE)
+                """INSERT INTO notifications (id, title, body, target_tab, target_id, read)
+                   VALUES ($1, $2, $3, $4, $5, FALSE)
                    ON CONFLICT (id) DO NOTHING;""",
                 notif_id,
                 "Voucher Approval Required",
                 f"Voucher code \"{res['code']}\" created by seller. Approval required.",
-                "vouchers"
+                "vouchers",
+                str(res['id'])
             )
             # Clear notifications cache
             await clear_cache_keys("cache:notifications")
@@ -1549,7 +2022,7 @@ async def delete_coupon(coupon_id: UUID):
 @app.put("/api/products/{product_id}", response_model=ProductResponse)
 async def update_product(product_id: UUID, payload: ProductUpdate):
     # Retrieve current product
-    query_select = "SELECT id, name, category_id, price, weight_grams, image_url, is_combo, stock_quantity, seller_id, description, created_at FROM products WHERE id = $1"
+    query_select = "SELECT id, name, category_id, price, weight_grams, image_url, images, is_combo, stock_quantity, seller_id, description, created_at FROM products WHERE id = $1"
     current = await execute_query_one(query_select, product_id)
     if not current:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -1562,14 +2035,27 @@ async def update_product(product_id: UUID, payload: ProductUpdate):
     is_combo = payload.is_combo if payload.is_combo is not None else current['is_combo']
     stock_quantity = payload.stock_quantity if payload.stock_quantity is not None else current['stock_quantity']
     description = payload.description if payload.description is not None else current['description']
+    seller_id = payload.seller_id if payload.seller_id is not None else current['seller_id']
+    images = json.dumps(payload.images) if payload.images is not None else (current['images'] if isinstance(current['images'], str) else json.dumps(current['images'] or []))
 
     query_update = """
     UPDATE products 
-    SET name = $1, category_id = $2, price = $3, weight_grams = $4, image_url = $5, is_combo = $6, stock_quantity = $7, description = $8 
-    WHERE id = $9 
-    RETURNING id, name, category_id, price, weight_grams, image_url, is_combo, stock_quantity, seller_id, description, created_at
+    SET name = $1, category_id = $2, price = $3, weight_grams = $4, image_url = $5, images = $6::jsonb, is_combo = $7, stock_quantity = $8, description = $9, seller_id = $10 
+    WHERE id = $11 
+    RETURNING id, name, category_id, price, weight_grams, image_url, images, is_combo, stock_quantity, seller_id, description, created_at
     """
-    res = await execute_query_one(query_update, name, category_id, price, weight_grams, image_url, is_combo, stock_quantity, description, product_id)
+    res = await execute_query_one(query_update, name, category_id, price, weight_grams, image_url, images, is_combo, stock_quantity, description, str(seller_id), product_id)
+    
+    # Create Notification
+    nid = str(uuid4())
+    await execute_query_one("INSERT INTO notifications (id, title, body, target_tab, target_id) VALUES ($1, $2, $3, $4, $5) RETURNING id", nid, "Product Updated", f"Product '{name}' details were updated by an admin.", "products", str(product_id))
+
+    if res and isinstance(res.get('images'), str):
+        res = dict(res)
+        try:
+            res['images'] = json.loads(res['images'])
+        except:
+            res['images'] = []
     return res
 
 # MinIO Upload Endpoint
@@ -1608,13 +2094,59 @@ async def get_media_file(filename: str):
 @app.get("/api/orders/user/{user_id}", response_model=List[OrderResponse])
 async def get_user_orders(user_id: UUID):
     query = """
-    SELECT id, user_id, seller_id, total_amount, status, tracking_id, order_source, shipping_partner, payment_gateway, trust_donation_amount, currency, exchange_rate, created_at
-    FROM orders WHERE user_id = $1 ORDER BY created_at DESC
+    SELECT o.id, o.user_id, o.seller_id, o.total_amount, o.status, o.tracking_id, o.order_source, o.shipping_partner, o.payment_gateway, o.trust_donation_amount, o.currency, o.exchange_rate, o.created_at,
+           COALESCE((
+               SELECT json_agg(json_build_object(
+                 'id', oi.id, 
+                 'product_id', oi.product_id, 
+                 'quantity', oi.quantity, 
+                 'price', oi.price_at_purchase, 
+                 'name', p.name, 
+                 'image_url', p.image_url, 
+                 'store_name', COALESCE(s.business_name, 'Bupzo Store')
+               ))
+               FROM order_items oi
+               JOIN products p ON p.id = oi.product_id
+               LEFT JOIN sellers s ON s.id = p.seller_id
+               WHERE oi.order_id = o.id
+           ), '[]'::json) as items
+    FROM orders o WHERE o.user_id = $1 ORDER BY o.created_at DESC
     """
     res = await execute_query(query, user_id)
-    return res
+    
+    processed = []
+    for r in res:
+        r_dict = dict(r)
+        if isinstance(r_dict.get('items'), str):
+            import json
+            r_dict['items'] = json.loads(r_dict['items'])
+        processed.append(r_dict)
+            
+    return processed
 
 # Get Seller Orders
+@app.get("/api/orders/", response_model=List[OrderResponse])
+async def get_all_orders():
+    query = """
+    SELECT * FROM orders ORDER BY created_at DESC
+    """
+    rows = await execute_query(query)
+    
+    orders = []
+    for row in rows:
+        order_dict = dict(row)
+        items_query = """
+        SELECT oi.*, p.name, p.image_url 
+        FROM order_items oi
+        JOIN products p ON oi.product_id = p.id
+        WHERE oi.order_id = $1
+        """
+        items_rows = await execute_query(items_query, row['id'])
+        order_dict['items'] = [dict(ir) for ir in items_rows]
+        orders.append(order_dict)
+    
+    return orders
+
 @app.get("/api/orders/seller/{seller_id}", response_model=List[OrderResponse])
 async def get_seller_orders(seller_id: UUID):
     query = """
@@ -1650,8 +2182,10 @@ async def get_user_wallet_transactions(user_id: UUID):
 @app.get("/api/wallet/transactions/", response_model=List[WalletTransactionResponse])
 async def get_all_wallet_transactions():
     query = """
-    SELECT id, user_id, amount, type, description, created_at
-    FROM wallet_transactions ORDER BY created_at DESC
+    SELECT wt.id, wt.user_id, wt.amount, wt.type, wt.description, wt.created_at, u.phone as mobile_number
+    FROM wallet_transactions wt
+    LEFT JOIN users u ON wt.user_id = u.id
+    ORDER BY wt.created_at DESC
     """
     res = await execute_query(query)
     return res
@@ -1742,14 +2276,18 @@ async def update_dispute(dispute_id: str, dispute: DisputeUpdate):
 
 # Notifications Endpoints
 @app.get("/api/notifications/", response_model=List[NotificationResponse])
-async def get_notifications():
-    cache_key = "cache:notifications"
+async def get_notifications(user_id: Optional[UUID] = Query(None)):
+    cache_key = f"cache:notifications:{user_id}" if user_id else "cache:notifications:all"
     cached = await get_cached_data(cache_key)
     if cached:
         return cached
 
     async with pool.acquire() as conn:
-        rows = await conn.fetch("SELECT id, title, body, target_tab, created_at, read FROM notifications ORDER BY created_at DESC;")
+        if user_id:
+            rows = await conn.fetch("SELECT id, title, body, target_tab, target_id, created_at, read FROM notifications WHERE user_id = $1 ORDER BY created_at DESC;", user_id)
+        else:
+            rows = await conn.fetch("SELECT id, title, body, target_tab, target_id, created_at, read FROM notifications WHERE user_id IS NULL ORDER BY created_at DESC;")
+        
         data = []
         for r in rows:
             dt: datetime = r["created_at"]
@@ -1758,6 +2296,7 @@ async def get_notifications():
                 "title": r["title"],
                 "body": r["body"],
                 "targetTab": r["target_tab"],
+                "target_id": r["target_id"],
                 "read": r["read"],
                 "created_at": dt,
                 "timestamp": dt.strftime("%H:%M")
@@ -1767,13 +2306,13 @@ async def get_notifications():
 
 @app.post("/api/notifications/", response_model=NotificationResponse)
 async def create_notification(notif: NotificationCreate):
-    nid = f"notif-{uuid4().hex[:8]}"
+    nid = str(uuid4())
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
-            """INSERT INTO notifications (id, title, body, target_tab, read)
-               VALUES ($1, $2, $3, $4, FALSE)
-               RETURNING id, title, body, target_tab, created_at, read;""",
-            nid, notif.title, notif.body, notif.targetTab
+            """INSERT INTO notifications (id, title, body, target_tab, target_id, read)
+               VALUES ($1, $2, $3, $4, $5, FALSE)
+               RETURNING id, title, body, target_tab, target_id, created_at, read;""",
+            nid, notif.title, notif.body, notif.targetTab, notif.target_id
         )
         dt: datetime = row["created_at"]
         data = {
@@ -1781,6 +2320,7 @@ async def create_notification(notif: NotificationCreate):
             "title": row["title"],
             "body": row["body"],
             "targetTab": row["target_tab"],
+            "target_id": row["target_id"],
             "read": row["read"],
             "created_at": dt,
             "timestamp": dt.strftime("%H:%M")
@@ -1795,4 +2335,107 @@ async def mark_notification_read(id: str):
     await clear_cache_keys("cache:notifications")
     return {"success": True}
 
+class AddressCreate(BaseModel):
+    name: str
+    street: str
+    city: str
+    state: str
+    zip_code: str
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
+@app.get("/api/addresses/user/{user_id}")
+async def get_user_addresses(user_id: str):
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("SELECT * FROM addresses WHERE user_id = $1", user_id)
+        return [dict(row) for row in rows]
+
+@app.post("/api/addresses/")
+async def create_address(user_id: str, addr: AddressCreate):
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO addresses (user_id, name, street, city, state, zip_code)
+            VALUES ($1::uuid, $2, $3, $4, $5, $6)
+            """, user_id, addr.name, addr.street, addr.city, addr.state, addr.zip_code
+        )
+        return {"success": True}
+
+class MessageCreate(BaseModel):
+    receiver_id: str
+    order_id: Optional[str] = None
+    subject: str
+    content: str
+
+@app.get("/api/messages/")
+async def get_messages(user_id: Optional[str] = None):
+    async with pool.acquire() as conn:
+        if user_id:
+            rows = await conn.fetch("SELECT m.*, u1.name as sender_name, u2.name as receiver_name FROM messages m JOIN users u1 ON m.sender_id = u1.id JOIN users u2 ON m.receiver_id = u2.id WHERE m.sender_id = $1 OR m.receiver_id = $1 ORDER BY m.created_at DESC", user_id)
+        else:
+            rows = await conn.fetch("SELECT m.*, u1.name as sender_name, u2.name as receiver_name FROM messages m JOIN users u1 ON m.sender_id = u1.id JOIN users u2 ON m.receiver_id = u2.id ORDER BY m.created_at DESC")
+        return [dict(row) for row in rows]
+
+@app.post("/api/messages/")
+async def create_message(user_id: str, msg: MessageCreate):
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            INSERT INTO messages (sender_id, receiver_id, order_id, subject, content)
+            VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5) RETURNING *
+            """, user_id, msg.receiver_id, msg.order_id, msg.subject, msg.content
+        )
+        return dict(row)
+
+class ReviewCreate(BaseModel):
+    user_id: str
+    product_id: str
+    rating: int
+    comment: Optional[str] = None
+    images: Optional[List[str]] = []
+
+@app.post("/api/reviews/")
+async def create_review(rev: ReviewCreate):
+    async with pool.acquire() as conn:
+        try:
+            import json
+            images_json = json.dumps(rev.images)
+            row = await conn.fetchrow(
+                """
+                INSERT INTO reviews (user_id, product_id, rating, content, images)
+                VALUES ($1::uuid, $2::uuid, $3, $4, $5::jsonb) RETURNING *, content as comment
+                """, rev.user_id, rev.product_id, rev.rating, rev.comment, images_json
+            )
+            return dict(row)
+        except asyncpg.exceptions.UniqueViolationError:
+            raise HTTPException(status_code=400, detail="You have already reviewed this product.")
+
+@app.get("/api/reviews/")
+async def get_all_reviews(product_id: Optional[str] = None, seller_id: Optional[str] = None):
+    async with pool.acquire() as conn:
+        if product_id:
+            rows = await conn.fetch("SELECT r.*, r.content as comment, p.name as product_name, u.name as user_name FROM reviews r JOIN products p ON r.product_id = p.id JOIN users u ON r.user_id = u.id WHERE r.product_id = $1 ORDER BY r.created_at DESC", product_id)
+        elif seller_id:
+            rows = await conn.fetch("SELECT r.*, r.content as comment, p.name as product_name, u.name as user_name FROM reviews r JOIN products p ON r.product_id = p.id JOIN users u ON r.user_id = u.id WHERE p.seller_id = $1 ORDER BY r.created_at DESC", seller_id)
+        else:
+            rows = await conn.fetch("SELECT r.*, r.content as comment, p.name as product_name, u.name as user_name FROM reviews r JOIN products p ON r.product_id = p.id JOIN users u ON r.user_id = u.id ORDER BY r.created_at DESC")
+        import json
+        results = []
+        for row in rows:
+            d = dict(row)
+            if isinstance(d.get('images'), str):
+                try:
+                    d['images'] = json.loads(d['images'])
+                except:
+                    d['images'] = []
+            results.append(d)
+        return results
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        while True:
+            data = await websocket.receive_text()
+    except WebSocketDisconnect:
+        pass

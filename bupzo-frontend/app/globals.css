@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -119,5 +120,48 @@
   }
   .dark .pagination .icon:active {
     @apply text-gray-300;
+  }
+}
+body { font-family: 'Poppins', sans-serif; }
+
+@layer components {
+  /* Skeuomorphic depth classes */
+  .sk-card {
+      background: linear-gradient(145deg, #ffffff, #faf2ee);
+      box-shadow: 0 2px 4px rgba(86, 82, 100, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+  }
+  
+  .sk-card-interactive:hover {
+      box-shadow: 0 10px 15px -3px rgba(86, 82, 100, 0.1);
+      transform: translateY(-2px);
+      transition: all 0.2s ease;
+  }
+
+  .sk-button-primary {
+      background: #775560; /* secondary */
+      color: #ffffff;
+      box-shadow: inset 0 1px 0px rgba(255, 255, 255, 0.3), 0 2px 4px rgba(0,0,0,0.1);
+  }
+  
+  .sk-button-primary:active {
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+  }
+
+  .sk-button-action {
+      background: #007AFF; /* electric-blue */
+      color: #ffffff;
+      box-shadow: inset 0 1px 0px rgba(255, 255, 255, 0.3), 0 2px 4px rgba(0,122,255,0.2);
+  }
+
+  .inner-depth {
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.06);
+      background-color: #faf2ee; /* surface-container-low */
+  }
+
+  /* Chart Placeholder styling */
+  .chart-grid {
+      background-size: 40px 40px;
+      background-image: linear-gradient(to right, rgba(121, 118, 124, 0.05) 1px, transparent 1px), linear-gradient(to bottom, rgba(121, 118, 124, 0.05) 1px, transparent 1px);
   }
 }

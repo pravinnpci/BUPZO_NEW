@@ -1,145 +1,148 @@
-"use client";
+import React from 'react';
+import { useUser } from '@/lib/authStore';
 
-import { useState } from "react";
-import Link from "next/link";
-import { useUser } from "@/lib/authStore";
+type NavbarProps = {
+  onTabChange: (tab: string) => void;
+  onAuthClick: () => void;
+  onCartClick: () => void;
+  cartCount: number;
+  wishlistCount: number;
+  unreadMsgs: number;
+};
 
-export function Navbar() {
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+export function Navbar({ onTabChange, onAuthClick, onCartClick, cartCount, wishlistCount, unreadMsgs }: NavbarProps) {
   const { user, clearUser } = useUser();
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
-    <nav className="w-full font-sans shadow-sm z-50 relative">
-      {/* Top Blue Bar */}
-      <div className="bg-[#0055D4] w-full px-4 sm:px-6 lg:px-8 py-3">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-          
-          {/* Logo */}
-          <Link href="/" className="flex-shrink-0 flex items-center gap-1">
-            <div className="bg-yellow-400 text-brand-blue font-extrabold text-2xl px-3 py-1 rounded-lg transform -skew-x-12 tracking-tighter">
-              Bupzo
+    <div className="w-full bg-white shadow-sm font-sans sticky top-0 z-50">
+      {/* Topbar (Sprylo Style) */}
+      <div className="bg-[#232f3e] text-gray-300 py-1.5 px-4 text-xs flex justify-between items-center hidden md:flex">
+        <div className="flex gap-4">
+          <span>Welcome to Bupzo Marketplace</span>
+          <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">call</span> +91 98765 43210</span>
+        </div>
+        <div className="flex gap-4 items-center">
+          <select 
+            className="bg-transparent border-none outline-none text-gray-300 cursor-pointer"
+            onChange={(e) => {
+              const lang = e.target.value;
+              if (lang === 'ta') {
+                document.cookie = "googtrans=/en/ta; path=/";
+              } else {
+                document.cookie = "googtrans=/en/en; path=/";
+              }
+              window.location.reload();
+            }}
+          >
+            <option className="text-black" value="en">English</option>
+            <option className="text-black" value="ta">Tamil</option>
+          </select>
+          <div id="google_translate_element" style={{ display: 'none' }}></div>
+          <select className="bg-transparent border-none outline-none text-gray-300 cursor-pointer">
+            <option className="text-black">INR (₹)</option>
+            <option className="text-black">USD ($)</option>
+          </select>
+          {mounted && !user && (
+            <button onClick={onAuthClick} className="hover:text-white transition">Login / Register</button>
+          )}
+          {mounted && user && (
+            <div className="flex gap-3">
+              <span className="text-white font-medium">Hi, {user.name?.split(' ')[0] || 'User'}</span>
+              <button onClick={() => { clearUser(); window.location.reload(); }} className="hover:text-red-400 transition">Logout</button>
             </div>
-            <span className="text-white font-bold text-[10px] mt-4">.in</span>
-          </Link>
+          )}
+          {!mounted && (
+            <div className="w-20 h-4 bg-gray-700 animate-pulse rounded"></div>
+          )}
+        </div>
+      </div>
 
-          {/* Search Bar */}
-          <div className="flex-1 max-w-2xl hidden md:flex">
-            <div className="relative w-full flex items-center">
-              <input 
-                type="text" 
-                placeholder="Search for products and brands..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white rounded-l-md py-2.5 pl-4 pr-10 outline-none text-sm text-gray-800 placeholder-gray-500 font-medium"
-              />
-              <button className="bg-white px-4 py-2.5 rounded-r-md border-l border-gray-200 hover:bg-gray-50 transition-colors">
-                <span className="text-yellow-400 font-bold">🔍</span>
-              </button>
-            </div>
-          </div>
+      {/* Main Header */}
+      <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-6">
+        <div className="flex items-center cursor-pointer" onClick={() => onTabChange('home')}>
+           <span className="text-3xl font-extrabold tracking-tighter text-[#e52e06]">BUPZO</span>
+        </div>
 
-          {/* Right Action Icons */}
-          <div className="flex items-center gap-6">
-            
-            {/* Account / Login */}
-            <div className="hidden sm:flex items-center gap-2 text-white hover:text-yellow-300 cursor-pointer transition-colors group">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-              <div className="flex flex-col leading-none">
-                {user ? (
-                  <>
-                    <span className="text-[10px] text-blue-200">Hello,</span>
-                    <span className="text-sm font-bold truncate max-w-[80px]">{user.name || user.phone}</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="text-sm font-bold mt-1 group-hover:underline">Hello!</span>
-                  </>
+        {/* Search Bar (Sprylo Style) */}
+        <div className="flex-1 max-w-2xl hidden md:flex border-2 border-[#e52e06] rounded-full overflow-hidden items-center h-12 relative">
+           <select className="h-full px-4 border-r border-gray-200 bg-gray-50 text-sm outline-none cursor-pointer text-gray-600 font-medium">
+             <option>All Categories</option>
+             <option>Electronics</option>
+             <option>Fashion</option>
+           </select>
+           <input type="text" placeholder="Search products..." className="flex-1 h-full px-4 outline-none text-sm" />
+           <button className="h-full px-6 bg-[#e52e06] text-white hover:bg-[#cc2805] transition flex items-center justify-center">
+             <span className="material-symbols-outlined text-lg">search</span>
+           </button>
+        </div>
+
+        {/* Action Icons */}
+        <div className="flex items-center gap-6">
+           <button onClick={() => user ? onTabChange('settings') : onAuthClick()} className="flex flex-col items-center group relative">
+              <div className="relative">
+                 <span className="material-symbols-outlined text-3xl text-gray-700 group-hover:text-[#e52e06] transition">person</span>
+                 {user && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 border border-white rounded-full"></span>}
+              </div>
+              <span className="text-[10px] uppercase font-bold text-gray-500 mt-0.5">Account</span>
+           </button>
+           
+           <button onClick={() => user ? onTabChange('wishlist') : onAuthClick()} className="flex flex-col items-center group relative">
+              <div className="relative">
+                <span className="material-symbols-outlined text-3xl text-gray-700 group-hover:text-[#e52e06] transition">favorite</span>
+                {wishlistCount > 0 && (
+                   <span className="absolute -top-1.5 -right-2 bg-[#e52e06] text-white text-[10px] font-bold px-1.5 rounded-full min-w-[18px] text-center">{wishlistCount}</span>
                 )}
               </div>
-            </div>
+              <span className="text-[10px] uppercase font-bold text-gray-500 mt-0.5">Wishlist</span>
+           </button>
 
-            {/* BupzoPass Badge (Mocking OnePass) */}
-            <div className="hidden lg:flex flex-col items-center justify-center border-l border-blue-500/50 pl-6 cursor-pointer group">
-              <span className="text-white font-bold text-sm group-hover:text-yellow-300 transition-colors">BupzoPass</span>
-              <span className="text-xs text-blue-200">Free delivery ⌄</span>
-            </div>
-
-            {/* Wishlist */}
-            <div className="text-white hover:text-yellow-300 cursor-pointer transition-colors border-l border-blue-500/50 pl-6 hidden sm:block">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-              </svg>
-            </div>
-
-            {/* Cart */}
-            <div className="text-white hover:text-yellow-300 cursor-pointer transition-colors border-l border-blue-500/50 pl-6 relative">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-              {/* Optional cart badge indicator */}
-              <span className="absolute -top-1.5 -right-2 bg-brand-red text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                0
-              </span>
-            </div>
-
-            {/* Mobile Menu Toggle */}
-            <div className="md:hidden flex items-center">
-              <button onClick={() => setIsOpen(!isOpen)} className="text-white p-1">
-                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={isOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-        
-        {/* Mobile Search */}
-        <div className="md:hidden mt-3 w-full">
-            <div className="relative w-full flex items-center">
-              <input 
-                type="text" 
-                placeholder="Search..." 
-                className="w-full bg-white rounded-l-md py-2 pl-3 pr-8 outline-none text-sm"
-              />
-              <button className="bg-white px-3 py-2 rounded-r-md">
-                <span className="text-yellow-400">🔍</span>
-              </button>
-            </div>
+           <button onClick={onCartClick} className="flex flex-col items-center group relative">
+              <div className="relative">
+                <span className="material-symbols-outlined text-3xl text-gray-700 group-hover:text-[#e52e06] transition">shopping_cart</span>
+                {cartCount > 0 && (
+                   <span className="absolute -top-1.5 -right-2 bg-[#e52e06] text-white text-[10px] font-bold px-1.5 rounded-full min-w-[18px] text-center">{cartCount}</span>
+                )}
+              </div>
+              <span className="text-[10px] uppercase font-bold text-gray-500 mt-0.5">My Cart</span>
+           </button>
         </div>
       </div>
 
-      {/* Secondary Category Nav */}
-      <div className="bg-white border-b border-gray-200 hidden md:block w-full">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <ul className="flex items-center space-x-8 h-12 text-sm font-semibold text-gray-700">
-            <li className="flex items-center gap-1 cursor-pointer hover:text-brand-blue">
-              Shop All Categories <span className="text-[10px]">▼</span>
-            </li>
-            <li className="text-purple-600 cursor-pointer font-bold hover:text-purple-700">
-              BupzoPass
-            </li>
-            <li className="text-brand-red border-b-2 border-brand-red h-full flex items-center cursor-pointer">
-              Today's Deals
-            </li>
-            <li className="cursor-pointer hover:text-brand-blue">New to Bupzo</li>
-            <li className="cursor-pointer hover:text-brand-blue">Top Brands</li>
-            <li className="cursor-pointer hover:text-brand-blue">Clearance</li>
-          </ul>
+      {/* Bottom Navigation */}
+      <div className="border-t border-gray-200">
+        <div className="container mx-auto px-4 h-14 flex items-center justify-between">
+           <div className="flex items-center gap-8 h-full">
+              {/* Category Dropdown Toggle */}
+              <button onClick={() => onTabChange('categories')} className="bg-[#e52e06] text-white h-full px-6 flex items-center gap-2 font-bold uppercase tracking-wider text-sm hover:bg-[#cc2805] transition">
+                 <span className="material-symbols-outlined">menu</span>
+                 Browse Categories
+              </button>
+
+              <nav className="flex overflow-x-auto whitespace-nowrap items-center gap-6 font-bold text-[13px] uppercase text-gray-700 tracking-wide pb-2 lg:pb-0 scrollbar-hide">
+                 <button onClick={() => onTabChange('home')} className="hover:text-[#e52e06] transition">Home</button>
+                 <button onClick={() => onTabChange('categories')} className="hover:text-[#e52e06] transition">Products</button>
+                 <button onClick={() => window.location.href = '/shops'} className="hover:text-[#e52e06] transition">Shops</button>
+                 {user && <button onClick={() => onTabChange('orders')} className="hover:text-[#e52e06] transition">Orders</button>}
+                 {user && <button onClick={() => onTabChange('wallet')} className="hover:text-[#e52e06] transition">Wallet</button>}
+                 {user && (
+                    <button onClick={() => onTabChange('messages')} className="hover:text-[#e52e06] transition flex items-center gap-1 relative">
+                      Messages
+                      {unreadMsgs > 0 && <span className="bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-full ml-1">{unreadMsgs}</span>}
+                    </button>
+                 )}
+                 {!user?.isSeller && <button onClick={() => onTabChange('kyc')} className="text-[#e52e06] hover:text-red-700 transition">Become Seller</button>}
+              </nav>
+           </div>
+           <div className="text-sm font-bold text-gray-600 hidden md:block">
+              Free Shipping on Orders Over ₹999!
+           </div>
         </div>
       </div>
-      
-      {/* Mobile Menu Content */}
-      {isOpen && (
-        <div className="md:hidden bg-white shadow-lg absolute w-full left-0 z-40 border-b">
-          <div className="px-4 py-3 space-y-3">
-             <Link href="/seller" className="block text-gray-800 font-bold hover:text-brand-blue py-2 border-b">Seller Portal</Link>
-             <Link href="/" className="block text-gray-800 font-bold hover:text-brand-blue py-2">Today's Deals</Link>
-          </div>
-        </div>
-      )}
-    </nav>
+    </div>
   );
 }

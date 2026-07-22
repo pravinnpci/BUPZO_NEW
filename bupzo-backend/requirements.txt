@@ -11,4 +11,5 @@ httpx
 pytest
 pytest-asyncio
 minio
+bcrypt==3.2.2
 

@@ -1,0 +1,29 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# Dependencies
+/node_modules
+/bupzo-frontend/node_modules
+/bupzo-backend/venv
+/bupzomcp/node_modules
+
+# Build artifacts
+/.next/
+/bupzo-frontend/.next/
+/bupzo-frontend/out/
+
+# Local environment files
+.env
+.env*.local
+!.env.example
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

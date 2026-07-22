@@ -1,38 +1,98 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+} from 'chart.js';
 
-export const AdminDashboard: React.FC = () => {
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
+
+interface AdminDashboardProps {
+  userCount: number;
+  sellerCount: number;
+  productCount: number;
+  couponCount: number;
+  pendingPayoutCount: number;
+  walletTransactionCount: number;
+}
+
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({
+  userCount,
+  sellerCount,
+  productCount,
+  couponCount,
+  pendingPayoutCount,
+  walletTransactionCount
+}) => {
+  const [orders, setOrders] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004'}/api/orders/`)
+      .then(res => res.json())
+      .then(data => setOrders(data))
+      .catch(console.error);
+  }, []);
+
+  const handleUpdateOrderStatus = async (orderId: string, status: string) => {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004'}/api/orders/${orderId}/status?status=${status}`, {
+        method: 'PUT'
+      });
+      if (res.ok) {
+        setOrders(orders.map(o => o.id === orderId ? { ...o, status } : o));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   return (
-    <div className="space-y-6 font-sans text-on-surface">
+    <div className="space-y-6 font-sans text-zinc-900 dark:text-zinc-100">
       <div>
-        <h2 className="text-2xl md:text-3xl font-black font-heading text-on-surface tracking-tight">Global Command Center</h2>
-        <p className="text-sm text-on-surface-variant/80">Real-time telemetry and network oversight for BUPZO operations.</p>
+        <h2 className="text-2xl md:text-3xl font-black font-heading text-zinc-900 dark:text-zinc-100 tracking-tight">Global Command Center</h2>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">Real-time telemetry and network oversight for BUPZO operations.</p>
       </div>
 
       {/* Metrics Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         
-        {/* Card: Total Orders */}
+        {/* Card: Total Users */}
         <div className="bg-surface-container-lowest dark:bg-[#15131b] rounded-2xl border border-[#e8e1dd] dark:border-[#2f2b3b] p-6 flex flex-col justify-between min-h-[140px] shadow-sm relative overflow-hidden group hover:border-primary/60 hover:shadow-md transition-all duration-300">
           <div className="flex flex-col gap-1 relative z-10">
-            <span className="text-[10px] uppercase font-extrabold tracking-wider text-outline">Total Orders</span>
-            <span className="text-3xl font-black font-heading text-on-surface mt-1">1,42,837</span>
+            <span className="text-[10px] uppercase font-extrabold tracking-wider text-zinc-500 dark:text-zinc-400">Total Users</span>
+            <span className="text-3xl font-black font-heading text-zinc-900 dark:text-zinc-100 mt-1">{userCount.toLocaleString()}</span>
           </div>
           <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-bold mt-3 relative z-10">
             <span className="material-symbols-outlined text-[16px]">arrow_upward</span>
-            <span>12% today</span>
+            <span>{userCount > 0 ? 'Live user feed' : 'No users yet'}</span>
           </div>
           <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-primary-container/10 rounded-full blur-xl group-hover:bg-primary-container/20 transition-all duration-300"></div>
         </div>
 
-        {/* Card: GMV Today */}
+        {/* Card: Total Products */}
         <div className="bg-surface-container-lowest dark:bg-[#15131b] rounded-2xl border border-[#e8e1dd] dark:border-[#2f2b3b] p-6 flex flex-col justify-between min-h-[140px] shadow-sm relative overflow-hidden group hover:border-primary/60 hover:shadow-md transition-all duration-300">
           <div className="flex flex-col gap-1 relative z-10">
-            <span className="text-[10px] uppercase font-extrabold tracking-wider text-outline">GMV Today</span>
-            <span className="text-3xl font-black font-heading text-on-surface mt-1">₹38.4L</span>
+            <span className="text-[10px] uppercase font-extrabold tracking-wider text-zinc-500 dark:text-zinc-400">Total Products</span>
+            <span className="text-3xl font-black font-heading text-zinc-900 dark:text-zinc-100 mt-1">{productCount.toLocaleString()}</span>
           </div>
           <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs font-bold mt-3 relative z-10">
             <span className="material-symbols-outlined text-[16px]">arrow_upward</span>
-            <span>8.2% vs yesterday</span>
+            <span>{productCount > 0 ? 'Catalog updated' : 'Catalog empty'}</span>
           </div>
           <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-primary-container/10 rounded-full blur-xl group-hover:bg-primary-container/20 transition-all duration-300"></div>
         </div>
@@ -40,24 +100,24 @@ export const AdminDashboard: React.FC = () => {
         {/* Card: Active Sellers */}
         <div className="bg-surface-container-lowest dark:bg-[#15131b] rounded-2xl border border-[#e8e1dd] dark:border-[#2f2b3b] p-6 flex flex-col justify-between min-h-[140px] shadow-sm relative overflow-hidden group hover:border-primary/60 hover:shadow-md transition-all duration-300">
           <div className="flex flex-col gap-1 relative z-10">
-            <span className="text-[10px] uppercase font-extrabold tracking-wider text-outline">Active Sellers</span>
-            <span className="text-3xl font-black font-heading text-on-surface mt-1">4,219</span>
+            <span className="text-[10px] uppercase font-extrabold tracking-wider text-zinc-500 dark:text-zinc-400">Active Sellers</span>
+            <span className="text-3xl font-black font-heading text-zinc-900 dark:text-zinc-100 mt-1">{sellerCount.toLocaleString()}</span>
           </div>
           <div className="flex items-center gap-1 text-zinc-500 dark:text-zinc-400 text-xs font-bold mt-3 relative z-10">
-            <span>23 pending KYC</span>
+            <span>{pendingPayoutCount} pending payouts</span>
           </div>
           <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-primary-container/10 rounded-full blur-xl group-hover:bg-primary-container/20 transition-all duration-300"></div>
         </div>
 
-        {/* Card: Fraud Flags */}
+        {/* Card: Promo Vouchers */}
         <div className="bg-error-container/10 rounded-2xl border border-error/20 p-6 flex flex-col justify-between min-h-[140px] shadow-sm relative overflow-hidden group hover:border-error/40 hover:shadow-md transition-all duration-300">
           <div className="flex flex-col gap-1 relative z-10">
-            <span className="text-[10px] uppercase font-extrabold tracking-wider text-error">Fraud Flags</span>
-            <span className="text-3xl font-black font-heading text-error mt-1">12</span>
+            <span className="text-[10px] uppercase font-extrabold tracking-wider text-error">Promo Vouchers</span>
+            <span className="text-3xl font-black font-heading text-error mt-1">{couponCount.toLocaleString()}</span>
           </div>
           <div className="flex items-center gap-1 text-error text-xs font-extrabold mt-3 relative z-10">
             <span className="material-symbols-outlined text-[16px] fill-current">warning</span>
-            <span>3 new alerts</span>
+            <span>{walletTransactionCount} wallet entries</span>
           </div>
           <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-error/5 rounded-full blur-xl group-hover:bg-error/10 transition-all duration-300"></div>
         </div>
@@ -69,13 +129,13 @@ export const AdminDashboard: React.FC = () => {
         {/* GMV Sales Trend Chart */}
         <div className="lg:col-span-2 bg-surface-container-lowest dark:bg-[#15131b] rounded-2xl border border-[#e8e1dd] dark:border-[#2f2b3b] p-6 shadow-sm flex flex-col gap-4">
           <div className="flex justify-between items-center">
-            <h3 className="text-xs uppercase font-extrabold tracking-wider text-outline">GMV Sales Trend (Past 7 Days)</h3>
-            <span className="material-symbols-outlined text-outline-variant text-[20px] cursor-pointer">more_horiz</span>
+            <h3 className="text-xs uppercase font-extrabold tracking-wider text-zinc-500 dark:text-zinc-400">GMV Sales Trend (Past 7 Days)</h3>
+            <span className="material-symbols-outlined text-zinc-400 dark:text-zinc-500 text-[20px] cursor-pointer">more_horiz</span>
           </div>
           
           <div className="w-full h-48 relative mt-2">
             {/* Y-axis labels */}
-            <div className="absolute left-0 top-0 bottom-8 flex flex-col justify-between text-[9px] text-outline font-mono pb-2">
+            <div className="absolute left-0 top-0 bottom-8 flex flex-col justify-between text-[9px] text-zinc-400 dark:text-zinc-500 font-mono pb-2">
               <span>50K</span>
               <span>30K</span>
               <span>15K</span>
@@ -179,41 +239,32 @@ export const AdminDashboard: React.FC = () => {
                 <th className="pb-3">Gateway</th>
                 <th className="pb-3">Total Amount</th>
                 <th className="pb-3">Status</th>
+                <th className="pb-3">Actions</th>
               </tr>
             </thead>
             <tbody>
-              <tr className="border-b border-outline-variant/20 hover:bg-zinc-50 dark:hover:bg-zinc-900/30 transition-colors">
-                <td className="py-3 font-mono font-bold text-primary">BUP-99283</td>
-                <td className="py-3 font-medium">Ravi K.</td>
-                <td className="py-3 font-mono text-on-surface-variant">Delhivery SLA</td>
-                <td className="py-3 font-medium">Stitch Money</td>
-                <td className="py-3 font-mono font-bold">₹598.00</td>
-                <td className="py-3"><span className="bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 font-bold px-2.5 py-0.5 rounded-full text-[10px]">Pending</span></td>
-              </tr>
-              <tr className="border-b border-outline-variant/20 hover:bg-zinc-50 dark:hover:bg-zinc-900/30 transition-colors">
-                <td className="py-3 font-mono font-bold text-primary">BUP-99280</td>
-                <td className="py-3 font-medium">Meera S.</td>
-                <td className="py-3 font-mono text-on-surface-variant">Shiprocket SLA</td>
-                <td className="py-3 font-medium">Stitch Money</td>
-                <td className="py-3 font-mono font-bold">₹399.00</td>
-                <td className="py-3"><span className="bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 font-bold px-2.5 py-0.5 rounded-full text-[10px]">Processing</span></td>
-              </tr>
-              <tr className="border-b border-outline-variant/20 hover:bg-zinc-50 dark:hover:bg-zinc-900/30 transition-colors">
-                <td className="py-3 font-mono font-bold text-primary">BUP-99275</td>
-                <td className="py-3 font-medium">Anitha P.</td>
-                <td className="py-3 font-mono text-on-surface-variant">NimbusPost SLA</td>
-                <td className="py-3 font-medium">Stripe Wallet</td>
-                <td className="py-3 font-mono font-bold">₹799.00</td>
-                <td className="py-3"><span className="bg-indigo-100 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-400 font-bold px-2.5 py-0.5 rounded-full text-[10px]">Dispatched</span></td>
-              </tr>
-              <tr className="hover:bg-zinc-50 dark:hover:bg-zinc-900/30 transition-colors">
-                <td className="py-3 font-mono font-bold text-primary">BUP-99270</td>
-                <td className="py-3 font-medium">Karthik G.</td>
-                <td className="py-3 font-mono text-on-surface-variant">Delhivery SLA</td>
-                <td className="py-3 font-medium">Razorpay</td>
-                <td className="py-3 font-mono font-bold">₹1,299.00</td>
-                <td className="py-3"><span className="bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 font-bold px-2.5 py-0.5 rounded-full text-[10px]">Delivered</span></td>
-              </tr>
+              {orders.slice(0, 10).map((o: any) => (
+                <tr key={o.id} className="border-b border-outline-variant/20 hover:bg-zinc-50 dark:hover:bg-zinc-900/30 transition-colors">
+                  <td className="py-3 font-mono font-bold text-primary text-[10px] break-all max-w-[120px]">{o.id}</td>
+                  <td className="py-3 font-medium">{o.customer || o.customer_name || 'Customer'}</td>
+                  <td className="py-3 font-mono text-on-surface-variant">{o.shipping_partner || 'N/A'}</td>
+                  <td className="py-3 font-medium">{o.payment_gateway || 'Wallet'}</td>
+                  <td className="py-3 font-mono font-bold">₹{o.total_amount}</td>
+                  <td className="py-3">
+                    <span className={`font-bold px-2.5 py-0.5 rounded-full text-[10px] ${o.status === 'delivered' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {o.status}
+                    </span>
+                  </td>
+                  <td className="py-3">
+                    {o.status !== 'delivered' && (
+                      <div className="flex gap-2">
+                        <button onClick={() => handleUpdateOrderStatus(o.id, 'shipped')} className="text-[10px] text-blue-500 hover:underline">Ship</button>
+                        <button onClick={() => handleUpdateOrderStatus(o.id, 'delivered')} className="text-[10px] text-green-500 hover:underline">Deliver</button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

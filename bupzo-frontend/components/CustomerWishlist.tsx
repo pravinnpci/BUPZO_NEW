@@ -1,94 +1,35 @@
 import React from 'react';
-import { Product, WishlistItem } from '@/lib/api';
 
-interface CustomerWishlistProps {
-  wishlist: WishlistItem[];
-  removeFromWishlist: (itemId: string) => Promise<void>;
-  setWishlist: React.Dispatch<React.SetStateAction<WishlistItem[]>>;
-  handleAddToCart: (product: Product) => void;
-}
-
-export const CustomerWishlist: React.FC<CustomerWishlistProps> = ({
-  wishlist,
-  removeFromWishlist,
-  setWishlist,
-  handleAddToCart
-}) => {
+export const CustomerWishlist = ({ wishlist, removeFromWishlist, handleAddToCart, onProductClick }: any) => {
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold font-heading">My Wishlist</h2>
-        <p className="text-xs text-zinc-500 mt-1">Keep track of Nagore specialties and treats you want to purchase later.</p>
+    <div className="w-full bg-white pb-20">
+      <div className="w-full bg-[#fce5df] py-12 flex flex-col items-center justify-center text-center mb-10">
+         <h1 className="text-4xl font-extrabold text-[#232f3e] uppercase tracking-wide mb-2">Wishlist</h1>
+         <p className="text-[#e52e06] font-bold text-sm uppercase">Home / Wishlist</p>
       </div>
-
-      <div className="bg-white dark:bg-[#15131b] p-6 rounded-xl border border-zinc-200 dark:border-zinc-800 space-y-4">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs min-w-[500px]">
-            <thead>
-              <tr className="border-b border-zinc-100 dark:border-zinc-800 text-zinc-400 font-bold uppercase text-[9px] tracking-wider">
-                <th className="pb-3">Product Name</th>
-                <th className="pb-3">Price</th>
-                <th className="pb-3">Added Date</th>
-                <th className="pb-3 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {wishlist.map((item) => (
-                <tr key={item.id} className="border-b border-zinc-100 dark:border-zinc-800/50">
-                  <td className="py-3 font-semibold text-zinc-800 dark:text-zinc-200">{item.product_name || "Specialty Item"}</td>
-                  <td className="py-3 font-mono font-bold">₹{item.product_price || 0}</td>
-                  <td className="py-3 text-zinc-400 font-mono text-[10px]">
-                    {item.added_at ? new Date(item.added_at).toLocaleDateString() : 'N/A'}
-                  </td>
-                  <td className="py-3 text-right">
-                    <div className="flex gap-2 justify-end">
-                      <button 
-                        onClick={() => {
-                          const dummyProduct: Product = {
-                            id: item.product_id,
-                            name: item.product_name || "Specialty Item",
-                            price: item.product_price || 0,
-                            weight_grams: 500,
-                            image_url: "",
-                            description: "",
-                            stock_quantity: 100,
-                            category_id: "",
-                            is_combo: false,
-                            seller_id: "",
-                            created_at: ""
-                          };
-                          handleAddToCart(dummyProduct);
-                        }}
-                        className="bg-[#3874ff] text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-opacity-95 transition-all"
-                      >
-                        Add to Cart
-                      </button>
-                      <button 
-                        onClick={async () => {
-                          try {
-                            await removeFromWishlist(item.id);
-                            setWishlist(prev => prev.filter(w => w.id !== item.id));
-                            alert("Removed from wishlist.");
-                          } catch (err) {
-                            console.warn(err);
-                          }
-                        }}
-                        className="bg-red-500/10 text-red-500 hover:bg-red-500/20 px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {wishlist.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="py-12 text-center text-zinc-400 font-medium">Your wishlist is empty. Explore products to add some!</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+      <div className="container mx-auto px-4">
+        {wishlist.length === 0 ? (
+          <div className="text-center py-20 text-gray-500 font-medium">Your wishlist is empty.</div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+             {wishlist.map((item: any) => (
+               <div key={item.id} className="bg-[#f8f8f8] p-4 rounded group relative transition hover:shadow-xl flex flex-col justify-between h-[420px]">
+                  <div className="bg-white rounded h-[220px] mb-4 flex items-center justify-center p-4 relative overflow-hidden">
+                     <img src={item.product_image_url || 'https://placehold.co/300/png'} alt={item.product_name} className="max-h-full max-w-full object-contain group-hover:scale-110 transition duration-500" />
+                     <div className="absolute inset-0 bg-black/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-300">
+                        <button onClick={() => handleAddToCart({ id: item.product_id, name: item.product_name, price: item.product_price, image_url: item.product_image_url })} className="bg-[#e52e06] text-white w-10 h-10 rounded-full flex items-center justify-center mx-1 hover:bg-[#232f3e] transition" title="Add to Cart"><span className="material-symbols-outlined text-sm">shopping_cart</span></button>
+                        <button onClick={() => removeFromWishlist(item.id)} className="bg-white text-red-500 w-10 h-10 rounded-full flex items-center justify-center mx-1 hover:bg-[#e52e06] hover:text-white transition shadow" title="Remove"><span className="material-symbols-outlined text-sm">delete</span></button>
+                        <button onClick={() => onProductClick({ id: item.product_id, name: item.product_name, price: item.product_price, image_url: item.product_image_url })} className="bg-white text-gray-700 w-10 h-10 rounded-full flex items-center justify-center mx-1 hover:bg-[#232f3e] hover:text-white transition shadow" title="View"><span className="material-symbols-outlined text-sm">visibility</span></button>
+                     </div>
+                  </div>
+                  <div className="text-center flex-1 flex flex-col justify-end">
+                     <h3 className="text-lg font-bold text-[#232f3e] mb-2 cursor-pointer transition line-clamp-2" onClick={() => onProductClick({ id: item.product_id, name: item.product_name, price: item.product_price, image_url: item.product_image_url })}>{item.product_name}</h3>
+                     <p className="text-[#e52e06] font-extrabold text-xl">₹{item.product_price?.toLocaleString()}</p>
+                  </div>
+               </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -44,10 +44,10 @@ export default function AdminLoginPage() {
         
         {/* Logo and Header */}
         <div className="text-center space-y-3">
-          <img src="/Bupzo-logo.png" alt="Bupzo Logo" className="w-16 h-16 mx-auto object-contain rounded-xl" />
+          <img src="/Bupzo-logo.png" alt="Bupzo Logo" className="w-16 h-16 mx-auto object-contain rounded-xl border border-zinc-200 dark:border-zinc-700" />
           <div>
-            <h1 className="text-2xl font-bold font-heading">Super Admin Console</h1>
-            <p className="text-xs text-zinc-400">Restricted access control for Bupzo system operations</p>
+            <h1 className="text-2xl font-bold font-heading">BUPZO Admin Login</h1>
+            <p className="text-xs text-zinc-400">Secure access to the Master Command Center.</p>
           </div>
         </div>
 

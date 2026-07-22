@@ -1,67 +1,30 @@
-# Gitignore for Bupzo Project
+# Dependencies
+node_modules/
+**/node_modules/
+*.node
 
-# Operating System Files
+# Next.js build output
 .next/
-.DS_Store
-Thumbs.db
-ehthumbs.db
-Desktop.ini
+**/.next/
+out/
+**/out/
 
-# IDE and Editor Files
-.idea/
-.vscode/
-*.iml
-*.ipr
-*.iws
-.project
-.classpath
-.settings/
-.c9/
-
-# Build Artifacts
-/target/
-/build/
-/dist/
-*.jar
-*.war
-*.ear
-*.class
-
-# Dependency Directories
-/node_modules/
-/vendor/
-
-# Log Files
-*.log
-log/
-
-# Environment Variables and Configuration
+# Local Environment Variables
+# Exclude all .env files to avoid committing sensitive keys
 .env
 .env.*
-config.local.json
+!.env.example
 
-# Temporary Files
-*~
-*.tmp
-*.bak
-*.swp
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# Python Specific (if applicable)
-__pycache__/
-*.pyc
+# OS generated files
+.DS_Store
+Thumbs.db
 
-# Node.js Specific (if applicable)
-npm-debug.log
-yarn-error.log
-
-# Database specific (if local files are generated, e.g., SQLite)
-*.sqlite
-*.db
-
-# Other common ignored files
-coverage/
-*.json
-*.pid
-*.sock
-*.sublime-project
-*.sublime-workspace
+# IDE / Editor specific
+.vscode/
