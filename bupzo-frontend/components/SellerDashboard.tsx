@@ -59,16 +59,12 @@ export function SellerDashboard({ onSwitchToCustomer }: { onSwitchToCustomer?: (
   });
 
   const loadDashboardData = async () => {
-    if (!user) {
-      setIsLoading(false);
-      return;
-    }
     try {
       const allSellers = await fetchSellers().catch(() => []);
       const sId = (user as any)?.seller_id || user?.id;
       let mySeller = allSellers.find(s => 
-        (s.user_id && s.user_id.toString() === user?.id.toString()) || 
-        s.id.toString() === sId?.toString() ||
+        (user?.id && s.user_id && s.user_id.toString() === user.id.toString()) || 
+        (sId && s.id.toString() === sId.toString()) ||
         (user?.name && s.business_name && s.business_name.toLowerCase().includes(user.name.toLowerCase()))
       );
 

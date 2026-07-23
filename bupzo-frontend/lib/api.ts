@@ -1,9 +1,20 @@
-const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
-export const API_BASE_URL = rawApiUrl.split('#')[0].trim().replace(/\/$/, '');
+export const getApiBaseUrl = (): string => {
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return 'http://localhost:8004';
+    }
+  }
+  const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+  return rawApiUrl.split('#')[0].trim().replace(/\/$/, '');
+};
+
+export const API_BASE_URL = getApiBaseUrl();
 
 const buildUrl = (path: string): string => {
   if (path.startsWith('http://') || path.startsWith('https://')) return path;
-  return `${API_BASE_URL}${path}`;
+  const baseUrl = getApiBaseUrl();
+  return `${baseUrl}${path}`;
 };
 
 const getAccessToken = (): string | null => {
