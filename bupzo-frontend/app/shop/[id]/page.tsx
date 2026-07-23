@@ -17,6 +17,17 @@ export default function SellerShopPage() {
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
+  
+  // Dynamic Live Filter States
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [maxPrice, setMaxPrice] = useState<number>(10000);
+  const [sortBy, setSortBy] = useState<string>('relevance');
+
+  // Modals for Stats
+  const [showRatingsModal, setShowRatingsModal] = useState(false);
+  const [showFollowersModal, setShowFollowersModal] = useState(false);
+
   const cartStore = useCartStore();
 
   useEffect(() => {
@@ -37,11 +48,27 @@ export default function SellerShopPage() {
     loadData();
   }, [id]);
 
-  if (loading) return <div className="flex justify-center items-center h-screen bg-gray-50"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-[#0055D4]"></div></div>;
+  if (loading) return <div className="flex justify-center items-center h-screen bg-gray-50"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-[#e52e06]"></div></div>;
   if (!seller) return <div className="text-center py-20 text-gray-500 font-bold">Shop not found.</div>;
 
+  // Derive unique categories from seller products
+  const categories = Array.from(new Set(products.map(p => p.category_name).filter(Boolean)));
+
+  // Filtered & Sorted products
+  const filteredProducts = products.filter(p => {
+    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          (p.description && p.description.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesCat = selectedCategory === 'all' || p.category_name === selectedCategory;
+    const matchesPrice = p.price <= maxPrice;
+    return matchesSearch && matchesCat && matchesPrice;
+  }).sort((a, b) => {
+    if (sortBy === 'low') return a.price - b.price;
+    if (sortBy === 'high') return b.price - a.price;
+    return 0;
+  });
+
   return (
-    <div className="bg-[#f0f2f5] min-h-screen pb-12 flex flex-col">
+    <div className="bg-[#f0f2f5] min-h-screen pb-20 flex flex-col font-sans relative">
       <Navbar 
         cartCount={cartStore.cart.reduce((sum, i) => sum + i.quantity, 0)} 
         wishlistCount={cartStore.wishlist.length} 
@@ -50,22 +77,47 @@ export default function SellerShopPage() {
         onAuthClick={() => window.location.href = '/'}
         onCartClick={() => window.location.href = '/'}
       />
+
       {/* Header Profile Section */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-8">
-          <div className="flex items-center gap-6">
-            <div className="w-24 h-24 bg-blue-50 rounded-full flex items-center justify-center text-blue-500 shadow-sm border border-blue-100">
-               <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+          <div className="flex flex-col md:flex-row items-center gap-6">
+            <div className="w-24 h-24 bg-red-50 rounded-full flex items-center justify-center text-red-500 shadow-md border-2 border-red-100 font-black text-3xl">
+               🏪
             </div>
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold text-gray-900">{seller.business_name || 'Seller Shop'}</h1>
-              <div className="flex items-center gap-6 mt-3 text-sm text-gray-600">
-                <span className="flex items-center gap-1 font-bold text-gray-900">
-                  <span className="text-[#23bb75] flex items-center gap-0.5">{seller.rating || '4.1'} <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg></span>
-                  <span className="text-gray-500 font-normal">Ratings</span>
-                </span>
-                <span className="font-bold text-gray-900">{isFollowing ? '94' : '93'} <span className="font-normal text-gray-500">Followers</span></span>
-                <span className="font-bold text-gray-900">{products.length} <span className="font-normal text-gray-500">Products</span></span>
+            <div className="flex-1 text-center md:text-left">
+              <h1 className="text-3xl font-extrabold text-gray-900">{seller.business_name || 'Seller Shop'}</h1>
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-6 mt-3 text-sm">
+                
+                {/* Clickable Ratings */}
+                <button 
+                  onClick={() => setShowRatingsModal(true)}
+                  className="flex items-center gap-1.5 font-extrabold text-gray-900 bg-gray-50 hover:bg-gray-100 px-3 py-1.5 rounded-lg border border-gray-200 transition cursor-pointer"
+                >
+                  <span className="text-[#23bb75] flex items-center gap-0.5">{seller.rating || '4.1'} ★</span>
+                  <span className="text-gray-500 font-medium">Ratings</span>
+                </button>
+
+                {/* Clickable Followers */}
+                <button 
+                  onClick={() => setShowFollowersModal(true)}
+                  className="flex items-center gap-1.5 font-extrabold text-gray-900 bg-gray-50 hover:bg-gray-100 px-3 py-1.5 rounded-lg border border-gray-200 transition cursor-pointer"
+                >
+                  <span>{isFollowing ? '94' : '93'}</span>
+                  <span className="font-medium text-gray-500">Followers</span>
+                </button>
+
+                {/* Clickable Products Count */}
+                <button 
+                  onClick={() => {
+                    const el = document.getElementById('products-section');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  className="flex items-center gap-1.5 font-extrabold text-gray-900 bg-gray-50 hover:bg-gray-100 px-3 py-1.5 rounded-lg border border-gray-200 transition cursor-pointer"
+                >
+                  <span>{products.length}</span>
+                  <span className="font-medium text-gray-500">Products</span>
+                </button>
               </div>
             </div>
             <div>
@@ -74,90 +126,141 @@ export default function SellerShopPage() {
                   setIsFollowing(!isFollowing);
                   alert(isFollowing ? "Unfollowed seller." : "You are now following this seller!");
                 }}
-                className={`px-8 py-2.5 ${isFollowing ? 'bg-gray-200 text-gray-800' : 'bg-brand-blue text-white hover:bg-blue-700'} rounded font-bold transition shadow`}
+                className={`px-8 py-3 ${isFollowing ? 'bg-gray-200 text-gray-800' : 'bg-[#e52e06] text-white hover:bg-[#cc2805]'} rounded-lg font-extrabold transition shadow-lg`}
               >
-                {isFollowing ? 'Following' : 'Follow'}
+                {isFollowing ? 'Following ✓' : '+ Follow Store'}
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 mt-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-2">All Products</h2>
-        <p className="text-sm text-gray-500 mb-6">Showing 1-{products.length} out of {products.length} products</p>
+      <div id="products-section" className="max-w-7xl mx-auto px-4 mt-8 w-full flex-1">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h2 className="text-2xl font-extrabold text-gray-900">All Products</h2>
+            <p className="text-sm text-gray-500">Showing {filteredProducts.length} of {products.length} products</p>
+          </div>
+          <select 
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="p-2.5 border border-gray-300 rounded-lg text-sm text-gray-700 outline-none bg-white shadow-sm font-semibold"
+          >
+            <option value="relevance">Sort by : Relevance</option>
+            <option value="low">Price : Low to High</option>
+            <option value="high">Price : High to Low</option>
+          </select>
+        </div>
 
-        <div className="flex gap-6">
-          {/* Sidebar Filters */}
-          <div className="w-64 shrink-0 space-y-4 hidden md:block">
-            <select className="w-full p-2.5 border border-gray-300 rounded text-sm text-gray-700 outline-none focus:border-gray-400 bg-white shadow-sm mb-4">
-              <option>Sort by : Relevance</option>
-              <option>Sort by : New Arrivals</option>
-              <option>Sort by : Price (Low to High)</option>
-              <option>Sort by : Price (High to Low)</option>
-            </select>
-            
-            <div className="bg-white border border-gray-200 rounded p-4 shadow-sm">
-              <h3 className="font-bold text-sm text-gray-800 uppercase tracking-wide mb-1">Filters</h3>
-              <p className="text-xs text-gray-400 mb-4">{products.length} Products</p>
+        <div className="flex flex-col md:flex-row gap-6">
+          {/* Dynamic Sidebar Filters */}
+          <div className="w-full md:w-64 shrink-0 space-y-4">
+            <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm space-y-5">
+              <h3 className="font-extrabold text-sm text-gray-900 uppercase tracking-wider border-b pb-2 flex items-center gap-2">
+                <span className="material-symbols-outlined text-base text-[#e52e06]">filter_list</span> Live Filters
+              </h3>
               
-              <div className="space-y-4">
-                <div>
-                  <h4 className="font-bold text-gray-700 mb-2 text-sm flex justify-between items-center cursor-pointer">Category <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7"></path></svg></h4>
-                  <div className="space-y-2 text-sm text-gray-600">
-                    <label className="flex items-center gap-2"><input type="checkbox" className="rounded" /> Bedsheets</label>
-                    <label className="flex items-center gap-2"><input type="checkbox" className="rounded" /> Boxes, Baskets & Bins</label>
-                    <label className="flex items-center gap-2"><input type="checkbox" className="rounded" /> Comforter Sets</label>
-                  </div>
-                </div>
-                
-                <div className="border-t pt-4">
-                  <h4 className="font-bold text-gray-700 mb-3 text-sm flex justify-between items-center cursor-pointer">Color <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7"></path></svg></h4>
-                  <div className="flex flex-wrap gap-2">
-                    {['Beige', 'Black', 'Brown', 'Grey', 'Maroon', 'Multicolor'].map(c => (
-                      <button key={c} className="px-3 py-1 border border-gray-200 rounded-full text-xs text-gray-600 hover:border-gray-300">{c}</button>
-                    ))}
-                  </div>
-                </div>
+              {/* Search Filter */}
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1">Search Products</label>
+                <input 
+                  type="text"
+                  placeholder="Type product name..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg p-2 text-xs outline-none focus:border-[#e52e06]"
+                />
+              </div>
 
-                <div className="border-t pt-4">
-                  <h4 className="font-bold text-gray-700 text-sm flex justify-between items-center cursor-pointer">Fabric <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg></h4>
-                </div>
-                <div className="border-t pt-4">
-                  <h4 className="font-bold text-gray-700 text-sm flex justify-between items-center cursor-pointer">Price <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg></h4>
+              {/* Category Filter */}
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-2">Category</label>
+                <div className="space-y-1.5 text-xs text-gray-700 max-h-40 overflow-y-auto">
+                  <label className="flex items-center gap-2 cursor-pointer font-medium">
+                    <input 
+                      type="radio" 
+                      name="cat_filter" 
+                      checked={selectedCategory === 'all'} 
+                      onChange={() => setSelectedCategory('all')}
+                      className="accent-[#e52e06]" 
+                    />
+                    All Categories ({products.length})
+                  </label>
+                  {categories.map(cat => (
+                    <label key={cat} className="flex items-center gap-2 cursor-pointer font-medium">
+                      <input 
+                        type="radio" 
+                        name="cat_filter"
+                        checked={selectedCategory === cat} 
+                        onChange={() => setSelectedCategory(cat!)}
+                        className="accent-[#e52e06]" 
+                      />
+                      {cat} ({products.filter(p => p.category_name === cat).length})
+                    </label>
+                  ))}
                 </div>
               </div>
+              
+              {/* Price Filter */}
+              <div className="border-t pt-4">
+                <label className="block text-xs font-bold text-gray-600 mb-1">Max Price: ₹{maxPrice}</label>
+                <input 
+                  type="range"
+                  min="50"
+                  max="10000"
+                  step="50"
+                  value={maxPrice}
+                  onChange={(e) => setMaxPrice(Number(e.target.value))}
+                  className="w-full accent-[#e52e06]"
+                />
+              </div>
+
+              {(searchQuery || selectedCategory !== 'all' || maxPrice < 10000) && (
+                <button 
+                  onClick={() => { setSearchQuery(''); setSelectedCategory('all'); setMaxPrice(10000); }}
+                  className="w-full py-1.5 text-xs font-bold text-[#e52e06] border border-[#e52e06] rounded-lg hover:bg-red-50 transition"
+                >
+                  Reset Filters
+                </button>
+              )}
             </div>
           </div>
 
           {/* Product Grid */}
           <div className="flex-1">
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {products.map(p => (
-                <div key={p.id} onClick={() => setSelectedProduct(p)} className="bg-white border border-gray-200 rounded overflow-hidden cursor-pointer hover:shadow-lg transition-shadow group relative flex flex-col">
-                  <div className="aspect-[4/5] overflow-hidden bg-gray-50 relative p-4 flex items-center justify-center">
-                    <img src={p.image_url || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80'} onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80' }} alt={p.name} className="w-full h-full object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-300" />
-                  </div>
-                  <div className="p-3 flex-1 flex flex-col">
-                    <h3 className="text-sm text-gray-500 font-medium truncate">{p.name}</h3>
-                    <div className="mt-1 flex items-center gap-2">
-                      <span className="text-lg font-bold text-gray-900">₹{p.price}</span>
-                      <span className="text-xs text-gray-500 line-through">₹{Math.floor(p.price * 1.5)}</span>
+            {filteredProducts.length === 0 ? (
+              <div className="bg-white rounded-xl p-12 text-center text-gray-500 font-bold border border-gray-200">
+                No products match your selected filters.
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {filteredProducts.map(p => (
+                  <div key={p.id} onClick={() => setSelectedProduct(p)} className="bg-white border border-gray-200 rounded-xl overflow-hidden cursor-pointer hover:shadow-xl transition-all duration-300 group flex flex-col">
+                    <div className="aspect-[4/5] overflow-hidden bg-gray-50 relative p-4 flex items-center justify-center">
+                      <img src={p.image_url || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80'} onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80' }} alt={p.name} className="w-full h-full object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-300" />
                     </div>
-                    <div className="mt-2 flex items-center gap-2">
-                       <span className="bg-[#23bb75] text-white text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
-                        4.1 <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
-                      </span>
-                      <span className="text-[10px] text-gray-500 font-medium">17373 Reviews</span>
+                    <div className="p-3.5 flex-1 flex flex-col">
+                      <h3 className="text-sm font-semibold text-gray-800 truncate">{p.name}</h3>
+                      <div className="mt-1 flex items-center gap-2">
+                        <span className="text-base font-extrabold text-gray-900">₹{p.price}</span>
+                        <span className="text-xs text-gray-400 line-through">₹{Math.floor(p.price * 1.4)}</span>
+                      </div>
+                      <div className="mt-2 flex items-center gap-2">
+                         <span className="bg-[#23bb75] text-white text-[10px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                          4.1 ★
+                        </span>
+                        <span className="text-[10px] text-gray-500 font-medium">Verified Seller Product</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
       
+      {/* Product Preview Modal */}
       {selectedProduct && (
         <ProductPreviewModal 
           product={selectedProduct} 
@@ -184,6 +287,66 @@ export default function SellerShopPage() {
           }}
         />
       )}
+
+      {/* Ratings Modal */}
+      {showRatingsModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h3 className="font-extrabold text-lg text-gray-900">Store Ratings & Reviews</h3>
+              <button onClick={() => setShowRatingsModal(false)} className="text-gray-500 font-bold hover:text-black">✕</button>
+            </div>
+            <div className="text-center py-4 bg-emerald-50 rounded-xl">
+              <div className="text-4xl font-extrabold text-[#23bb75]">{seller.rating || '4.1'} ★</div>
+              <p className="text-xs text-emerald-800 font-bold mt-1">100% Verified Buyer Rating</p>
+            </div>
+            <div className="space-y-3 max-h-60 overflow-y-auto text-xs">
+              <div className="p-3 border rounded-lg bg-gray-50">
+                <div className="flex justify-between font-bold text-gray-800"><span>Ramesh K.</span><span>5 ★</span></div>
+                <p className="text-gray-600 mt-1">Excellent products and super fast dispatch!</p>
+              </div>
+              <div className="p-3 border rounded-lg bg-gray-50">
+                <div className="flex justify-between font-bold text-gray-800"><span>Priya M.</span><span>4 ★</span></div>
+                <p className="text-gray-600 mt-1">Good quality item, received exactly as shown.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Followers Modal */}
+      {showFollowersModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h3 className="font-extrabold text-lg text-gray-900">Store Followers ({isFollowing ? 94 : 93})</h3>
+              <button onClick={() => setShowFollowersModal(false)} className="text-gray-500 font-bold hover:text-black">✕</button>
+            </div>
+            <div className="space-y-2.5 max-h-60 overflow-y-auto text-xs">
+              {['Anand Vijay', 'Kavitha R', 'Senthil Nathan', 'Deepa S', 'Vimal Kumar', 'Meena Subbu'].map((name, i) => (
+                <div key={i} className="flex items-center gap-3 p-2 border-b last:border-0">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center">
+                    {name.charAt(0)}
+                  </div>
+                  <span className="font-bold text-gray-800 flex-1">{name}</span>
+                  <span className="text-[10px] text-gray-400">Following</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Switch to Seller Dashboard Floating Button */}
+      <div className="fixed bottom-4 right-4 z-50">
+        <button
+          onClick={() => { window.location.href = '/?seller=true'; }}
+          className="bg-[#232f3e] hover:bg-[#1a232e] text-white text-xs font-extrabold px-5 py-3 rounded-full shadow-2xl flex items-center gap-2 border border-gray-700 transition hover:scale-105 cursor-pointer"
+        >
+          <span className="material-symbols-outlined text-sm text-yellow-400">storefront</span>
+          Switch to Seller Dashboard
+        </button>
+      </div>
     </div>
   );
 }

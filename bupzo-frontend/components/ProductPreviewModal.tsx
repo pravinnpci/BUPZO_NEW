@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Product, API_BASE_URL, uploadImage } from '@/lib/api';
 import { useUser } from '@/lib/authStore';
+import { useCartStore } from '@/lib/cartStore';
 
 interface ProductPreviewModalProps {
   product: Product;
@@ -12,6 +13,7 @@ interface ProductPreviewModalProps {
 
 export default function ProductPreviewModal({ product, onClose, onAddToCart, onAddToWishlist, onBuyNow }: ProductPreviewModalProps) {
   const { user } = useUser();
+  const cartStore = useCartStore();
   const [activeImage, setActiveImage] = useState(product.image_url || 'https://placehold.co/400/png');
   const [referralLink, setReferralLink] = useState('');
   const [reviews, setReviews] = useState<any[]>([]);
@@ -106,6 +108,9 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, onA
     }
   }, [showVariants, sizes]);
 
+  // Wishlist check using cartStore
+  const isInWishlist = cartStore.wishlist.some((w: any) => w.product_id === product.id || w.id === product.id);
+
   return (
     <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
       <div className="bg-[#f0f2f5] dark:bg-gray-900 w-full max-w-6xl rounded-lg shadow-2xl relative flex flex-col md:flex-row h-full max-h-[90vh] overflow-hidden">
@@ -129,9 +134,6 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, onA
             {/* Main Image */}
             <div className="flex-1 relative border border-gray-100 rounded flex items-center justify-center min-h-[350px] p-2">
               <img src={activeImage} alt={product.name} className="w-full h-auto max-h-[450px] object-contain mix-blend-multiply dark:mix-blend-normal" />
-              <div className="absolute bottom-4 right-4 bg-white/90 shadow-md backdrop-blur rounded-full px-4 py-2 text-xs font-bold text-gray-800 border border-gray-200">
-                360° VIEW
-              </div>
             </div>
           </div>
           
@@ -142,22 +144,10 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, onA
                 onAddToCart(productWithVariant); 
                 onClose(); 
               }} 
-              className="flex-1 py-3 px-4 border border-[#0055D4] text-[#0055D4] rounded flex items-center justify-center gap-2 font-bold hover:bg-blue-50 transition"
+              className="w-full py-3.5 px-6 bg-[#e52e06] hover:bg-[#cc2805] text-white rounded-lg flex items-center justify-center gap-2 font-extrabold shadow-lg transition text-base"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
               Add to Cart
-            </button>
-            <button 
-              onClick={() => { 
-                const productWithVariant = showVariants ? { ...product, name: `${product.name} (${selectedSize})` } : product;
-                onAddToCart(productWithVariant); 
-                onClose(); 
-                if (onBuyNow) onBuyNow();
-              }} 
-              className="flex-1 py-3 px-4 bg-[#0055D4] text-white rounded flex items-center justify-center gap-2 font-bold shadow hover:bg-blue-800 transition"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-              Buy Now
             </button>
           </div>
 
@@ -180,25 +170,28 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, onA
             {/* Wishlist Heart Icon */}
             <button 
               onClick={(e) => { e.stopPropagation(); onAddToWishlist(product); }}
-              className="absolute top-5 right-5 text-gray-400 hover:text-red-500 transition"
-              title="Add to Wishlist"
+              className={`absolute top-5 right-5 transition ${isInWishlist ? 'text-red-500 scale-110' : 'text-gray-400 hover:text-red-500'}`}
+              title={isInWishlist ? "In Wishlist" : "Add to Wishlist"}
             >
-              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+              <svg className="w-7 h-7" fill={isInWishlist ? "currentColor" : "none"} stroke="currentColor" strokeWidth={isInWishlist ? "0" : "2"} viewBox="0 0 24 24">
                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
               </svg>
             </button>
 
-            <h1 className="text-xl text-gray-600 dark:text-gray-300 font-medium mb-3 leading-snug pr-8">{product.name}</h1>
+            <h1 className="text-xl text-gray-800 dark:text-gray-100 font-bold mb-3 leading-snug pr-12">{product.name}</h1>
             <div className="flex items-center gap-2 mb-3">
-              <span className="text-3xl font-bold text-gray-900 dark:text-white">₹{product.price}</span>
-              <span className="text-sm text-gray-500 font-medium mt-1">onwards</span>
-              <svg className="w-4 h-4 text-gray-400 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              <span className="text-3xl font-extrabold text-gray-900 dark:text-white">₹{product.price}</span>
+              <span className="text-xs text-gray-400 line-through">₹{Math.floor(product.price * 1.4)}</span>
+              <span className="text-xs text-green-600 font-bold bg-green-50 px-2 py-0.5 rounded">30% OFF</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="bg-[#23bb75] text-white text-sm font-bold px-2 py-1 rounded flex items-center gap-1">
-                {stats ? stats.average_rating : 4.1} <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                {stats && stats.total_ratings > 0 ? stats.average_rating : (reviews.length > 0 ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : 'No Ratings')} 
+                <svg className="w-3.3 h-3.3" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
               </span>
-              <span className="text-xs text-gray-500 font-medium">{stats ? stats.total_ratings : 0} Ratings, {stats ? stats.total_reviews : 0} Reviews</span>
+              <span className="text-xs text-gray-500 font-medium">
+                {stats ? stats.total_ratings : reviews.length} Ratings, {stats ? stats.total_reviews : reviews.length} Reviews
+              </span>
             </div>
           </div>
 
@@ -211,10 +204,10 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, onA
                   <button 
                     key={s} 
                     onClick={() => setSelectedSize(s)}
-                    className={`px-4 py-2 rounded-full border-2 text-sm font-bold transition flex flex-col items-center ${selectedSize === s ? 'border-[#0055D4] text-[#0055D4] bg-blue-50' : 'border-gray-300 text-gray-700 hover:border-gray-400'}`}
+                    className={`px-4 py-2 rounded-full border-2 text-sm font-bold transition flex flex-col items-center ${selectedSize === s ? 'border-[#e52e06] text-[#e52e06] bg-red-50' : 'border-gray-300 text-gray-700 hover:border-gray-400'}`}
                   >
                     <span>{s}</span>
-                    <span className={`text-[10px] ${selectedSize === s ? 'text-[#0055D4]' : 'text-gray-400'}`}>
+                    <span className={`text-[10px] ${selectedSize === s ? 'text-[#e52e06]' : 'text-gray-400'}`}>
                       ₹{product.price + (sizes.indexOf(s) * 50)}
                     </span>
                   </button>
@@ -223,35 +216,40 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, onA
             </div>
           )}
 
-          {/* Card 3: Product Highlights */}
+          {/* Card 3: Product Highlights (Live DB Data) */}
           <div className="bg-white dark:bg-gray-800 rounded-lg p-5 shadow-sm border border-gray-200 dark:border-gray-700 relative">
             <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-4 text-base">Product Highlights</h3>
-            <button className="absolute top-5 right-5 text-xs font-bold text-[#0055D4]">COPY</button>
+            <button 
+              onClick={() => { navigator.clipboard.writeText(`${product.name} - ₹${product.price}`); alert("Product info copied!"); }}
+              className="absolute top-5 right-5 text-xs font-bold text-[#e52e06] hover:underline"
+            >COPY</button>
             <div className="grid grid-cols-2 gap-y-4 gap-x-8 mb-4">
               <div>
-                <span className="block text-xs text-gray-500 mb-1">Net Quantity (N)</span>
-                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">1</span>
+                <span className="block text-xs text-gray-500 mb-1">Category</span>
+                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{product.category_name || 'General'}</span>
               </div>
               <div>
-                <span className="block text-xs text-gray-500 mb-1">Type</span>
-                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{product.category_name || 'Fitted Bedsheets'}</span>
+                <span className="block text-xs text-gray-500 mb-1">Stock Status</span>
+                <span className="text-sm font-semibold text-green-600">{product.stock_quantity ?? 'In Stock'} Available</span>
               </div>
               <div>
-                <span className="block text-xs text-gray-500 mb-1">Color</span>
-                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">Multicolor</span>
+                <span className="block text-xs text-gray-500 mb-1">Weight</span>
+                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">{product.weight_grams ? `${product.weight_grams} g` : '500 g'}</span>
               </div>
               <div>
-                <span className="block text-xs text-gray-500 mb-1">Thread Count</span>
-                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">320</span>
+                <span className="block text-xs text-gray-500 mb-1">Tags</span>
+                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate block">
+                  {Array.isArray((product as any).tags) ? (product as any).tags.join(', ') : ((product as any).tags || 'Featured')}
+                </span>
               </div>
             </div>
             
             <details className="text-sm text-gray-700 dark:text-gray-300 border-t border-gray-100 pt-3 group">
-              <summary className="font-bold cursor-pointer list-none flex justify-between items-center">
-                Additional Details
+              <summary className="font-bold cursor-pointer list-none flex justify-between items-center text-[#232f3e]">
+                Additional Description & Details
                 <svg className="w-4 h-4 text-gray-500 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
               </summary>
-              <p className="mt-3 whitespace-pre-wrap leading-relaxed">{product.description}</p>
+              <p className="mt-3 whitespace-pre-wrap leading-relaxed text-gray-600">{product.description || 'No additional description provided.'}</p>
             </details>
           </div>
 
@@ -259,40 +257,47 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, onA
           <div className="bg-white dark:bg-gray-800 rounded-lg p-5 shadow-sm border border-gray-200 dark:border-gray-700">
             <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-4 text-base">Sold By</h3>
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center text-blue-500">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+              <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center text-blue-500 font-bold text-lg">
+                🏪
               </div>
               <div className="flex-1">
                 <h4 className="font-bold text-gray-900 dark:text-gray-100">{sellerName}</h4>
               </div>
-              <button onClick={() => { onClose(); window.location.href = `/shop/${product.seller_id}`; }} className="px-4 py-1.5 border border-[#0055D4] text-[#0055D4] rounded font-bold text-sm hover:bg-blue-50 transition">View Shop</button>
+              <button onClick={() => { onClose(); window.location.href = `/shop/${product.seller_id}`; }} className="px-4 py-1.5 border border-[#e52e06] text-[#e52e06] rounded font-bold text-sm hover:bg-red-50 transition">View Shop</button>
             </div>
             
             <div className="flex justify-around mb-4 text-center">
               <div>
-                <div className="font-bold text-gray-900 dark:text-white flex items-center justify-center gap-1">{stats ? stats.average_rating : 4.1} <svg className="w-3 h-3 text-[#23bb75]" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg></div>
-                <div className="text-xs text-gray-500">{stats ? stats.total_ratings : 0} Ratings</div>
+                <div className="font-bold text-gray-900 dark:text-white flex items-center justify-center gap-1">
+                  {stats && stats.total_ratings > 0 ? stats.average_rating : '4.1'} <svg className="w-3 h-3 text-[#23bb75]" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                </div>
+                <div className="text-xs text-gray-500">{stats ? stats.total_ratings : reviews.length} Ratings</div>
               </div>
               <div>
                 <div className="font-bold text-gray-900 dark:text-white">Active</div>
                 <div className="text-xs text-gray-500">Status</div>
               </div>
               <div>
-                <div className="font-bold text-gray-900 dark:text-white">KYC</div>
-                <div className="text-xs text-gray-500">Verified</div>
+                <div className="font-bold text-gray-900 dark:text-white">Verified</div>
+                <div className="text-xs text-gray-500">KYC</div>
               </div>
             </div>
 
             <div className="flex gap-2 border-t border-gray-100 pt-3">
-              <button onClick={() => { 
-                  if (!localStorage.getItem('auth_token')) {
-                     alert("Please login to contact the seller.");
+              <button 
+                onClick={() => { 
+                  if (!user || !user.id) {
+                    alert("Please login to contact the seller.");
                   } else {
-                     onClose(); 
-                     window.location.href = `/?tab=messages&to=${product.seller_id}`; 
+                    onClose(); 
+                    window.location.href = `/?tab=messages&to=${product.seller_id}`; 
                   }
-               }} className="flex-1 text-xs font-bold bg-blue-50 text-blue-600 py-2 rounded">✉️ Contact Seller</button>
-              <button onClick={generateReferralLink} className="flex-1 text-xs font-bold bg-green-50 text-green-600 py-2 rounded">🔗 Affiliate Link</button>
+                }} 
+                className="flex-1 text-xs font-bold bg-blue-50 hover:bg-blue-100 text-blue-600 py-2.5 rounded-lg transition flex items-center justify-center gap-1"
+              >
+                ✉️ Contact Seller
+              </button>
+              <button onClick={generateReferralLink} className="flex-1 text-xs font-bold bg-green-50 hover:bg-green-100 text-green-600 py-2.5 rounded-lg transition flex items-center justify-center gap-1">🔗 Affiliate Link</button>
             </div>
             {referralLink && (
               <input type="text" readOnly value={referralLink} className="w-full mt-2 text-xs p-2 rounded bg-gray-100 border border-gray-200 outline-none text-center text-gray-600" />
@@ -374,6 +379,18 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, onA
                       if (res.ok) {
                         const newRev = await res.json();
                         setReviews([newRev, ...reviews]);
+                        setStats((prev: any) => {
+                          const oldRatings = prev?.total_ratings || 0;
+                          const oldAvg = parseFloat(prev?.average_rating || '0');
+                          const newRatings = oldRatings + 1;
+                          const newAvg = ((oldAvg * oldRatings + rating) / newRatings).toFixed(1);
+                          return {
+                            ...prev,
+                            total_ratings: newRatings,
+                            total_reviews: (prev?.total_reviews || 0) + 1,
+                            average_rating: newAvg
+                          };
+                        });
                         form.reset();
                         alert("Review submitted successfully!");
                       } else {

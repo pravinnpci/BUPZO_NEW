@@ -42,7 +42,7 @@ export function Navbar({ onTabChange, onAuthClick, onCartClick, cartCount, wishl
             <option className="text-black" value="en">English</option>
             <option className="text-black" value="ta">Tamil</option>
           </select>
-          <div id="google_translate_element" style={{ display: 'none' }}></div>
+          {mounted && <div id="google_translate_element" suppressHydrationWarning style={{ display: 'none' }}></div>}
           <select className="bg-transparent border-none outline-none text-gray-300 cursor-pointer">
             <option className="text-black">INR (₹)</option>
             <option className="text-black">USD ($)</option>

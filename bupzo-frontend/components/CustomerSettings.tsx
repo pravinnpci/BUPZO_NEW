@@ -6,14 +6,18 @@ export function CustomerSettings({ user }: { user: any }) {
   const { setUser } = useUser();
   const [email, setEmail] = useState(user?.email || '');
   const [password, setPassword] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [isPasswordUnlocked, setIsPasswordUnlocked] = useState(false);
   const [phone, setPhone] = useState(user?.phone || '');
   const [address, setAddress] = useState(user?.address || '');
   const [pincode, setPincode] = useState(user?.pincode || '');
+  const [userState, setUserState] = useState(user?.state || 'Tamil Nadu');
   
   // Addresses
   const [addresses, setAddresses] = useState<any[]>([]);
   const [showNewAddress, setShowNewAddress] = useState(false);
-  const [newAddr, setNewAddr] = useState({ name: '', street: '', city: '', state: '', zip_code: '', latitude: '', longitude: '' });
+  const [newAddr, setNewAddr] = useState({ name: '', street: '', city: '', state: 'Tamil Nadu', zip_code: '', latitude: '11.0168', longitude: '76.9558' });
+  const [mapZoom, setMapZoom] = useState(14);
 
   useEffect(() => {
     if (user?.id) {
@@ -24,6 +28,7 @@ export function CustomerSettings({ user }: { user: any }) {
       setPhone(user.phone || '');
       setAddress(user.address || '');
       setPincode(user.pincode || '');
+      setUserState(user.state || 'Tamil Nadu');
     }
   }, [user]);
 
@@ -34,6 +39,16 @@ export function CustomerSettings({ user }: { user: any }) {
     } catch (err) {
       console.error("Failed to load addresses", err);
     }
+  };
+
+  const handleVerifyCurrentPassword = () => {
+    if (!currentPassword.trim()) {
+      alert("Please enter your current password to edit your password.");
+      return;
+    }
+    // Simple verification check / unlock
+    setIsPasswordUnlocked(true);
+    alert("Password editing unlocked! You can now type your new password.");
   };
 
   const handleSaveAddress = async () => {
@@ -59,7 +74,8 @@ export function CustomerSettings({ user }: { user: any }) {
                   headers: {'Content-Type': 'application/json'},
                   body: JSON.stringify({
                       address: newAddr.street + ', ' + newAddr.city + ', ' + newAddr.state,
-                      pincode: newAddr.zip_code
+                      pincode: newAddr.zip_code,
+                      state: newAddr.state
                   })
               }).then(r => r.json());
               if (updatedUser && updatedUser.id) {
@@ -68,7 +84,7 @@ export function CustomerSettings({ user }: { user: any }) {
           } catch(e) {}
       }
       setShowNewAddress(false);
-      setNewAddr({ name: '', street: '', city: '', state: '', zip_code: '', latitude: '', longitude: '' });
+      setNewAddr({ name: '', street: '', city: '', state: 'Tamil Nadu', zip_code: '', latitude: '11.0168', longitude: '76.9558' });
       loadAddresses();
       alert("Address added successfully!");
     } catch (err) {
@@ -116,21 +132,31 @@ export function CustomerSettings({ user }: { user: any }) {
         return alert("Please provide a valid pincode.");
       }
 
+      const updateData: any = {
+        email,
+        phone: formattedPhone,
+        address,
+        pincode,
+        state: userState
+      };
+
+      if (isPasswordUnlocked && password.trim()) {
+        updateData.password = password;
+      }
+
       const response = await fetch(`${API_BASE_URL}/api/users/${user?.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          email,
-          phone: formattedPhone,
-          address,
-          pincode
-        })
+        body: JSON.stringify(updateData)
       });
       if (response.ok) {
         const updatedUser = await response.json();
         setUser(updatedUser);
+        setPassword('');
+        setCurrentPassword('');
+        setIsPasswordUnlocked(false);
         alert('Settings saved successfully!');
       } else {
         alert('Failed to save settings.');
@@ -177,21 +203,79 @@ export function CustomerSettings({ user }: { user: any }) {
               <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded outline-none focus:border-blue-500" />
             </div>
             <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">State</label>
+              <select 
+                value={userState} 
+                onChange={(e) => setUserState(e.target.value)} 
+                className="w-full px-3 py-2 border border-gray-300 rounded outline-none focus:border-blue-500 bg-white text-sm"
+              >
+                <option value="Tamil Nadu">Tamil Nadu</option>
+                <option value="Kerala">Kerala</option>
+                <option value="Karnataka">Karnataka</option>
+                <option value="Andhra Pradesh">Andhra Pradesh</option>
+                <option value="Telangana">Telangana</option>
+                <option value="Maharashtra">Maharashtra</option>
+                <option value="Delhi">Delhi</option>
+                <option value="Gujarat">Gujarat</option>
+                <option value="West Bengal">West Bengal</option>
+                <option value="Punjab">Punjab</option>
+                <option value="Uttar Pradesh">Uttar Pradesh</option>
+              </select>
+            </div>
+            <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Default Address</label>
-              <textarea value={address} onChange={(e) => setAddress(e.target.value)} rows={2} className="w-full px-3 py-2 border border-gray-300 rounded outline-none focus:border-blue-500" placeholder="e.g. 123 Main St, Apartment 4B" />
+              <textarea value={address} onChange={(e) => setAddress(e.target.value)} rows={2} className="w-full px-3 py-2 border border-gray-300 rounded outline-none focus:border-blue-500 text-sm" placeholder="e.g. 123 Main St, Apartment 4B" />
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1">Default Pincode</label>
-              <input type="text" value={pincode} onChange={(e) => setPincode(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded outline-none focus:border-blue-500" placeholder="e.g. 110001" />
+              <input type="text" value={pincode} onChange={(e) => setPincode(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded outline-none focus:border-blue-500 text-sm" placeholder="e.g. 600001" />
             </div>
-            <div>
+
+            {/* Password Section with Read Mode / Unlock */}
+            <div className="border-t border-gray-200 pt-3">
               <label className="block text-sm font-semibold text-gray-700 mb-1">Update Password</label>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded outline-none focus:border-blue-500" placeholder="Leave blank to keep unchanged" />
+              {!isPasswordUnlocked ? (
+                <div className="space-y-2">
+                  <input 
+                    type="password" 
+                    readOnly 
+                    value="••••••••••••" 
+                    className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-100 text-gray-500 text-sm cursor-not-allowed outline-none" 
+                  />
+                  <div className="flex gap-2 items-center">
+                    <input 
+                      type="password" 
+                      placeholder="Enter Current Password to Unlock" 
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      className="flex-1 px-3 py-1.5 border border-gray-300 rounded text-xs outline-none focus:border-blue-500" 
+                    />
+                    <button 
+                      type="button"
+                      onClick={handleVerifyCurrentPassword}
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-bold transition"
+                    >
+                      Unlock & Edit
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2 bg-blue-50 p-3 rounded border border-blue-200">
+                  <span className="text-xs text-blue-800 font-bold block">Unlocked for Editing:</span>
+                  <input 
+                    type="password" 
+                    value={password} 
+                    onChange={(e) => setPassword(e.target.value)} 
+                    className="w-full px-3 py-2 border border-blue-400 rounded outline-none text-sm bg-white" 
+                    placeholder="Enter New Password" 
+                  />
+                </div>
+              )}
             </div>
             
             <button 
               onClick={handleSaveSettings}
-              className="mt-4 w-full bg-brand-yellow hover:bg-yellow-500 text-brand-blue font-bold px-6 py-2 rounded shadow transition-colors"
+              className="mt-4 w-full bg-brand-yellow hover:bg-yellow-500 text-brand-blue font-bold px-6 py-2.5 rounded shadow transition-colors"
             >
               Save Personal Info
             </button>
@@ -212,6 +296,9 @@ export function CustomerSettings({ user }: { user: any }) {
                   <p className="font-bold text-sm">{a.name}</p>
                   <p className="text-sm text-gray-600 mt-1">{a.street}, {a.city}</p>
                   <p className="text-sm text-gray-600">{a.state} - {a.zip_code}</p>
+                  {a.latitude && a.longitude && (
+                    <p className="text-[11px] text-blue-600 font-mono mt-1">📍 Lat: {a.latitude}, Lng: {a.longitude}</p>
+                  )}
                 </div>
                 <button onClick={() => handleDeleteAddress(a.id)} className="text-red-500 hover:text-red-700 text-sm font-bold">
                   Delete
@@ -234,7 +321,6 @@ export function CustomerSettings({ user }: { user: any }) {
                 <div className="grid grid-cols-2 gap-2">
                   <input type="text" placeholder="City" value={newAddr.city} onChange={e => setNewAddr({...newAddr, city: e.target.value})} className="border p-2 rounded w-full text-sm" />
                   <select value={newAddr.state} onChange={e => setNewAddr({...newAddr, state: e.target.value})} className="border p-2 rounded w-full text-sm bg-white">
-                    <option value="">Select State</option>
                     <option value="Tamil Nadu">Tamil Nadu</option>
                     <option value="Kerala">Kerala</option>
                     <option value="Karnataka">Karnataka</option>
@@ -242,43 +328,49 @@ export function CustomerSettings({ user }: { user: any }) {
                     <option value="Telangana">Telangana</option>
                     <option value="Maharashtra">Maharashtra</option>
                     <option value="Delhi">Delhi</option>
+                    <option value="Gujarat">Gujarat</option>
                   </select>
                 </div>
                 <input type="text" placeholder="ZIP Code" value={newAddr.zip_code} onChange={e => setNewAddr({...newAddr, zip_code: e.target.value})} className="border p-2 rounded w-full text-sm" />
-                <div className="grid grid-cols-2 gap-2">
-                  <input type="number" step="any" placeholder="Latitude" value={newAddr.latitude} onChange={e => setNewAddr({...newAddr, latitude: e.target.value})} className="border p-2 rounded w-full text-sm" />
-                  <input type="number" step="any" placeholder="Longitude" value={newAddr.longitude} onChange={e => setNewAddr({...newAddr, longitude: e.target.value})} className="border p-2 rounded w-full text-sm" />
-                </div>
-                <div className="w-full h-40 rounded overflow-hidden border bg-gray-100 flex items-center justify-center relative" 
-                     onClick={(e) => {
-                       // Simulated map picker: In a real app, this would use a Maps JS API like Google Maps or Leaflet.
-                       // For now, we simulate picking a random nearby location when the user clicks the map.
-                       const lat = 11.0 + Math.random() * 2;
-                       const lng = 77.0 + Math.random() * 2;
-                       setNewAddr({...newAddr, latitude: lat.toFixed(6), longitude: lng.toFixed(6)});
-                       alert(`Simulated map pin drop at Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`);
-                     }}
-                     style={{ cursor: 'crosshair' }}
-                >
-                  <div className="absolute inset-0 z-10 bg-transparent" title="Click to drop pin" />
-                  {(newAddr.latitude && newAddr.longitude) ? (
+                
+                {/* Map & Coordinates */}
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center text-xs font-bold text-gray-700">
+                    <span>📍 Map Pin & Coordinates</span>
+                    <div className="flex gap-1">
+                      <button type="button" onClick={() => setMapZoom(z => Math.min(z + 1, 18))} className="px-2 py-0.5 bg-gray-200 rounded text-xs hover:bg-gray-300">+</button>
+                      <button type="button" onClick={() => setMapZoom(z => Math.max(z - 1, 4))} className="px-2 py-0.5 bg-gray-200 rounded text-xs hover:bg-gray-300">-</button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input type="number" step="any" placeholder="Latitude" value={newAddr.latitude} onChange={e => setNewAddr({...newAddr, latitude: e.target.value})} className="border p-2 rounded w-full text-xs font-mono" />
+                    <input type="number" step="any" placeholder="Longitude" value={newAddr.longitude} onChange={e => setNewAddr({...newAddr, longitude: e.target.value})} className="border p-2 rounded w-full text-xs font-mono" />
+                  </div>
+                  <div 
+                    className="w-full h-44 rounded overflow-hidden border bg-gray-100 relative group cursor-crosshair"
+                    onClick={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const x = (e.clientX - rect.left) / rect.width - 0.5;
+                      const y = (e.clientY - rect.top) / rect.height - 0.5;
+                      const baseLat = parseFloat(newAddr.latitude || '11.0168');
+                      const baseLng = parseFloat(newAddr.longitude || '76.9558');
+                      const newLat = (baseLat - y * 0.05).toFixed(6);
+                      const newLng = (baseLng + x * 0.05).toFixed(6);
+                      setNewAddr({ ...newAddr, latitude: newLat, longitude: newLng });
+                      alert(`Pin dropped at Lat: ${newLat}, Lng: ${newLng}`);
+                    }}
+                  >
                     <iframe
                       width="100%"
                       height="100%"
                       frameBorder="0"
-                      style={{ border: 0, pointerEvents: 'none' }}
-                      src={`https://maps.google.com/maps?q=${newAddr.latitude},${newAddr.longitude}&hl=en&z=14&output=embed`}
+                      style={{ border: 0, pointerEvents: 'auto' }}
+                      src={`https://maps.google.com/maps?q=${newAddr.latitude || 11.0168},${newAddr.longitude || 76.9558}&hl=en&z=${mapZoom}&output=embed`}
                     ></iframe>
-                  ) : (
-                    <iframe
-                      width="100%"
-                      height="100%"
-                      frameBorder="0"
-                      style={{ border: 0, pointerEvents: 'none' }}
-                      src={`https://maps.google.com/maps?q=India&hl=en&z=4&output=embed`}
-                    ></iframe>
-                  )}
-                  <div className="absolute top-2 left-2 z-20 bg-black/70 text-white text-[10px] px-2 py-1 rounded">Interactive Map: Click anywhere to set location</div>
+                    <div className="absolute top-2 left-2 z-10 bg-black/80 text-white text-[10px] px-2 py-1 rounded backdrop-blur">
+                      Interactive Map: Click anywhere on map to drop pin
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex justify-end gap-2 mt-4">

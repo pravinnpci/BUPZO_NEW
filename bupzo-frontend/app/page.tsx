@@ -29,10 +29,15 @@ export default function Home() {
   const [sellerTab, setSellerTab] = useState<'overview' | 'products' | 'orders' | 'escrow' | 'kyc' | 'disputes' | 'vouchers'>('overview');
   const { theme, setTheme, resolvedTheme } = useTheme();
 
-  // Redirect old affiliate links to new route
+  // Redirect old affiliate links to new route & detect seller dashboard switch
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
+      const isSellerParam = urlParams.get('seller');
+      const tabParam = urlParams.get('tab');
+      if (isSellerParam === 'true' || tabParam === 'seller') {
+        setUserRole('seller');
+      }
       const pid = urlParams.get('product_id');
       const ref = urlParams.get('ref');
       if (pid) {
@@ -135,7 +140,7 @@ export default function Home() {
     const handleReturn = () => setUserRole('customer');
     window.addEventListener('returnToStorefront', handleReturn);
     return () => window.removeEventListener('returnToStorefront', handleReturn);
-  }, [theme]);
+  }, []);
 
   // Refresh user data when opening cart or wallet
   useEffect(() => {
@@ -648,7 +653,7 @@ export default function Home() {
     }).filter(Boolean) as any);
   };
 
-  const handleCheckoutSubmit = async (walletAmountUsed: number = 0, shippingCost: number = 50, shippingPartner: string = 'Delhivery') => {
+  const handleCheckoutSubmit = async (walletAmountUsed: number = 0, shippingCost: number = 50, shippingPartner: string = 'Delhivery', trustDonation: number = 0) => {
     if (!user || !user.id || !user.phone) {
       setIsAuthModalOpen(true);
       alert("Please login to proceed with checkout.");
@@ -668,24 +673,24 @@ export default function Home() {
     try {
       const subtotal = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
       const discount = appliedPromo?.discount_amount || 0;
-      const totalAmount = Math.max(0, subtotal - discount + shippingCost);
+      const totalAmount = Math.max(0, subtotal - discount + shippingCost + trustDonation);
       const remainingAmount = Math.max(0, totalAmount - walletAmountUsed);
 
       if (remainingAmount > 0) {
         setPaymentAmount(remainingAmount);
-        setPendingCheckoutData({ walletAmountUsed, shippingCost, shippingPartner });
+        setPendingCheckoutData({ walletAmountUsed, shippingCost, shippingPartner, trustDonation });
         setShowPaymentPopup(true);
         return;
       }
       
-      await executeCheckout(walletAmountUsed, shippingCost, shippingPartner);
+      await executeCheckout(walletAmountUsed, shippingCost, shippingPartner, trustDonation);
     } catch (err: any) {
       console.error(err);
       alert(err.message || 'Checkout failed.');
     }
   };
 
-  const executeCheckout = async (walletAmountUsed: number, shippingCost: number, shippingPartner: string) => {
+  const executeCheckout = async (walletAmountUsed: number, shippingCost: number, shippingPartner: string, trustDonation: number = 0) => {
     try {
       const sellerCarts: Record<string, any[]> = {};
       for (const item of cart) {
@@ -693,6 +698,7 @@ export default function Home() {
         sellerCarts[item.product.seller_id].push(item);
       }
 
+      const numSellers = Object.keys(sellerCarts).length || 1;
       for (const sellerId of Object.keys(sellerCarts)) {
         const sellerItems = sellerCarts[sellerId];
         const sellerSubtotal = sellerItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
@@ -701,14 +707,14 @@ export default function Home() {
           user_id: user?.id || '',
           seller_id: sellerId,
           items: sellerItems.map(item => ({ product_id: item.product.id, quantity: item.quantity })),
-          total_amount: sellerSubtotal + (shippingCost / Object.keys(sellerCarts).length), // simplistic split
+          total_amount: sellerSubtotal + (shippingCost / numSellers) + (trustDonation / numSellers),
           order_source: 'WEB',
           shipping_partner: shippingPartner,
           payment_gateway: paymentAmount > 0 ? 'Razorpay' : 'Wallet'
         });
       }
 
-      alert('Order placed successfully!');
+      alert('Order placed successfully! Thank you for your purchase & trust donation.');
       setCart([]);
       localStorage.removeItem('bupzo_cart');
       setShowCart(false);
@@ -997,7 +1003,7 @@ export default function Home() {
                   onClick={async () => {
                     setShowPaymentPopup(false);
                     if (pendingCheckoutData) {
-                      await executeCheckout(pendingCheckoutData.walletAmountUsed, pendingCheckoutData.shippingCost, pendingCheckoutData.shippingPartner);
+                      await executeCheckout(pendingCheckoutData.walletAmountUsed, pendingCheckoutData.shippingCost, pendingCheckoutData.shippingPartner, pendingCheckoutData.trustDonation || 0);
                     }
                   }}
                   className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded transition-colors"

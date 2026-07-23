@@ -78,6 +78,17 @@ export default function ShopsPage() {
           </div>
         )}
       </div>
+
+      {/* Switch to Seller Dashboard Floating Button */}
+      <div className="fixed bottom-4 right-4 z-50">
+        <button
+          onClick={() => { window.location.href = '/?seller=true'; }}
+          className="bg-[#232f3e] hover:bg-[#1a232e] text-white text-xs font-extrabold px-5 py-3 rounded-full shadow-2xl flex items-center gap-2 border border-gray-700 transition hover:scale-105 cursor-pointer"
+        >
+          <span className="material-symbols-outlined text-sm text-yellow-400">storefront</span>
+          Switch to Seller Dashboard
+        </button>
+      </div>
     </div>
   );
 }
