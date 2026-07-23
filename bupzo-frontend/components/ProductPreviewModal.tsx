@@ -108,13 +108,14 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, onA
     }
   }, [showVariants, sizes]);
 
-  // Wishlist check using cartStore
+  // Wishlist check using cartStore & local state
   const [localWishlisted, setLocalWishlisted] = useState(false);
-  const isInWishlist = localWishlisted || cartStore.wishlist.some((w: any) => 
-    w.product_id === product.id || 
-    w.id === product.id || 
-    (w.product && w.product.id === product.id)
-  );
+  const isInWishlist = localWishlisted || cartStore.wishlist.some((w: any) => {
+    const pId = product.id ? product.id.toString() : '';
+    const wProdId = w.product_id ? w.product_id.toString() : (w.id ? w.id.toString() : '');
+    const nestedId = w.product?.id ? w.product.id.toString() : '';
+    return pId && (wProdId === pId || nestedId === pId);
+  });
 
   return (
     <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">

@@ -23,7 +23,7 @@ export default function SellerShopPage() {
   
   // Dynamic Live Filter States
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [maxPrice, setMaxPrice] = useState<number>(10000);
   const [sortBy, setSortBy] = useState<string>('relevance');
 
@@ -109,7 +109,7 @@ export default function SellerShopPage() {
     const pCat = p.category_name || (p as any).category || 'General';
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           (p.description && p.description.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesCat = selectedCategory === 'all' || pCat === selectedCategory;
+    const matchesCat = selectedCategories.length === 0 || selectedCategories.includes(pCat);
     const matchesPrice = p.price <= maxPrice;
     return matchesSearch && matchesCat && matchesPrice;
   }).sort((a, b) => {
@@ -220,32 +220,41 @@ export default function SellerShopPage() {
                 />
               </div>
 
-              {/* Category Filter */}
+              {/* Category Filter Checkboxes */}
               <div>
-                <label className="block text-xs font-bold text-gray-600 mb-2">Category</label>
-                <div className="space-y-1.5 text-xs text-gray-700 max-h-40 overflow-y-auto">
-                  <label className="flex items-center gap-2 cursor-pointer font-medium">
+                <label className="block text-xs font-bold text-gray-600 mb-2">Categories (Select Multiple)</label>
+                <div className="space-y-1.5 text-xs text-gray-700 max-h-48 overflow-y-auto pr-1">
+                  <label className="flex items-center gap-2 cursor-pointer font-bold border-b pb-1">
                     <input 
-                      type="radio" 
-                      name="cat_filter" 
-                      checked={selectedCategory === 'all'} 
-                      onChange={() => setSelectedCategory('all')}
-                      className="accent-[#e52e06]" 
+                      type="checkbox" 
+                      checked={selectedCategories.length === 0} 
+                      onChange={() => setSelectedCategories([])}
+                      className="accent-[#e52e06] w-3.5 h-3.5 rounded" 
                     />
                     All Categories ({products.length})
                   </label>
-                  {categories.map(cat => (
-                    <label key={cat} className="flex items-center gap-2 cursor-pointer font-semibold hover:text-[#e52e06] transition-colors">
-                      <input 
-                        type="radio" 
-                        name="cat_filter"
-                        checked={selectedCategory === cat} 
-                        onChange={() => setSelectedCategory(cat!)}
-                        className="accent-[#e52e06]" 
-                      />
-                      {cat} ({products.filter(p => (p.category_name || (p as any).category || 'General') === cat).length})
-                    </label>
-                  ))}
+                  {categories.map(cat => {
+                    const isChecked = selectedCategories.includes(cat);
+                    const catCount = products.filter(p => (p.category_name || (p as any).category || 'General') === cat).length;
+                    return (
+                      <label key={cat} className="flex items-center gap-2 cursor-pointer font-semibold hover:text-[#e52e06] transition-colors">
+                        <input 
+                          type="checkbox" 
+                          checked={isChecked} 
+                          onChange={() => {
+                            if (isChecked) {
+                              setSelectedCategories(prev => prev.filter(c => c !== cat));
+                            } else {
+                              setSelectedCategories(prev => [...prev, cat]);
+                            }
+                          }}
+                          className="accent-[#e52e06] w-3.5 h-3.5 rounded" 
+                        />
+                        <span>{cat}</span>
+                        <span className="text-[10px] text-gray-400 font-mono">({catCount})</span>
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
               
@@ -273,9 +282,9 @@ export default function SellerShopPage() {
                 />
               </div>
 
-              {(searchQuery || selectedCategory !== 'all' || maxPrice < 10000) && (
+              {(searchQuery || selectedCategories.length > 0 || maxPrice < 10000) && (
                 <button 
-                  onClick={() => { setSearchQuery(''); setSelectedCategory('all'); setMaxPrice(10000); }}
+                  onClick={() => { setSearchQuery(''); setSelectedCategories([]); setMaxPrice(10000); }}
                   className="w-full py-1.5 text-xs font-bold text-[#e52e06] border border-[#e52e06] rounded-lg hover:bg-red-50 transition"
                 >
                   Reset Filters

@@ -156,6 +156,24 @@ export default function Home() {
     }
   }, [showCart, customerTab]);
 
+  // Fetch unread messages count for logged-in user
+  useEffect(() => {
+    if (!user?.id) return;
+    const checkUnread = async () => {
+      try {
+        const resp = await fetch(`${API_URL}/api/messages/?user_id=${user.id}`);
+        if (resp.ok) {
+          const msgs: any[] = await resp.json();
+          const unread = msgs.filter((m: any) => m.receiver_id === user.id && !m.is_read).length;
+          setUnreadMsgs(unread);
+        }
+      } catch (e) {}
+    };
+    checkUnread();
+    const interval = setInterval(checkUnread, 5000);
+    return () => clearInterval(interval);
+  }, [user?.id, customerTab]);
+
   // Load cart from localStorage on initial mount
   useEffect(() => {
     try {

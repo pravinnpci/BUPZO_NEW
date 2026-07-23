@@ -2261,6 +2261,47 @@ async def update_order_status(order_id: UUID, status: str):
         raise HTTPException(status_code=404, detail="Order not found")
     return {"success": True, "order_id": res['id'], "status": res['status']}
 
+class OrderUpdateRequest(BaseModel):
+    status: Optional[str] = None
+    shipping_provider: Optional[str] = None
+    tracking_number: Optional[str] = None
+
+@app.put("/api/orders/{order_id}")
+async def update_order_full(order_id: UUID, req: OrderUpdateRequest):
+    fields = []
+    values = []
+    idx = 1
+    if req.status is not None:
+        fields.append(f"status = ${idx}")
+        values.append(req.status.lower())
+        idx += 1
+    if req.shipping_provider is not None:
+        fields.append(f"shipping_provider = ${idx}")
+        values.append(req.shipping_provider)
+        idx += 1
+    if req.tracking_number is not None:
+        fields.append(f"tracking_number = ${idx}")
+        values.append(req.tracking_number)
+        idx += 1
+    if not fields:
+        return {"success": True, "message": "No changes requested"}
+    
+    fields.append("updated_at = NOW()")
+    query = f"UPDATE orders SET {', '.join(fields)} WHERE id = ${idx} RETURNING id, status"
+    values.append(order_id)
+    res = await execute_query_one(query, *values)
+    if not res:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return {"success": True, "order_id": res['id'], "status": res['status']}
+
+@app.delete("/api/orders/{order_id}")
+async def delete_order(order_id: UUID):
+    await execute_query("DELETE FROM order_items WHERE order_id = $1", order_id)
+    res = await execute_query_one("DELETE FROM orders WHERE id = $1 RETURNING id", order_id)
+    if not res:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return {"success": True, "deleted_order_id": str(order_id)}
+
 # Disputes Endpoints
 @app.get("/api/disputes/", response_model=List[DisputeResponse])
 async def get_disputes():
@@ -2421,6 +2462,22 @@ async def create_message(user_id: str, msg: MessageCreate):
             """, user_id, msg.receiver_id, msg.order_id, msg.subject, msg.content
         )
         return dict(row)
+
+@app.put("/api/messages/{message_id}/read")
+async def mark_message_read(message_id: UUID):
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("UPDATE messages SET is_read = TRUE WHERE id = $1 RETURNING id, is_read", message_id)
+        if not row:
+            raise HTTPException(status_code=404, detail="Message not found")
+        return dict(row)
+
+@app.delete("/api/messages/{message_id}")
+async def delete_message(message_id: UUID):
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("DELETE FROM messages WHERE id = $1 RETURNING id", message_id)
+        if not row:
+            raise HTTPException(status_code=404, detail="Message not found")
+        return {"success": True, "deleted_id": str(message_id)}
 
 class ReviewCreate(BaseModel):
     user_id: str
