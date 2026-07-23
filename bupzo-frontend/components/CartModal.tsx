@@ -139,10 +139,10 @@ export default function CartModal({
           </button>
         </div>
 
-        {/* Cart Items */}
-        <div className="flex-1 overflow-y-auto p-6 bg-[#f8f8f8]">
+        {/* Scrollable Drawer Body */}
+        <div className="flex-1 overflow-y-auto p-6 bg-[#f8f8f8] space-y-6">
           {cart.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
+            <div className="h-full flex flex-col items-center justify-center text-center space-y-4 py-20">
               <span className="material-symbols-outlined text-6xl text-gray-300">remove_shopping_cart</span>
               <p className="text-gray-500 font-medium">Your cart is currently empty.</p>
               <button onClick={onClose} className="bg-[#e52e06] text-white px-6 py-2 rounded-full font-bold uppercase hover:bg-[#cc2805] transition mt-4">
@@ -150,170 +150,179 @@ export default function CartModal({
               </button>
             </div>
           ) : (
-            <div className="space-y-4">
-              {cart.map((item, idx) => (
-                <div key={item?.product?.id || idx} className="bg-white p-4 rounded-xl border border-gray-200 shadow-md flex gap-4 relative hover:shadow-lg transition-all min-h-[120px]">
-                  <div className="w-28 h-28 bg-gray-50 rounded-lg p-2 border border-gray-100 flex items-center justify-center shrink-0">
-                    <img src={item?.product?.image_url || 'https://placehold.co/150/png'} alt={item?.product?.name || 'Product'} className="max-w-full max-h-full object-contain" />
-                  </div>
-                  <div className="flex-1 flex flex-col justify-between py-1">
-                    <div>
-                      <h3 className="font-extrabold text-[#232f3e] text-base leading-snug pr-6">{item?.product?.name || 'Product Item'}</h3>
-                      <p className="text-xs text-gray-500 font-semibold mt-1">{item?.product?.category_name || 'Bupzo Verified Product'}</p>
+            <>
+              {/* Cart Items List */}
+              <div className="space-y-4">
+                <h3 className="font-extrabold text-sm text-gray-700 uppercase tracking-wider">Selected Products</h3>
+                {cart.map((item, idx) => (
+                  <div key={item?.product?.id || idx} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex gap-4 relative hover:shadow-md transition-all">
+                    <div className="w-24 h-24 bg-gray-50 rounded-lg p-2 border border-gray-100 flex items-center justify-center shrink-0">
+                      <img src={item?.product?.image_url || 'https://placehold.co/150/png'} alt={item?.product?.name || 'Product'} className="max-w-full max-h-full object-contain" />
                     </div>
-                    <div className="flex items-center justify-between mt-2">
-                      <p className="text-[#e52e06] font-black text-lg">₹{(item?.product?.price || 0).toLocaleString()}</p>
-                      
-                      <div className="flex items-center border-2 border-gray-300 rounded-lg overflow-hidden bg-gray-50">
-                        <button 
-                          onClick={() => updateQuantity(item?.product?.id, item.quantity - 1)}
-                          className="bg-white hover:bg-gray-100 px-3 py-1 text-gray-700 font-extrabold transition border-r border-gray-200 text-sm"
-                        >-</button>
-                        <span className="text-sm font-black w-8 text-center text-gray-900">{item.quantity}</span>
-                        <button 
-                          onClick={() => updateQuantity(item?.product?.id, item.quantity + 1)}
-                          className="bg-white hover:bg-gray-100 px-3 py-1 text-gray-700 font-extrabold transition border-l border-gray-200 text-sm"
-                        >+</button>
+                    <div className="flex-1 flex flex-col justify-between py-0.5">
+                      <div>
+                        <h3 className="font-extrabold text-[#232f3e] text-base leading-snug pr-6">{item?.product?.name || 'Product Item'}</h3>
+                        <p className="text-xs text-gray-500 font-semibold mt-0.5">{item?.product?.category_name || 'Bupzo Verified Product'}</p>
+                      </div>
+                      <div className="flex items-center justify-between mt-3">
+                        <p className="text-[#e52e06] font-black text-lg">₹{(item?.product?.price || 0).toLocaleString()}</p>
+                        
+                        <div className="flex items-center border-2 border-gray-300 rounded-lg overflow-hidden bg-gray-50">
+                          <button 
+                            onClick={() => updateQuantity(item?.product?.id, item.quantity - 1)}
+                            className="bg-white hover:bg-gray-100 px-3 py-1 text-gray-700 font-extrabold transition border-r border-gray-200 text-sm"
+                          >-</button>
+                          <span className="text-sm font-black w-8 text-center text-gray-900">{item.quantity}</span>
+                          <button 
+                            onClick={() => updateQuantity(item?.product?.id, item.quantity + 1)}
+                            className="bg-white hover:bg-gray-100 px-3 py-1 text-gray-700 font-extrabold transition border-l border-gray-200 text-sm"
+                          >+</button>
+                        </div>
                       </div>
                     </div>
+                    <button 
+                      onClick={() => updateQuantity(item?.product?.id, 0)}
+                      className="absolute top-2 right-2 text-gray-400 hover:text-red-600 transition p-1 hover:bg-red-50 rounded-full"
+                      title="Remove item"
+                    >
+                      <span className="material-symbols-outlined text-base">delete</span>
+                    </button>
                   </div>
+                ))}
+              </div>
+
+              {/* Order Options Section */}
+              <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-4 shadow-sm">
+                <h3 className="font-extrabold text-sm text-gray-700 uppercase tracking-wider border-b pb-2">Order Options & Summary</h3>
+                
+                {/* Promo Code */}
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    placeholder="Promo Code" 
+                    value={promoCode}
+                    onChange={(e) => setPromoCode(e.target.value)}
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-xs outline-none focus:border-[#e52e06] font-semibold"
+                  />
                   <button 
-                    onClick={() => updateQuantity(item?.product?.id, 0)}
-                    className="absolute top-2 right-2 text-gray-400 hover:text-red-600 transition p-1 hover:bg-red-50 rounded-full"
-                    title="Remove item"
-                  >
-                    <span className="material-symbols-outlined text-base">delete</span>
-                  </button>
+                    onClick={(e) => handleApplyPromo(e, cartTotal)}
+                    className="bg-[#232f3e] text-white px-4 py-2 rounded-lg text-xs font-bold uppercase hover:bg-[#1a232e] transition"
+                  >Apply</button>
                 </div>
-              ))}
-            </div>
+                
+                <div className="space-y-2 text-xs font-medium text-gray-600 pt-2">
+                  <div className="flex justify-between">
+                    <span>Subtotal</span>
+                    <span className="font-bold text-gray-900">₹{cartTotal.toLocaleString()}</span>
+                  </div>
+                  {appliedPromo && (
+                    <div className="flex justify-between text-green-600">
+                      <span>Discount ({appliedPromo?.code || 'Promo'})</span>
+                      <span>-₹{discount.toLocaleString()}</span>
+                    </div>
+                  )}
+                  
+                  <div className="flex justify-between items-center text-xs font-medium border-t border-gray-100 pt-2">
+                    <span className="text-gray-600">Shipping Partner</span>
+                    <select 
+                       value={selectedShipping}
+                       onChange={(e) => setSelectedShipping(e.target.value)}
+                       className="text-xs p-1 border rounded bg-gray-50 outline-none cursor-pointer font-bold"
+                    >
+                      {shippingPartners.map(p => (
+                        <option key={p.name} value={p.name}>
+                          {p.name} {p.name === bestShipping.name ? '(Best)' : ''} - ₹{p.cost}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* ₹2 Trust Donation Row */}
+                  <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-200 text-xs flex justify-between items-center my-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-emerald-700 font-bold text-base">🛡️</span>
+                      <div>
+                        <h4 className="font-bold text-emerald-900 text-xs">Escrow Trust Donation</h4>
+                        <p className="text-[10px] text-emerald-700">Add ₹2 to seller escrow trust fund</p>
+                      </div>
+                    </div>
+                    <label className="flex items-center gap-1.5 cursor-pointer font-bold text-xs text-emerald-900 bg-white px-2 py-1 rounded border border-emerald-300 shadow-sm">
+                      <input type="checkbox" checked={addDonation} onChange={(e) => setAddDonation(e.target.checked)} className="w-4 h-4 accent-emerald-600" />
+                      +₹2
+                    </label>
+                  </div>
+
+                  <div className="flex justify-between text-base font-extrabold text-[#232f3e] border-t border-gray-200 pt-2 mt-3">
+                    <span>Total</span>
+                    <span>₹{totalWithDonation.toLocaleString()}</span>
+                  </div>
+                </div>
+
+                {user && parseFloat(user.wallet_balance || '0') > 0 && (
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-3 rounded-lg border border-blue-200 text-xs flex justify-between items-center shadow-sm">
+                    <div>
+                      <h4 className="font-bold text-blue-900 flex items-center gap-1"><span className="material-symbols-outlined text-[16px] text-blue-600">account_balance_wallet</span> Wallet Balance</h4>
+                      <p className="text-blue-700 text-[11px]">Available: ₹{parseFloat(user.wallet_balance).toLocaleString()}</p>
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-blue-900 bg-white px-2 py-1 rounded border border-blue-300">
+                      <input type="checkbox" checked={useWallet} onChange={(e) => setUseWallet(e.target.checked)} className="w-4 h-4 accent-blue-600" />
+                      Use ₹{maxWalletUsable.toLocaleString()}
+                    </label>
+                  </div>
+                )}
+
+                {useWallet && (
+                   <div className="flex justify-between text-sm font-extrabold text-[#232f3e] bg-amber-50 border border-amber-200 p-2.5 rounded-lg">
+                     <span>Final Amount to Pay</span>
+                     <span className="text-[#e52e06]">₹{finalTotal.toLocaleString()}</span>
+                   </div>
+                )}
+
+                {user && (
+                  <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 text-xs space-y-2">
+                    <h4 className="font-bold text-gray-800 flex items-center gap-1"><span className="material-symbols-outlined text-[16px] text-gray-500">local_shipping</span> Delivery Address</h4>
+                    
+                    {savedAddresses.length > 0 && (
+                      <select 
+                        className="w-full border border-gray-300 rounded p-2 outline-none text-xs bg-white font-medium"
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            setDeliveryAddress(e.target.value);
+                          }
+                        }}
+                      >
+                        <option value="">Select a saved address...</option>
+                        {savedAddresses.map((a, i) => (
+                          <option key={i} value={`${a.name}, ${a.street}, ${a.city}, ${a.state} - ${a.zip_code}`}>
+                            {a.name} - {a.street}, {a.city}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    
+                    <textarea 
+                      value={deliveryAddress}
+                      onChange={(e) => setDeliveryAddress(e.target.value)}
+                      placeholder="Enter your full delivery address here..."
+                      className="w-full border border-gray-300 rounded p-2 outline-none text-xs text-gray-700 bg-white"
+                      rows={2}
+                    />
+                    <button 
+                      onClick={handleSaveAddress}
+                      className="text-xs bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1 rounded font-medium transition"
+                    >
+                      Save Address for Later
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </div>
 
-        {/* Footer / Checkout */}
+        {/* Sticky Fixed Bottom Checkout Button */}
         {cart.length > 0 && (
-          <div className="bg-white border-t border-gray-200 p-6 space-y-4">
-            {/* Promo Code */}
-            <div className="flex gap-2">
-              <input 
-                type="text" 
-                placeholder="Promo Code" 
-                value={promoCode}
-                onChange={(e) => setPromoCode(e.target.value)}
-                className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm outline-none focus:border-[#e52e06]"
-              />
-              <button 
-                onClick={(e) => handleApplyPromo(e, cartTotal)}
-                className="bg-[#232f3e] text-white px-4 py-2 rounded text-sm font-bold uppercase hover:bg-[#1a232e] transition"
-              >Apply</button>
-            </div>
-            
-            <div className="space-y-2 text-sm font-medium text-gray-600 border-t border-gray-100 pt-4">
-              <div className="flex justify-between">
-                <span>Subtotal</span>
-                <span>₹{cartTotal.toLocaleString()}</span>
-              </div>
-              {appliedPromo && (
-                <div className="flex justify-between text-green-600">
-                  <span>Discount ({appliedPromo?.code || 'Promo'})</span>
-                  <span>-₹{discount.toLocaleString()}</span>
-                </div>
-              )}
-              
-              <div className="flex justify-between items-center text-sm font-medium border-t border-gray-200 pt-3">
-                <span className="text-gray-600">Shipping Partner</span>
-                <select 
-                   value={selectedShipping}
-                   onChange={(e) => setSelectedShipping(e.target.value)}
-                   className="text-xs p-1 border rounded bg-gray-50 outline-none cursor-pointer"
-                >
-                  {shippingPartners.map(p => (
-                    <option key={p.name} value={p.name}>
-                      {p.name} {p.name === bestShipping.name ? '(Best)' : ''} - ₹{p.cost}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* ₹2 Trust Donation Row */}
-              <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-200 text-sm flex justify-between items-center my-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-emerald-700 font-bold text-base">🛡️</span>
-                  <div>
-                    <h4 className="font-bold text-emerald-900 text-xs">Escrow Trust Donation</h4>
-                    <p className="text-[11px] text-emerald-700">Add ₹2 to seller escrow trust fund</p>
-                  </div>
-                </div>
-                <label className="flex items-center gap-1.5 cursor-pointer font-bold text-xs text-emerald-900 bg-white px-2 py-1 rounded border border-emerald-300 shadow-sm">
-                  <input type="checkbox" checked={addDonation} onChange={(e) => setAddDonation(e.target.checked)} className="w-4 h-4 accent-emerald-600" />
-                  +₹2
-                </label>
-              </div>
-
-              <div className="flex justify-between text-lg font-extrabold text-[#232f3e] border-t border-gray-200 pt-2 mt-3">
-                <span>Total</span>
-                <span>₹{totalWithDonation.toLocaleString()}</span>
-              </div>
-            </div>
-
-            {user && parseFloat(user.wallet_balance || '0') > 0 && (
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-3 rounded.lg border border-blue-200 text-sm flex justify-between items-center shadow-sm">
-                <div>
-                  <h4 className="font-bold text-blue-900 flex items-center gap-1"><span className="material-symbols-outlined text-[16px] text-blue-600">account_balance_wallet</span> Wallet Balance</h4>
-                  <p className="text-blue-700 text-xs">Available: ₹{parseFloat(user.wallet_balance).toLocaleString()}</p>
-                </div>
-                <label className="flex items-center gap-2 cursor-pointer font-bold text-xs text-blue-900 bg-white px-2 py-1 rounded border border-blue-300">
-                  <input type="checkbox" checked={useWallet} onChange={(e) => setUseWallet(e.target.checked)} className="w-4 h-4 accent-blue-600" />
-                  Use ₹{maxWalletUsable.toLocaleString()}
-                </label>
-              </div>
-            )}
-
-            {useWallet && (
-               <div className="flex justify-between text-base font-extrabold text-[#232f3e] bg-amber-50 border border-amber-200 p-2.5 rounded-lg">
-                 <span>Final Amount to Pay</span>
-                 <span className="text-[#e52e06]">₹{finalTotal.toLocaleString()}</span>
-               </div>
-            )}
-
-            {user && (
-              <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 text-sm">
-                <h4 className="font-bold text-gray-800 mb-2 flex items-center gap-1"><span className="material-symbols-outlined text-[16px] text-gray-500">local_shipping</span> Delivery Address</h4>
-                
-                {savedAddresses.length > 0 && (
-                  <select 
-                    className="w-full border border-gray-300 rounded p-2 mb-2 outline-none text-xs bg-white"
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        setDeliveryAddress(e.target.value);
-                      }
-                    }}
-                  >
-                    <option value="">Select a saved address...</option>
-                    {savedAddresses.map((a, i) => (
-                      <option key={i} value={`${a.name}, ${a.street}, ${a.city}, ${a.state} - ${a.zip_code}`}>
-                        {a.name} - {a.street}, {a.city}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                
-                <textarea 
-                  value={deliveryAddress}
-                  onChange={(e) => setDeliveryAddress(e.target.value)}
-                  placeholder="Enter your full delivery address here..."
-                  className="w-full border border-gray-300 rounded p-2 outline-none text-xs text-gray-700 bg-white"
-                  rows={2}
-                />
-                <button 
-                  onClick={handleSaveAddress}
-                  className="mt-2 text-xs bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1 rounded font-medium transition"
-                >
-                  Save Address for Later
-                </button>
-              </div>
-            )}
-
+          <div className="bg-white border-t border-gray-200 p-4 sticky bottom-0 z-30 shadow-2xl">
             <button 
               onClick={() => {
                 if (!user) {
@@ -323,9 +332,9 @@ export default function CartModal({
                 onClose();
                 onCheckout(walletAmountUsed, currentShippingCost, selectedShipping, donationAmount);
               }}
-              className="w-full bg-[#e52e06] text-white py-4 rounded-lg font-extrabold uppercase tracking-widest hover:bg-[#cc2805] transition shadow-lg flex items-center justify-center gap-2"
+              className="w-full bg-[#e52e06] text-white py-3.5 rounded-xl font-extrabold text-sm uppercase tracking-wider hover:bg-[#cc2805] transition shadow-xl flex items-center justify-center gap-2"
             >
-              <span className="material-symbols-outlined">lock</span>
+              <span className="material-symbols-outlined text-base">lock</span>
               Proceed to Checkout (₹{finalTotal.toLocaleString()})
             </button>
           </div>

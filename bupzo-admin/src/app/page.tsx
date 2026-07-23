@@ -126,6 +126,26 @@ export default function AdminMainPage() {
   const [adminReplyTo, setAdminReplyTo] = useState<any>(null);
   const [adminReplyContent, setAdminReplyContent] = useState('');
 
+  // Reviews & Messages Search & Sort States
+  const [reviewTab, setReviewTab] = useState<'products' | 'sellers'>('products');
+  const [reviewSearchTerm, setReviewSearchTerm] = useState('');
+  const [reviewSortKey, setReviewSortKey] = useState('user_name');
+  const [reviewSortOrder, setReviewSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  const [msgSearchTerm, setMsgSearchTerm] = useState('');
+  const [msgSortKey, setMsgSortKey] = useState('sender_name');
+  const [msgSortOrder, setMsgSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  const handleReviewSort = (key: string) => {
+    if (reviewSortKey === key) setReviewSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    else { setReviewSortKey(key); setReviewSortOrder('asc'); }
+  };
+
+  const handleMsgSort = (key: string) => {
+    if (msgSortKey === key) setMsgSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    else { setMsgSortKey(key); setMsgSortOrder('asc'); }
+  };
+
   // Preview states
   const [previewWalletTx, setPreviewWalletTx] = useState<any>(null);
   const [previewCoupon, setPreviewCoupon] = useState<any>(null);
@@ -1299,76 +1319,6 @@ export default function AdminMainPage() {
     }
   };
 
-  // Preloader / SSR Hydration Shield
-  if (!hasMounted || isLoading || isAdminLoggedIn === null) {
-    return (
-      <div className="min-h-screen bg-[#fff8f4] dark:bg-[#0c0b11] flex items-center justify-center font-sans text-xs font-bold text-[#A6808C] dark:text-[#ccc6dc]">
-        Verifying Security Authority...
-      </div>
-    );
-  }
-
-  if (!isAdminLoggedIn) {
-    return (
-      <div className="min-h-screen bg-[#D6CFCB] dark:bg-[#0c0b11] text-[#565264] dark:text-zinc-100 flex items-center justify-center font-sans p-6 w-full">
-        <div className="bg-white dark:bg-[#15131b] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 w-full max-w-md shadow-2xl space-y-6">
-          <div className="text-center space-y-3">
-            <img src="/Bupzo-logo.png" alt="Bupzo Logo" className="w-16 h-16 mx-auto object-contain rounded-xl" />
-            <div>
-              <h1 className="text-2xl font-bold font-heading text-[#565264] dark:text-[#f3f4f6]">Super Admin Console</h1>
-              <p className="text-xs text-zinc-400 font-sans">Restricted access control for Bupzo system operations</p>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="text-xs font-semibold">
-              <label className="block text-zinc-400 font-bold uppercase text-[10px] mb-1.5 font-heading">Admin Registration Number</label>
-              <input
-                type="tel"
-                placeholder="+91 98765 43210"
-                id="admin-phone-input"
-                className="w-full p-3.5 text-xs bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl outline-none focus:border-charcoal font-mono"
-              />
-            </div>
-            <div className="text-xs font-semibold">
-              <label className="block text-zinc-400 font-bold uppercase text-[10px] mb-1.5 font-heading">Secure Passcode / OTP</label>
-              <input
-                type="text"
-                placeholder="123456"
-                id="admin-otp-input"
-                className="w-full p-3.5 text-xs text-center tracking-widest bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl outline-none focus:border-charcoal font-mono"
-              />
-            </div>
-            <button
-              onClick={() => {
-                const phoneEl = document.getElementById('admin-phone-input') as HTMLInputElement;
-                const otpEl = document.getElementById('admin-otp-input') as HTMLInputElement;
-                if (!phoneEl?.value || !otpEl?.value) {
-                  alert('Please fill out all fields.');
-                  return;
-                }
-                if ((phoneEl.value === '+919876543210' || phoneEl.value === '9876543210') && otpEl.value === '123456') {
-                  localStorage.setItem('isAdminLoggedIn', 'true');
-                  setIsAdminLoggedIn(true);
-                  refreshAllAdminData();
-                } else {
-                  alert('Access Denied: Only registered admin credentials allowed.');
-                }
-              }}
-              className="w-full bg-[#3f3b4c] dark:bg-zinc-800 text-white py-3 rounded-xl hover:bg-opacity-90 font-bold text-xs transition active:scale-95 shadow"
-            >
-              Verify Authority &amp; Confirm Identity
-            </button>
-          </div>
-
-          <div className="text-center font-bold text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">
-            Demo Credentials: +919876543210 | PIN: 123456
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   const getPageTitle = () => {
     switch (activeTab) {
       case 'dashboard': return 'Dashboard Command Center';
@@ -1464,6 +1414,76 @@ export default function AdminMainPage() {
       setWalletSortOrder('asc');
     }
   };
+
+  // Preloader / SSR Hydration Shield
+  if (!hasMounted || isLoading || isAdminLoggedIn === null) {
+    return (
+      <div className="min-h-screen bg-[#fff8f4] dark:bg-[#0c0b11] flex items-center justify-center font-sans text-xs font-bold text-[#A6808C] dark:text-[#ccc6dc]">
+        Verifying Security Authority...
+      </div>
+    );
+  }
+
+  if (!isAdminLoggedIn) {
+    return (
+      <div className="min-h-screen bg-[#D6CFCB] dark:bg-[#0c0b11] text-[#565264] dark:text-zinc-100 flex items-center justify-center font-sans p-6 w-full">
+        <div className="bg-white dark:bg-[#15131b] border border-zinc-200 dark:border-zinc-800 rounded-2xl p-8 w-full max-w-md shadow-2xl space-y-6">
+          <div className="text-center space-y-3">
+            <img src="/Bupzo-logo.png" alt="Bupzo Logo" className="w-16 h-16 mx-auto object-contain rounded-xl" />
+            <div>
+              <h1 className="text-2xl font-bold font-heading text-[#565264] dark:text-[#f3f4f6]">Super Admin Console</h1>
+              <p className="text-xs text-zinc-400 font-sans">Restricted access control for Bupzo system operations</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="text-xs font-semibold">
+              <label className="block text-zinc-400 font-bold uppercase text-[10px] mb-1.5 font-heading">Admin Registration Number</label>
+              <input
+                type="tel"
+                placeholder="+91 98765 43210"
+                id="admin-phone-input"
+                className="w-full p-3.5 text-xs bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl outline-none focus:border-charcoal font-mono"
+              />
+            </div>
+            <div className="text-xs font-semibold">
+              <label className="block text-zinc-400 font-bold uppercase text-[10px] mb-1.5 font-heading">Secure Passcode / OTP</label>
+              <input
+                type="text"
+                placeholder="123456"
+                id="admin-otp-input"
+                className="w-full p-3.5 text-xs text-center tracking-widest bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl outline-none focus:border-charcoal font-mono"
+              />
+            </div>
+            <button
+              onClick={() => {
+                const phoneEl = document.getElementById('admin-phone-input') as HTMLInputElement;
+                const otpEl = document.getElementById('admin-otp-input') as HTMLInputElement;
+                if (!phoneEl?.value || !otpEl?.value) {
+                  alert('Please fill out all fields.');
+                  return;
+                }
+                if ((phoneEl.value === '+919876543210' || phoneEl.value === '9876543210') && otpEl.value === '123456') {
+                  localStorage.setItem('isAdminLoggedIn', 'true');
+                  setIsAdminLoggedIn(true);
+                  refreshAllAdminData();
+                } else {
+                  alert('Access Denied: Only registered admin credentials allowed.');
+                }
+              }}
+              className="w-full bg-[#3f3b4c] dark:bg-zinc-800 text-white py-3 rounded-xl hover:bg-opacity-90 font-bold text-xs transition active:scale-95 shadow"
+            >
+              Verify Authority & Confirm Identity
+            </button>
+          </div>
+
+          <div className="text-center font-bold text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">
+            Demo Credentials: +919876543210 | PIN: 123456
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`min-h-screen font-sans transition-colors duration-300 flex overflow-hidden w-full ${!hasMounted ? 'bg-[#f9fbfd] text-[#141824]' : (darkMode ? 'bg-[#0f111a] text-[#e3e6ed]' : 'bg-[#f9fbfd] text-[#141824]')}`}>
@@ -2245,32 +2265,95 @@ export default function AdminMainPage() {
           {/* TAB 9: REVIEWS MANAGEMENT */}
           {activeTab === 'reviews' && (
             <div className="space-y-6">
-              <div>
-                <h1 className="text-2xl font-bold font-heading">Reviews Management</h1>
-                <p className="text-sm text-zinc-500 mt-1">Moderate product and merchant reviews, filter spam, and track feedback metrics.</p>
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                  <h1 className="text-2xl font-bold font-heading">Reviews &amp; Ratings Management</h1>
+                  <p className="text-sm text-zinc-500 mt-1">Moderate product and merchant store reviews, delete spam, and audit ratings.</p>
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setReviewTab('products')} 
+                    className={`px-4 py-2 rounded-lg font-bold text-xs transition-colors ${reviewTab === 'products' ? 'bg-[#3874ff] text-white shadow' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'}`}
+                  >
+                    Product Reviews ({reviews.filter((r: any) => r.product_id).length})
+                  </button>
+                  <button 
+                    onClick={() => setReviewTab('sellers')} 
+                    className={`px-4 py-2 rounded-lg font-bold text-xs transition-colors ${reviewTab === 'sellers' ? 'bg-[#3874ff] text-white shadow' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'}`}
+                  >
+                    Store / Merchant Reviews ({reviews.filter((r: any) => r.seller_id).length})
+                  </button>
+                </div>
               </div>
-              <div className="bg-white dark:bg-[#15131b] p-6 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b]">
+
+              {/* Search Bar */}
+              <div className="flex flex-col sm:flex-row justify-between gap-4 bg-white dark:bg-[#15131b] p-4 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b]">
+                <div className="relative flex-1">
+                  <input 
+                    type="text" 
+                    placeholder="Search reviews by user name, product, store name, or comments..." 
+                    value={reviewSearchTerm}
+                    onChange={(e) => setReviewSearchTerm(e.target.value)}
+                    className="w-full bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 rounded-lg pl-9 pr-4 py-2 text-xs outline-none focus:border-[#3874ff]"
+                  />
+                  <span className="absolute left-3 top-2.5 text-zinc-400 text-xs">🔍</span>
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-[#15131b] p-6 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b] overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-zinc-50 dark:bg-zinc-800/50">
-                    <tr>
-                      <th className="px-4 py-3 font-bold text-zinc-500 uppercase">Customer</th>
-                      <th className="px-4 py-3 font-bold text-zinc-500 uppercase">Product</th>
-                      <th className="px-4 py-3 font-bold text-zinc-500 uppercase">Rating</th>
-                      <th className="px-4 py-3 font-bold text-zinc-500 uppercase">Comment</th>
-                      <th className="px-4 py-3 font-bold text-zinc-500 uppercase text-right">Actions</th>
+                    <tr className="select-none text-zinc-400 font-bold uppercase text-[10px]">
+                      <th className="px-4 py-3 cursor-pointer hover:text-primary" onClick={() => handleReviewSort('user_name')}>
+                        Customer {reviewSortKey === 'user_name' ? (reviewSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
+                      </th>
+                      <th className="px-4 py-3 cursor-pointer hover:text-primary" onClick={() => handleReviewSort(reviewTab === 'products' ? 'product_name' : 'seller_name')}>
+                        {reviewTab === 'products' ? 'Product Name' : 'Merchant / Store Name'} {reviewSortKey === (reviewTab === 'products' ? 'product_name' : 'seller_name') ? (reviewSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
+                      </th>
+                      <th className="px-4 py-3 cursor-pointer hover:text-primary" onClick={() => handleReviewSort('rating')}>
+                        Rating {reviewSortKey === 'rating' ? (reviewSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
+                      </th>
+                      <th className="px-4 py-3">Comment</th>
+                      <th className="px-4 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-                    {reviews.length === 0 ? (
-                      <tr><td colSpan={5} className="px-4 py-8 text-center text-zinc-500">No reviews found.</td></tr>
-                    ) : reviews.map((r: any) => (
-                      <tr key={r.id}>
-                        <td className="px-4 py-3 font-bold">{r.user_name}</td>
-                        <td className="px-4 py-3 text-blue-600 font-medium">{r.product_name}</td>
-                        <td className="px-4 py-3 text-yellow-500 font-bold">{r.rating} / 5</td>
-                        <td className="px-4 py-3 max-w-xs truncate">{r.comment}</td>
+                    {reviews.filter((r: any) => {
+                      const matchesTab = reviewTab === 'products' ? Boolean(r.product_id) : Boolean(r.seller_id);
+                      const s = reviewSearchTerm.toLowerCase();
+                      const matchesSearch = (r.user_name || '').toLowerCase().includes(s) || 
+                                            (r.product_name || '').toLowerCase().includes(s) || 
+                                            (r.seller_name || '').toLowerCase().includes(s) || 
+                                            (r.comment || '').toLowerCase().includes(s);
+                      return matchesTab && matchesSearch;
+                    }).length === 0 ? (
+                      <tr><td colSpan={5} className="px-4 py-8 text-center text-zinc-500 font-medium">No reviews found matching criteria.</td></tr>
+                    ) : reviews.filter((r: any) => {
+                      const matchesTab = reviewTab === 'products' ? Boolean(r.product_id) : Boolean(r.seller_id);
+                      const s = reviewSearchTerm.toLowerCase();
+                      return matchesTab && ((r.user_name || '').toLowerCase().includes(s) || (r.product_name || '').toLowerCase().includes(s) || (r.comment || '').toLowerCase().includes(s));
+                    }).map((r: any) => (
+                      <tr key={r.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40">
+                        <td className="px-4 py-3 font-bold">{r.user_name || 'Anonymous User'}</td>
+                        <td className="px-4 py-3 text-blue-600 dark:text-blue-400 font-semibold">{r.product_name || r.seller_name || 'Store / Product'}</td>
+                        <td className="px-4 py-3 text-amber-500 font-extrabold flex items-center gap-1">★ {r.rating} / 5</td>
+                        <td className="px-4 py-3 max-w-xs text-zinc-700 dark:text-zinc-300 font-medium">{r.comment || 'No text review.'}</td>
                         <td className="px-4 py-3 text-right">
-                          <button className="text-red-500 hover:underline font-semibold">Delete</button>
+                          <button 
+                            onClick={async () => {
+                              if (!confirm("Are you sure you want to delete this review?")) return;
+                              try {
+                                const resp = await fetch(`${API_URL}/api/reviews/${r.id}`, { method: 'DELETE' });
+                                if (resp.ok) {
+                                  alert("Review deleted successfully!");
+                                  setReviews(prev => prev.filter(item => item.id !== r.id));
+                                }
+                              } catch(e) { alert("Failed to delete review."); }
+                            }}
+                            className="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1 rounded text-xs font-bold transition shadow-sm"
+                          >
+                            Delete Review
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -2287,67 +2370,99 @@ export default function AdminMainPage() {
                 <h1 className="text-2xl font-bold font-heading">Messages Center</h1>
                 <p className="text-sm text-zinc-500 mt-1">Direct communication with users, dispute resolutions, and automated bot transcripts.</p>
               </div>
-              <div className="bg-white dark:bg-[#15131b] p-6 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b]">
+
+              {/* Search Bar */}
+              <div className="flex flex-col sm:flex-row justify-between gap-4 bg-white dark:bg-[#15131b] p-4 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b]">
+                <div className="relative flex-1">
+                  <input 
+                    type="text" 
+                    placeholder="Search messages by sender name, receiver name, subject, or message content..." 
+                    value={msgSearchTerm}
+                    onChange={(e) => setMsgSearchTerm(e.target.value)}
+                    className="w-full bg-zinc-50 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 rounded-lg pl-9 pr-4 py-2 text-xs outline-none focus:border-[#3874ff]"
+                  />
+                  <span className="absolute left-3 top-2.5 text-zinc-400 text-xs">🔍</span>
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-[#15131b] p-6 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b] overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-zinc-50 dark:bg-zinc-800/50">
-                    <tr>
-                      <th className="px-4 py-3 font-bold text-zinc-500 uppercase">From</th>
-                      <th className="px-4 py-3 font-bold text-zinc-500 uppercase">To</th>
-                      <th className="px-4 py-3 font-bold text-zinc-500 uppercase">Subject</th>
-                      <th className="px-4 py-3 font-bold text-zinc-500 uppercase">Content</th>
-                      <th className="px-4 py-3 font-bold text-zinc-500 uppercase">Date</th>
-                      <th className="px-4 py-3 font-bold text-zinc-500 uppercase text-right">Actions</th>
+                    <tr className="select-none text-zinc-400 font-bold uppercase text-[10px]">
+                      <th className="px-4 py-3 cursor-pointer hover:text-primary" onClick={() => handleMsgSort('sender_name')}>
+                        From {msgSortKey === 'sender_name' ? (msgSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
+                      </th>
+                      <th className="px-4 py-3 cursor-pointer hover:text-primary" onClick={() => handleMsgSort('receiver_name')}>
+                        To {msgSortKey === 'receiver_name' ? (msgSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
+                      </th>
+                      <th className="px-4 py-3 cursor-pointer hover:text-primary" onClick={() => handleMsgSort('subject')}>
+                        Subject {msgSortKey === 'subject' ? (msgSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
+                      </th>
+                      <th className="px-4 py-3">Content</th>
+                      <th className="px-4 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-                    {messages.length === 0 ? (
-                      <tr><td colSpan={6} className="px-4 py-8 text-center text-zinc-500">No messages found.</td></tr>
-                    ) : messages.map((m: any) => (
-                      <tr key={m.id}>
-                        <td className="px-4 py-3 font-bold">{m.sender_name}</td>
-                        <td className="px-4 py-3 font-bold">{m.receiver_name}</td>
-                        <td className="px-4 py-3 text-zinc-600 dark:text-zinc-300">{m.subject}</td>
-                        <td className="px-4 py-3 max-w-xs truncate">{m.content}</td>
-                        <td className="px-4 py-3 text-zinc-500">{new Date(m.created_at).toLocaleString()}</td>
+                    {messages.filter((m: any) => {
+                      const s = msgSearchTerm.toLowerCase();
+                      return (m.sender_name || '').toLowerCase().includes(s) || 
+                             (m.receiver_name || '').toLowerCase().includes(s) || 
+                             (m.subject || '').toLowerCase().includes(s) || 
+                             (m.content || '').toLowerCase().includes(s);
+                    }).length === 0 ? (
+                      <tr><td colSpan={5} className="px-4 py-8 text-center text-zinc-500 font-medium">No messages found.</td></tr>
+                    ) : messages.filter((m: any) => {
+                      const s = msgSearchTerm.toLowerCase();
+                      return (m.sender_name || '').toLowerCase().includes(s) || (m.receiver_name || '').toLowerCase().includes(s) || (m.subject || '').toLowerCase().includes(s) || (m.content || '').toLowerCase().includes(s);
+                    }).map((m: any) => (
+                      <tr key={m.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40">
+                        <td className="px-4 py-3 font-bold">{m.sender_name || 'System User'}</td>
+                        <td className="px-4 py-3 font-bold">{m.receiver_name || 'Bupzo Patron'}</td>
+                        <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300 font-bold">{m.subject || 'Message Notice'}</td>
+                        <td className="px-4 py-3 max-w-xs text-zinc-600 dark:text-zinc-400 font-medium truncate">{m.content}</td>
                         <td className="px-4 py-3 text-right">
-                          <div className="flex justify-end gap-2">
-                            <button 
-                              onClick={() => {
-                                setAdminReplyTo(m);
-                                setShowAdminReplyModal(true);
-                              }}
-                              className="text-blue-500 hover:underline font-semibold"
-                            >
-                              Reply
-                            </button>
-                            <button className="text-red-500 hover:underline font-semibold">Delete</button>
-                          </div>
+                          <button 
+                            onClick={async () => {
+                              if (!confirm("Are you sure you want to delete this message log?")) return;
+                              try {
+                                const resp = await fetch(`${API_URL}/api/messages/${m.id}`, { method: 'DELETE' });
+                                if (resp.ok) {
+                                  alert("Message log deleted successfully!");
+                                  setMessages(prev => prev.filter(item => item.id !== m.id));
+                                }
+                              } catch(e) { alert("Failed to delete message."); }
+                            }}
+                            className="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1 rounded text-xs font-bold transition shadow-sm"
+                          >
+                            Delete Log
+                          </button>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              
-              {showAdminReplyModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                  <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-xl w-full max-w-md p-6">
-                    <h3 className="text-lg font-bold mb-4">Reply to {adminReplyTo?.sender_name}</h3>
-                    <textarea
-                      value={adminReplyContent}
-                      onChange={e => setAdminReplyContent(e.target.value)}
-                      className="w-full h-32 border p-3 rounded-lg text-sm mb-4 outline-none focus:border-blue-500 dark:bg-zinc-800 dark:border-zinc-700"
-                      placeholder="Type your reply..."
-                    />
-                    <div className="flex justify-end gap-2">
-                      <button onClick={() => setShowAdminReplyModal(false)} className="px-4 py-2 text-sm font-bold text-gray-500 hover:text-gray-700">Cancel</button>
-                      <button onClick={handleAdminReplyMessage} className="px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded hover:bg-blue-700">Send Reply</button>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           )}
+
+          {showAdminReplyModal && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-xl w-full max-w-md p-6">
+                <h3 className="text-lg font-bold mb-4">Reply to {adminReplyTo?.sender_name}</h3>
+                <textarea
+                  value={adminReplyContent}
+                  onChange={e => setAdminReplyContent(e.target.value)}
+                  className="w-full h-32 border p-3 rounded-lg text-sm mb-4 outline-none focus:border-blue-500 dark:bg-zinc-800 dark:border-zinc-700"
+                  placeholder="Type your reply..."
+                />
+                <div className="flex justify-end gap-2">
+                  <button onClick={() => setShowAdminReplyModal(false)} className="px-4 py-2 text-sm font-bold text-gray-500 hover:text-gray-700">Cancel</button>
+                  <button onClick={handleAdminReplyMessage} className="px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded hover:bg-blue-700">Send Reply</button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* TAB: PRODUCTS CATALOG */}
           {activeTab === 'products' && (
             <AdminProducts 
@@ -2556,6 +2671,7 @@ export default function AdminMainPage() {
                       </tbody>
                     </table>
                 </div>
+              </div>
 
                 {previewCoupon && (
                   <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
@@ -2598,9 +2714,7 @@ export default function AdminMainPage() {
                 )}
               </div>
             </div>
-            </div>
           )}
-
         </main>
       </div>
 

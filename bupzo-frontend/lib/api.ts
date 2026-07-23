@@ -499,8 +499,9 @@ export async function fetchSellerReviews(sellerId: string): Promise<any[]> {
 }
 
 export async function topUpWallet(userId: string, amount: number): Promise<any> {
-  const response = await authFetch('/api/wallet/topup', {
+  const response = await fetch(buildUrl('/api/wallet/topup'), {
     method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ user_id: userId, amount }),
   });
   return parseJsonResponse(response);

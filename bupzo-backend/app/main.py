@@ -1177,6 +1177,27 @@ async def get_shipping_rates(delivery_pincode: str, weight_kg: float = 1.0, pick
         raise HTTPException(status_code=500, detail=str(e))
 
 # Order & Checkout Management
+class WalletTopupRequest(BaseModel):
+    user_id: UUID
+    amount: float
+    description: Optional[str] = "Manual Wallet Top-up"
+
+@app.post("/api/wallet/topup")
+async def topup_user_wallet(payload: WalletTopupRequest):
+    u = await execute_query_one("SELECT id, wallet_balance FROM users WHERE id = $1", payload.user_id)
+    if not u:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    new_bal = float(u['wallet_balance']) + payload.amount
+    await execute_query_none("UPDATE users SET wallet_balance = $1 WHERE id = $2", new_bal, payload.user_id)
+    
+    tx_id = uuid4()
+    await execute_query_none(
+        "INSERT INTO wallet_transactions (id, user_id, amount, type, description) VALUES ($1, $2, $3, 'TOPUP', $4)",
+        tx_id, payload.user_id, payload.amount, payload.description
+    )
+    return {"status": "success", "new_balance": new_bal, "transaction_id": str(tx_id)}
+
 @app.post("/api/checkout/", response_model=dict)
 async def create_checkout(payload: OrderCreate):
     # Verify user & seller

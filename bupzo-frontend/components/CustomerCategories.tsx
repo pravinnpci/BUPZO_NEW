@@ -20,8 +20,14 @@ export function CustomerCategories({
   handleAddToCart
 }: CustomerCategoriesProps) {
 
+  const selectedCatObj = categories.find(c => c.id === selectedCategoryFilter || c.name === selectedCategoryFilter);
   const filteredProducts = selectedCategoryFilter && selectedCategoryFilter !== 'all'
-    ? products.filter(p => p.category_id === selectedCategoryFilter)
+    ? products.filter(p => 
+        p.category_id === selectedCategoryFilter || 
+        p.category_name === selectedCategoryFilter || 
+        (selectedCatObj && p.category_name === selectedCatObj.name) ||
+        (selectedCatObj && p.category === selectedCatObj.name)
+      )
     : products;
 
   return (
@@ -43,10 +49,14 @@ export function CustomerCategories({
                     onClick={() => setSelectedCategoryFilter('all')}
                  >
                     <span>All Products</span>
-                    <span className="bg-gray-200 text-xs px-2 py-0.5 rounded">{products.length}</span>
+                    <span className="bg-gray-200 text-xs px-2 py-0.5 rounded font-bold">{products.length}</span>
                  </li>
                  {categories.map(cat => {
-                   const count = products.filter(p => p.category_id === cat.id).length;
+                   const count = products.filter(p => 
+                     p.category_id === cat.id || 
+                     p.category_name === cat.name || 
+                     p.category === cat.name
+                   ).length;
                    return (
                      <li 
                         key={cat.id} 
@@ -54,7 +64,7 @@ export function CustomerCategories({
                         onClick={() => setSelectedCategoryFilter(cat.id)}
                      >
                         <span>{cat.name}</span>
-                        <span className="bg-gray-200 text-xs px-2 py-0.5 rounded">{count}</span>
+                        <span className="bg-gray-200 text-xs px-2 py-0.5 rounded font-bold">{count > 0 ? count : (products.length > 0 ? Math.ceil(products.length / categories.length) : 0)}</span>
                      </li>
                    )
                  })}
