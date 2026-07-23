@@ -101,14 +101,15 @@ export default function SellerShopPage() {
   if (loading) return <div className="flex justify-center items-center h-screen bg-gray-50"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-[#e52e06]"></div></div>;
   if (!seller) return <div className="text-center py-20 text-gray-500 font-bold">Shop not found.</div>;
 
-  // Derive unique categories from seller products
-  const categories = Array.from(new Set(products.map(p => p.category_name).filter(Boolean)));
+  // Derive unique categories from seller products with fallback
+  const categories = Array.from(new Set(products.map(p => p.category_name || (p as any).category || 'General')));
 
   // Filtered & Sorted products
   const filteredProducts = products.filter(p => {
+    const pCat = p.category_name || (p as any).category || 'General';
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           (p.description && p.description.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesCat = selectedCategory === 'all' || p.category_name === selectedCategory;
+    const matchesCat = selectedCategory === 'all' || pCat === selectedCategory;
     const matchesPrice = p.price <= maxPrice;
     return matchesSearch && matchesCat && matchesPrice;
   }).sort((a, b) => {
@@ -234,7 +235,7 @@ export default function SellerShopPage() {
                     All Categories ({products.length})
                   </label>
                   {categories.map(cat => (
-                    <label key={cat} className="flex items-center gap-2 cursor-pointer font-medium">
+                    <label key={cat} className="flex items-center gap-2 cursor-pointer font-semibold hover:text-[#e52e06] transition-colors">
                       <input 
                         type="radio" 
                         name="cat_filter"
@@ -242,7 +243,7 @@ export default function SellerShopPage() {
                         onChange={() => setSelectedCategory(cat!)}
                         className="accent-[#e52e06]" 
                       />
-                      {cat} ({products.filter(p => p.category_name === cat).length})
+                      {cat} ({products.filter(p => (p.category_name || (p as any).category || 'General') === cat).length})
                     </label>
                   ))}
                 </div>

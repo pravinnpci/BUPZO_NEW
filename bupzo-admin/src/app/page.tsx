@@ -1874,11 +1874,19 @@ export default function AdminMainPage() {
                   <table className="w-full text-left text-xs font-semibold min-w-[600px]">
                     <thead>
                       <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-400 font-bold uppercase tracking-wider text-[10px] select-none">
-                        <th className="py-2.5">User ID</th>
-                        <th className="py-2.5">Name</th>
+                        <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleWalletSort('id')}>
+                          User ID {walletSortKey === 'id' ? (walletSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
+                        </th>
+                        <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleWalletSort('user_id')}>
+                          Name {walletSortKey === 'user_id' ? (walletSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
+                        </th>
                         <th className="py-2.5">Mobile</th>
-                        <th className="py-2.5">Role</th>
-                        <th className="py-2.5 text-right">Balance (INR)</th>
+                        <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleWalletSort('type')}>
+                          Role {walletSortKey === 'type' ? (walletSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
+                        </th>
+                        <th className="py-2.5 text-right cursor-pointer hover:text-primary transition-colors" onClick={() => handleWalletSort('amount')}>
+                          Balance (INR) {walletSortKey === 'amount' ? (walletSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
+                        </th>
                         <th className="py-2.5 text-center">Action</th>
                       </tr>
                     </thead>

@@ -127,15 +127,15 @@ export default function CartModal({
       />
       
       {/* Side Drawer */}
-      <div className="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col animate-slide-left border-l border-gray-200">
+      <div className="relative w-full max-w-lg bg-white h-full shadow-2xl flex flex-col animate-slide-left border-l border-gray-200">
         {/* Colorful Gradient Header */}
-        <div className="bg-gradient-to-r from-[#232f3e] via-[#2c3b4e] to-[#e52e06] text-white px-6 py-4 flex items-center justify-between shadow-md">
+        <div className="bg-gradient-to-r from-[#232f3e] via-[#2c3b4e] to-[#e52e06] text-white px-6 py-5 flex items-center justify-between shadow-md">
           <h2 className="text-xl font-extrabold uppercase tracking-wider flex items-center gap-2">
             <span className="material-symbols-outlined text-yellow-400">shopping_cart</span>
             My Cart ({cart.length})
           </h2>
-          <button onClick={onClose} className="text-gray-300 hover:text-white transition bg-white/10 hover:bg-white/20 p-1.5 rounded-full">
-            <span className="material-symbols-outlined text-sm">close</span>
+          <button onClick={onClose} className="text-gray-300 hover:text-white transition bg-white/10 hover:bg-white/20 p-2 rounded-full">
+            <span className="material-symbols-outlined text-base">close</span>
           </button>
         </div>
 
@@ -152,14 +152,14 @@ export default function CartModal({
           ) : (
             <div className="space-y-4">
               {cart.map((item, idx) => (
-                <div key={item?.product?.id || idx} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex gap-4 relative hover:shadow-md transition-shadow">
-                  <div className="w-24 h-24 bg-gray-50 rounded-lg p-2 border border-gray-100 flex items-center justify-center shrink-0">
+                <div key={item?.product?.id || idx} className="bg-white p-4 rounded-xl border border-gray-200 shadow-md flex gap-4 relative hover:shadow-lg transition-all min-h-[120px]">
+                  <div className="w-28 h-28 bg-gray-50 rounded-lg p-2 border border-gray-100 flex items-center justify-center shrink-0">
                     <img src={item?.product?.image_url || 'https://placehold.co/150/png'} alt={item?.product?.name || 'Product'} className="max-w-full max-h-full object-contain" />
                   </div>
-                  <div className="flex-1 flex flex-col justify-between">
+                  <div className="flex-1 flex flex-col justify-between py-1">
                     <div>
-                      <h3 className="font-extrabold text-[#232f3e] text-base leading-tight line-clamp-2">{item?.product?.name || 'Product Item'}</h3>
-                      <p className="text-xs text-gray-500 font-medium mt-0.5">{item?.product?.category_name || 'Bupzo Verified Product'}</p>
+                      <h3 className="font-extrabold text-[#232f3e] text-base leading-snug pr-6">{item?.product?.name || 'Product Item'}</h3>
+                      <p className="text-xs text-gray-500 font-semibold mt-1">{item?.product?.category_name || 'Bupzo Verified Product'}</p>
                     </div>
                     <div className="flex items-center justify-between mt-2">
                       <p className="text-[#e52e06] font-black text-lg">₹{(item?.product?.price || 0).toLocaleString()}</p>

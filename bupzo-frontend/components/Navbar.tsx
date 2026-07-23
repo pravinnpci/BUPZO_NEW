@@ -86,15 +86,15 @@ export function Navbar({ onTabChange, onAuthClick, onCartClick, cartCount, wishl
            <button onClick={() => user ? onTabChange('settings') : onAuthClick()} className="flex flex-col items-center group relative">
               <div className="relative">
                  <span className="material-symbols-outlined text-3xl text-gray-700 group-hover:text-[#e52e06] transition">person</span>
-                 {user && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 border border-white rounded-full"></span>}
+                 {mounted && user && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-green-500 border border-white rounded-full"></span>}
               </div>
               <span className="text-[10px] uppercase font-bold text-gray-500 mt-0.5">Account</span>
            </button>
            
-           <button onClick={() => user ? onTabChange('wishlist') : onAuthClick()} className="flex flex-col items-center group relative">
+           <button onClick={() => (mounted && user) ? onTabChange('wishlist') : onAuthClick()} className="flex flex-col items-center group relative">
               <div className="relative">
                 <span className="material-symbols-outlined text-3xl text-gray-700 group-hover:text-[#e52e06] transition">favorite</span>
-                {wishlistCount > 0 && (
+                {mounted && wishlistCount > 0 && (
                    <span className="absolute -top-1.5 -right-2 bg-[#e52e06] text-white text-[10px] font-bold px-1.5 rounded-full min-w-[18px] text-center">{wishlistCount}</span>
                 )}
               </div>
@@ -104,7 +104,7 @@ export function Navbar({ onTabChange, onAuthClick, onCartClick, cartCount, wishl
            <button onClick={onCartClick} className="flex flex-col items-center group relative">
               <div className="relative">
                 <span className="material-symbols-outlined text-3xl text-gray-700 group-hover:text-[#e52e06] transition">shopping_cart</span>
-                {cartCount > 0 && (
+                {mounted && cartCount > 0 && (
                    <span className="absolute -top-1.5 -right-2 bg-[#e52e06] text-white text-[10px] font-bold px-1.5 rounded-full min-w-[18px] text-center">{cartCount}</span>
                 )}
               </div>
@@ -127,15 +127,15 @@ export function Navbar({ onTabChange, onAuthClick, onCartClick, cartCount, wishl
                  <button onClick={() => onTabChange('home')} className="hover:text-[#e52e06] transition">Home</button>
                  <button onClick={() => onTabChange('categories')} className="hover:text-[#e52e06] transition">Products</button>
                  <button onClick={() => window.location.href = '/shops'} className="hover:text-[#e52e06] transition">Shops</button>
-                 {user && <button onClick={() => onTabChange('orders')} className="hover:text-[#e52e06] transition">Orders</button>}
-                 {user && <button onClick={() => onTabChange('wallet')} className="hover:text-[#e52e06] transition">Wallet</button>}
-                 {user && (
+                 {mounted && user && <button onClick={() => onTabChange('orders')} className="hover:text-[#e52e06] transition">Orders</button>}
+                 {mounted && user && <button onClick={() => onTabChange('wallet')} className="hover:text-[#e52e06] transition">Wallet</button>}
+                 {mounted && user && (
                     <button onClick={() => onTabChange('messages')} className="hover:text-[#e52e06] transition flex items-center gap-1 relative">
                       Messages
                       {unreadMsgs > 0 && <span className="bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-full ml-1">{unreadMsgs}</span>}
                     </button>
                  )}
-                 {!user?.isSeller && <button onClick={() => onTabChange('kyc')} className="text-[#e52e06] hover:text-red-700 transition">Become Seller</button>}
+                 {mounted && !user?.isSeller && <button onClick={() => onTabChange('kyc')} className="text-[#e52e06] hover:text-red-700 transition">Become Seller</button>}
               </nav>
            </div>
            <div className="text-sm font-bold text-gray-600 hidden md:block">
