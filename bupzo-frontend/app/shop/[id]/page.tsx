@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Product, fetchSellerDetails, fetchSellerProducts } from '@/lib/api';
+import { Product, fetchSellerDetails, fetchSellerProducts, fetchSellerFollowers, followSeller, unfollowSeller, fetchSellerReviews, API_BASE_URL } from '@/lib/api';
 import { useParams } from 'next/navigation';
 import ProductPreviewModal from '@/components/ProductPreviewModal';
 import { useUser } from '@/lib/authStore';
@@ -17,6 +17,9 @@ export default function SellerShopPage() {
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [followersList, setFollowersList] = useState<any[]>([]);
+  const [followersCount, setFollowersCount] = useState<number>(0);
+  const [storeReviews, setStoreReviews] = useState<any[]>([]);
   
   // Dynamic Live Filter States
   const [searchQuery, setSearchQuery] = useState('');
@@ -24,11 +27,34 @@ export default function SellerShopPage() {
   const [maxPrice, setMaxPrice] = useState<number>(10000);
   const [sortBy, setSortBy] = useState<string>('relevance');
 
+  // Review Form inside Store Modal
+  const [newRating, setNewRating] = useState(5);
+  const [newComment, setNewComment] = useState('');
+
   // Modals for Stats
   const [showRatingsModal, setShowRatingsModal] = useState(false);
   const [showFollowersModal, setShowFollowersModal] = useState(false);
 
   const cartStore = useCartStore();
+
+  const loadFollowersAndReviews = async () => {
+    try {
+      const [fData, rData] = await Promise.all([
+        fetchSellerFollowers(id),
+        fetchSellerReviews(id)
+      ]);
+      if (fData) {
+        setFollowersCount(fData.count || 0);
+        setFollowersList(fData.followers || []);
+        if (user && fData.followers?.some((f: any) => f.id === user.id)) {
+          setIsFollowing(true);
+        }
+      }
+      if (rData) {
+        setStoreReviews(rData);
+      }
+    } catch(e) {}
+  };
 
   useEffect(() => {
     async function loadData() {
@@ -39,6 +65,7 @@ export default function SellerShopPage() {
         ]);
         setSeller(sellerData);
         setProducts(productsData);
+        await loadFollowersAndReviews();
       } catch (e) {
         console.error("Failed to load shop data", e);
       } finally {
@@ -47,6 +74,29 @@ export default function SellerShopPage() {
     }
     loadData();
   }, [id]);
+
+  const handleToggleFollow = async () => {
+    if (!user || !user.id) {
+      alert("Please login to follow this store.");
+      return;
+    }
+    try {
+      if (isFollowing) {
+        await unfollowSeller(id, user.id);
+        setIsFollowing(false);
+        setFollowersCount(c => Math.max(0, c - 1));
+        alert("Unfollowed store.");
+      } else {
+        await followSeller(id, user.id);
+        setIsFollowing(true);
+        setFollowersCount(c => c + 1);
+        alert("You are now following this store!");
+      }
+      loadFollowersAndReviews();
+    } catch(e) {
+      alert("Failed to update follow status.");
+    }
+  };
 
   if (loading) return <div className="flex justify-center items-center h-screen bg-gray-50"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-[#e52e06]"></div></div>;
   if (!seller) return <div className="text-center py-20 text-gray-500 font-bold">Shop not found.</div>;
@@ -103,7 +153,7 @@ export default function SellerShopPage() {
                   onClick={() => setShowFollowersModal(true)}
                   className="flex items-center gap-1.5 font-extrabold text-gray-900 bg-gray-50 hover:bg-gray-100 px-3 py-1.5 rounded-lg border border-gray-200 transition cursor-pointer"
                 >
-                  <span>{isFollowing ? '94' : '93'}</span>
+                  <span>{followersCount}</span>
                   <span className="font-medium text-gray-500">Followers</span>
                 </button>
 
@@ -122,11 +172,8 @@ export default function SellerShopPage() {
             </div>
             <div>
               <button 
-                onClick={() => {
-                  setIsFollowing(!isFollowing);
-                  alert(isFollowing ? "Unfollowed seller." : "You are now following this seller!");
-                }}
-                className={`px-8 py-3 ${isFollowing ? 'bg-gray-200 text-gray-800' : 'bg-[#e52e06] text-white hover:bg-[#cc2805]'} rounded-lg font-extrabold transition shadow-lg`}
+                onClick={handleToggleFollow}
+                className={`px-8 py-3 ${isFollowing ? 'bg-gray-200 text-gray-800 hover:bg-gray-300' : 'bg-[#e52e06] text-white hover:bg-[#cc2805]'} rounded-lg font-extrabold transition shadow-lg`}
               >
                 {isFollowing ? 'Following ✓' : '+ Follow Store'}
               </button>
@@ -201,9 +248,19 @@ export default function SellerShopPage() {
                 </div>
               </div>
               
-              {/* Price Filter */}
-              <div className="border-t pt-4">
-                <label className="block text-xs font-bold text-gray-600 mb-1">Max Price: ₹{maxPrice}</label>
+              {/* Price Filter with Manual Number Input */}
+              <div className="border-t pt-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-gray-700">Max Price (₹):</label>
+                  <input 
+                    type="number" 
+                    min="0"
+                    max="100000"
+                    value={maxPrice}
+                    onChange={(e) => setMaxPrice(Number(e.target.value))}
+                    className="w-24 border border-gray-300 rounded px-2 py-1 text-xs font-bold outline-none focus:border-[#e52e06] text-right"
+                  />
+                </div>
                 <input 
                   type="range"
                   min="50"
@@ -288,50 +345,70 @@ export default function SellerShopPage() {
         />
       )}
 
-      {/* Ratings Modal */}
+      {/* Ratings Modal with Live DB Data */}
       {showRatingsModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
             <div className="flex justify-between items-center border-b pb-3">
-              <h3 className="font-extrabold text-lg text-gray-900">Store Ratings & Reviews</h3>
+              <h3 className="font-extrabold text-lg text-gray-900">Store Ratings & Reviews ({storeReviews.length})</h3>
               <button onClick={() => setShowRatingsModal(false)} className="text-gray-500 font-bold hover:text-black">✕</button>
             </div>
+            
             <div className="text-center py-4 bg-emerald-50 rounded-xl">
-              <div className="text-4xl font-extrabold text-[#23bb75]">{seller.rating || '4.1'} ★</div>
-              <p className="text-xs text-emerald-800 font-bold mt-1">100% Verified Buyer Rating</p>
+              <div className="text-4xl font-extrabold text-[#23bb75]">
+                {storeReviews.length > 0 ? (storeReviews.reduce((sum, r) => sum + r.rating, 0) / storeReviews.length).toFixed(1) : (seller?.rating || '4.8')} ★
+              </div>
+              <p className="text-xs text-emerald-800 font-bold mt-1">Verified Customer Store Rating</p>
             </div>
-            <div className="space-y-3 max-h-60 overflow-y-auto text-xs">
-              <div className="p-3 border rounded-lg bg-gray-50">
-                <div className="flex justify-between font-bold text-gray-800"><span>Ramesh K.</span><span>5 ★</span></div>
-                <p className="text-gray-600 mt-1">Excellent products and super fast dispatch!</p>
-              </div>
-              <div className="p-3 border rounded-lg bg-gray-50">
-                <div className="flex justify-between font-bold text-gray-800"><span>Priya M.</span><span>4 ★</span></div>
-                <p className="text-gray-600 mt-1">Good quality item, received exactly as shown.</p>
-              </div>
+
+            <div className="space-y-3 max-h-64 overflow-y-auto text-xs">
+              {storeReviews.length === 0 ? (
+                <p className="text-center text-gray-500 italic py-4">No reviews recorded yet for this merchant.</p>
+              ) : (
+                storeReviews.map((r, idx) => (
+                  <div key={r.id || idx} className="p-3 border rounded-lg bg-gray-50 space-y-1">
+                    <div className="flex justify-between font-bold text-gray-800">
+                      <span>{r.user_name || 'Customer'}</span>
+                      <span className="text-[#23bb75] font-extrabold">{r.rating} ★</span>
+                    </div>
+                    <p className="text-gray-700">{r.comment || r.content}</p>
+                    {r.product_name && <p className="text-[10px] text-gray-400 font-semibold">Product: {r.product_name}</p>}
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Followers Modal */}
+      {/* Followers Modal with Live DB Data */}
       {showFollowersModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
             <div className="flex justify-between items-center border-b pb-3">
-              <h3 className="font-extrabold text-lg text-gray-900">Store Followers ({isFollowing ? 94 : 93})</h3>
+              <h3 className="font-extrabold text-lg text-gray-900">Store Followers ({followersCount})</h3>
               <button onClick={() => setShowFollowersModal(false)} className="text-gray-500 font-bold hover:text-black">✕</button>
             </div>
-            <div className="space-y-2.5 max-h-60 overflow-y-auto text-xs">
-              {['Anand Vijay', 'Kavitha R', 'Senthil Nathan', 'Deepa S', 'Vimal Kumar', 'Meena Subbu'].map((name, i) => (
-                <div key={i} className="flex items-center gap-3 p-2 border-b last:border-0">
-                  <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center">
-                    {name.charAt(0)}
-                  </div>
-                  <span className="font-bold text-gray-800 flex-1">{name}</span>
-                  <span className="text-[10px] text-gray-400">Following</span>
+            <div className="space-y-2.5 max-h-64 overflow-y-auto text-xs">
+              {followersList.length === 0 ? (
+                <div className="text-center py-6 text-gray-500">
+                  <p className="font-bold mb-1">No followers yet</p>
+                  <p className="text-[11px]">Be the first to follow this merchant!</p>
                 </div>
-              ))}
+              ) : (
+                followersList.map((f, i) => (
+                  <div key={f.id || i} className="flex items-center gap-3 p-2.5 border-b last:border-0 hover:bg-gray-50 rounded-lg">
+                    <div className="w-8 h-8 rounded-full bg-red-100 text-[#e52e06] font-bold flex items-center justify-center">
+                      {(f.name || 'U').charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-bold text-gray-800">{f.name || 'Bupzo Shopper'}</p>
+                      <p className="text-[10px] text-gray-400">{f.email ? f.email.replace(/(.{2})(.*)(?=@)/, '$1***') : 'Follower'}</p>
+                    </div>
+                    <span className="text-[10px] bg-green-50 text-green-700 font-bold px-2 py-0.5 rounded">Following</span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

@@ -333,42 +333,54 @@ export function CustomerSettings({ user }: { user: any }) {
                 </div>
                 <input type="text" placeholder="ZIP Code" value={newAddr.zip_code} onChange={e => setNewAddr({...newAddr, zip_code: e.target.value})} className="border p-2 rounded w-full text-sm" />
                 
-                {/* Map & Coordinates */}
+                {/* Interactive Map & Coordinates */}
                 <div className="space-y-2">
                   <div className="flex justify-between items-center text-xs font-bold text-gray-700">
-                    <span>📍 Map Pin & Coordinates</span>
+                    <span>📍 Drag Map / Scroll to Zoom to Drop Pin</span>
                     <div className="flex gap-1">
-                      <button type="button" onClick={() => setMapZoom(z => Math.min(z + 1, 18))} className="px-2 py-0.5 bg-gray-200 rounded text-xs hover:bg-gray-300">+</button>
-                      <button type="button" onClick={() => setMapZoom(z => Math.max(z - 1, 4))} className="px-2 py-0.5 bg-gray-200 rounded text-xs hover:bg-gray-300">-</button>
+                      <button type="button" onClick={() => setMapZoom(z => Math.min(z + 1, 18))} className="px-2 py-0.5 bg-gray-200 rounded text-xs hover:bg-gray-300 font-bold">+</button>
+                      <button type="button" onClick={() => setMapZoom(z => Math.max(z - 1, 4))} className="px-2 py-0.5 bg-gray-200 rounded text-xs hover:bg-gray-300 font-bold">-</button>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <input type="number" step="any" placeholder="Latitude" value={newAddr.latitude} onChange={e => setNewAddr({...newAddr, latitude: e.target.value})} className="border p-2 rounded w-full text-xs font-mono" />
                     <input type="number" step="any" placeholder="Longitude" value={newAddr.longitude} onChange={e => setNewAddr({...newAddr, longitude: e.target.value})} className="border p-2 rounded w-full text-xs font-mono" />
                   </div>
+                  
                   <div 
-                    className="w-full h-44 rounded overflow-hidden border bg-gray-100 relative group cursor-crosshair"
+                    className="w-full h-52 rounded-xl overflow-hidden border-2 border-gray-300 relative shadow-inner bg-[#e5e3df] cursor-grab active:cursor-grabbing select-none"
+                    onWheel={(e) => {
+                      if (e.deltaY < 0) {
+                        setMapZoom(z => Math.min(z + 1, 18));
+                      } else {
+                        setMapZoom(z => Math.max(z - 1, 4));
+                      }
+                    }}
                     onClick={(e) => {
                       const rect = e.currentTarget.getBoundingClientRect();
                       const x = (e.clientX - rect.left) / rect.width - 0.5;
                       const y = (e.clientY - rect.top) / rect.height - 0.5;
                       const baseLat = parseFloat(newAddr.latitude || '11.0168');
                       const baseLng = parseFloat(newAddr.longitude || '76.9558');
-                      const newLat = (baseLat - y * 0.05).toFixed(6);
-                      const newLng = (baseLng + x * 0.05).toFixed(6);
+                      const newLat = (baseLat - y * 0.03).toFixed(6);
+                      const newLng = (baseLng + x * 0.03).toFixed(6);
                       setNewAddr({ ...newAddr, latitude: newLat, longitude: newLng });
-                      alert(`Pin dropped at Lat: ${newLat}, Lng: ${newLng}`);
                     }}
                   >
                     <iframe
                       width="100%"
                       height="100%"
-                      frameBorder="0"
-                      style={{ border: 0, pointerEvents: 'auto' }}
-                      src={`https://maps.google.com/maps?q=${newAddr.latitude || 11.0168},${newAddr.longitude || 76.9558}&hl=en&z=${mapZoom}&output=embed`}
+                      className="pointer-events-none"
+                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${parseFloat(newAddr.longitude || '76.9558')-0.03},${parseFloat(newAddr.latitude || '11.0168')-0.03},${parseFloat(newAddr.longitude || '76.9558')+0.03},${parseFloat(newAddr.latitude || '11.0168')+0.03}&layer=mapnik&marker=${newAddr.latitude || 11.0168},${newAddr.longitude || 76.9558}`}
                     ></iframe>
-                    <div className="absolute top-2 left-2 z-10 bg-black/80 text-white text-[10px] px-2 py-1 rounded backdrop-blur">
-                      Interactive Map: Click anywhere on map to drop pin
+
+                    {/* Red Pin Marker in Center */}
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-full pointer-events-none text-3xl filter drop-shadow-md animate-bounce">
+                      📍
+                    </div>
+
+                    <div className="absolute top-2 left-2 z-10 bg-black/80 text-white text-[10px] px-2.5 py-1 rounded backdrop-blur font-bold">
+                      🖱️ Click/Scroll to Zoom & Pinpoint
                     </div>
                   </div>
                 </div>

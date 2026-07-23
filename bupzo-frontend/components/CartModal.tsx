@@ -152,31 +152,37 @@ export default function CartModal({
           ) : (
             <div className="space-y-4">
               {cart.map((item, idx) => (
-                <div key={item?.product?.id || idx} className="bg-white p-4 rounded shadow-sm flex gap-4 relative">
-                  <div className="w-20 h-20 bg-gray-100 rounded p-2 flex items-center justify-center">
-                    <img src={item?.product?.image_url || 'https://placehold.co/150/png'} alt={item?.product?.name || 'Unknown Product'} className="max-w-full max-h-full object-contain" />
+                <div key={item?.product?.id || idx} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex gap-4 relative hover:shadow-md transition-shadow">
+                  <div className="w-24 h-24 bg-gray-50 rounded-lg p-2 border border-gray-100 flex items-center justify-center shrink-0">
+                    <img src={item?.product?.image_url || 'https://placehold.co/150/png'} alt={item?.product?.name || 'Product'} className="max-w-full max-h-full object-contain" />
                   </div>
                   <div className="flex-1 flex flex-col justify-between">
-                    <h3 className="font-bold text-[#232f3e] text-sm line-clamp-1">{item?.product?.name || 'Unknown Product'}</h3>
-                    <p className="text-[#e52e06] font-extrabold text-sm">₹{(item?.product?.price || 0).toLocaleString()}</p>
-                    
-                    <div className="flex items-center border border-gray-200 rounded text-sm">
-                      <button 
-                        onClick={() => updateQuantity(item?.product?.id, item.quantity - 1)}
-                        className="bg-gray-50 hover:bg-gray-100 px-3 py-1 text-gray-600 transition"
-                      >-</button>
-                      <span className="text-xs font-bold w-4 text-center">{item.quantity}</span>
-                      <button 
-                        onClick={() => updateQuantity(item?.product?.id, item.quantity + 1)}
-                        className="bg-gray-50 hover:bg-gray-100 px-3 py-1 text-gray-600 transition"
-                      >+</button>
+                    <div>
+                      <h3 className="font-extrabold text-[#232f3e] text-base leading-tight line-clamp-2">{item?.product?.name || 'Product Item'}</h3>
+                      <p className="text-xs text-gray-500 font-medium mt-0.5">{item?.product?.category_name || 'Bupzo Verified Product'}</p>
+                    </div>
+                    <div className="flex items-center justify-between mt-2">
+                      <p className="text-[#e52e06] font-black text-lg">₹{(item?.product?.price || 0).toLocaleString()}</p>
+                      
+                      <div className="flex items-center border-2 border-gray-300 rounded-lg overflow-hidden bg-gray-50">
+                        <button 
+                          onClick={() => updateQuantity(item?.product?.id, item.quantity - 1)}
+                          className="bg-white hover:bg-gray-100 px-3 py-1 text-gray-700 font-extrabold transition border-r border-gray-200 text-sm"
+                        >-</button>
+                        <span className="text-sm font-black w-8 text-center text-gray-900">{item.quantity}</span>
+                        <button 
+                          onClick={() => updateQuantity(item?.product?.id, item.quantity + 1)}
+                          className="bg-white hover:bg-gray-100 px-3 py-1 text-gray-700 font-extrabold transition border-l border-gray-200 text-sm"
+                        >+</button>
+                      </div>
                     </div>
                   </div>
                   <button 
                     onClick={() => updateQuantity(item?.product?.id, 0)}
-                    className="absolute top-2 right-2 text-gray-400 hover:text-red-500 transition"
+                    className="absolute top-2 right-2 text-gray-400 hover:text-red-600 transition p-1 hover:bg-red-50 rounded-full"
+                    title="Remove item"
                   >
-                    <span className="material-symbols-outlined text-sm">delete</span>
+                    <span className="material-symbols-outlined text-base">delete</span>
                   </button>
                 </div>
               ))}

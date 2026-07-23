@@ -1957,6 +1957,7 @@ export default function AdminMainPage() {
                         <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleWalletSort('id')}>
                           Tx ID {walletSortKey === 'id' ? (walletSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
                         </th>
+                        <th className="py-2.5">User Name</th>
                         <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleWalletSort('user_id')}>
                           User ID {walletSortKey === 'user_id' ? (walletSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
                         </th>
@@ -1981,8 +1982,11 @@ export default function AdminMainPage() {
                           >
                             {tx.id.substring(0,8)}...
                           </td>
+                          <td className="py-3 font-bold text-zinc-900 dark:text-zinc-100">
+                            {users.find((u: any) => u.id === tx.user_id)?.name || 'Shopper'}
+                          </td>
                           <td className="py-3 font-mono text-zinc-500">{tx.user_id.substring(0,8)}...</td>
-                          <td className="py-3 font-mono text-zinc-500">{tx.mobile_number || 'N/A'}</td>
+                          <td className="py-3 font-mono text-zinc-500">{tx.mobile_number || users.find((u: any) => u.id === tx.user_id)?.phone || 'N/A'}</td>
                           <td className={`py-3 font-mono font-bold ${tx.amount >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                             ₹{tx.amount}
                           </td>

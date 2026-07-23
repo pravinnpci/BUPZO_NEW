@@ -270,6 +270,16 @@ async def startup_event():
                 ('notif-seed-2', 'Seller KYC Pending', 'Merchant "Nagore Halwa Palace" is pending KYC approval.', 'kyc', FALSE);
             """)
 
+        # Create store_followers table
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS store_followers (
+                user_id UUID NOT NULL,
+                seller_id UUID NOT NULL,
+                created_at TIMESTAMP DEFAULT NOW(),
+                PRIMARY KEY (user_id, seller_id)
+            );
+        """)
+
         # Seed Mock Users and merchants so storefront and admin populate immediately
         await conn.execute("""
             DELETE FROM users
@@ -2147,14 +2157,18 @@ async def get_all_orders():
     
     return orders
 
-@app.get("/api/orders/seller/{seller_id}", response_model=List[OrderResponse])
-async def get_seller_orders(seller_id: UUID):
+@app.get("/api/orders/seller/{seller_id}")
+async def get_seller_orders(seller_id: str):
+    try:
+        sid = UUID(seller_id)
+    except Exception:
+        return []
     query = """
     SELECT id, user_id, seller_id, total_amount, status, tracking_id, order_source, shipping_partner, payment_gateway, trust_donation_amount, currency, exchange_rate, created_at
     FROM orders WHERE seller_id = $1 ORDER BY created_at DESC
     """
-    res = await execute_query(query, seller_id)
-    return res
+    res = await execute_query(query, sid)
+    return res or []
 
 # Get Single Order Details
 @app.get("/api/orders/{order_id}", response_model=OrderResponse)
@@ -2430,6 +2444,52 @@ async def get_all_reviews(product_id: Optional[str] = None, seller_id: Optional[
                     d['images'] = []
             results.append(d)
         return results
+
+@app.get("/api/sellers/{seller_id}/followers")
+async def get_seller_followers(seller_id: str):
+    async with pool.acquire() as conn:
+        try:
+            sid = UUID(seller_id)
+            rows = await conn.fetch(
+                """
+                SELECT u.id, u.name, u.email, sf.created_at
+                FROM store_followers sf
+                JOIN users u ON sf.user_id = u.id
+                WHERE sf.seller_id = $1
+                ORDER BY sf.created_at DESC
+                """, sid
+            )
+            count = len(rows)
+            return {"count": count, "followers": [dict(r) for r in rows]}
+        except Exception:
+            return {"count": 0, "followers": []}
+
+@app.post("/api/sellers/{seller_id}/follow")
+async def follow_seller(seller_id: str, user_id: str):
+    async with pool.acquire() as conn:
+        try:
+            await conn.execute(
+                """
+                INSERT INTO store_followers (user_id, seller_id)
+                VALUES ($1::uuid, $2::uuid)
+                ON CONFLICT DO NOTHING
+                """, user_id, seller_id
+            )
+            return {"success": True, "message": "Store followed"}
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+@app.delete("/api/sellers/{seller_id}/follow")
+async def unfollow_seller(seller_id: str, user_id: str):
+    async with pool.acquire() as conn:
+        try:
+            await conn.execute(
+                "DELETE FROM store_followers WHERE user_id = $1::uuid AND seller_id = $2::uuid",
+                user_id, seller_id
+            )
+            return {"success": True, "message": "Store unfollowed"}
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):

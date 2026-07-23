@@ -478,6 +478,26 @@ export async function fetchProductStats(productId: string): Promise<any> {
 }
 
 
+export async function fetchSellerFollowers(sellerId: string): Promise<any> {
+  const response = await fetch(buildUrl(`/api/sellers/${sellerId}/followers`));
+  return parseJsonResponse(response);
+}
+
+export async function followSeller(sellerId: string, userId: string): Promise<any> {
+  const response = await fetch(buildUrl(`/api/sellers/${sellerId}/follow?user_id=${userId}`), { method: 'POST' });
+  return parseJsonResponse(response);
+}
+
+export async function unfollowSeller(sellerId: string, userId: string): Promise<any> {
+  const response = await fetch(buildUrl(`/api/sellers/${sellerId}/follow?user_id=${userId}`), { method: 'DELETE' });
+  return parseJsonResponse(response);
+}
+
+export async function fetchSellerReviews(sellerId: string): Promise<any[]> {
+  const response = await fetch(buildUrl(`/api/reviews/?seller_id=${sellerId}`));
+  return parseJsonResponse(response);
+}
+
 export async function topUpWallet(userId: string, amount: number): Promise<any> {
   const response = await authFetch('/api/wallet/topup', {
     method: 'POST',
