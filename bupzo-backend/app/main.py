@@ -2629,6 +2629,16 @@ async def unfollow_seller(seller_id: str, user_id: str):
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
 
+@app.get("/api/users/{user_id}/followed-sellers")
+async def get_user_followed_sellers(user_id: str):
+    async with pool.acquire() as conn:
+        try:
+            uid = UUID(user_id)
+            rows = await conn.fetch("SELECT seller_id FROM seller_followers WHERE user_id = $1", uid)
+            return [str(r['seller_id']) for r in rows]
+        except Exception:
+            return []
+
 class RazorpayOrderRequest(BaseModel):
     amount: float
     currency: Optional[str] = "INR"

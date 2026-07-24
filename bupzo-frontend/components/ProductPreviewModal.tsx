@@ -9,9 +9,10 @@ interface ProductPreviewModalProps {
   onAddToCart: (p: Product) => void;
   onAddToWishlist: (p: Product) => void;
   onBuyNow?: () => void;
+  isWishlisted?: boolean;
 }
 
-export default function ProductPreviewModal({ product, onClose, onAddToCart, onAddToWishlist, onBuyNow }: ProductPreviewModalProps) {
+export default function ProductPreviewModal({ product, onClose, onAddToCart, onAddToWishlist, onBuyNow, isWishlisted = false }: ProductPreviewModalProps) {
   const { user } = useUser();
   const cartStore = useCartStore();
   const [activeImage, setActiveImage] = useState(product.image_url || 'https://placehold.co/400/png');
@@ -21,6 +22,7 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, onA
   const [selectedSize, setSelectedSize] = useState<string>('Double');
   const [sellerName, setSellerName] = useState<string>('Seller');
   const [stats, setStats] = useState<any>(null);
+  const [localWishlisted, setLocalWishlisted] = useState<boolean>(isWishlisted);
 
   useEffect(() => {
     const fetchReviewsAndStats = async () => {
@@ -110,8 +112,7 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, onA
   }, [showVariants, sizes]);
 
   // Wishlist check using cartStore & local state
-  const [localWishlisted, setLocalWishlisted] = useState(false);
-  const isInWishlist = localWishlisted || cartStore.wishlist.some((w: any) => {
+  const isInWishlist = localWishlisted || isWishlisted || cartStore.wishlist.some((w: any) => {
     const pId = product.id ? product.id.toString() : '';
     const wProdId = w.product_id ? w.product_id.toString() : (w.id ? w.id.toString() : '');
     const nestedId = w.product?.id ? w.product.id.toString() : '';

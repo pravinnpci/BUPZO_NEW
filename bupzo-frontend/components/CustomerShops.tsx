@@ -15,14 +15,23 @@ export function CustomerShops({ onSelectShop }: CustomerShopsProps) {
   const [followedSellers, setFollowedSellers] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    fetchSellers()
-      .then(data => {
+    const activeUserId = user?.id || 'e6db98c7-06a2-4887-aab2-539bd9280f01';
+    Promise.all([
+      fetchSellers(),
+      fetch(`${API_BASE_URL}/api/users/${activeUserId}/followed-sellers`).then(res => res.ok ? res.json() : []).catch(() => [])
+    ])
+      .then(([data, followedIds]) => {
         const approved = data.filter((s: any) => s.status === 'APPROVED');
         setSellers(approved);
+        if (Array.isArray(followedIds)) {
+          const initialMap: Record<string, boolean> = {};
+          followedIds.forEach((id: string) => { initialMap[id] = true; });
+          setFollowedSellers(initialMap);
+        }
       })
       .catch(err => console.error(err))
       .finally(() => setLoading(false));
-  }, []);
+  }, [user?.id]);
 
   const toggleFollow = async (sellerId: string, e: React.MouseEvent) => {
     e.preventDefault();

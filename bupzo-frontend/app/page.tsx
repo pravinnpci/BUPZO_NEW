@@ -661,17 +661,24 @@ export default function Home() {
   const handleAddToWishlist = async (product: Product) => {
     if (!user || !user.id || !user.phone) {
       setIsAuthModalOpen(true);
-      alert("Please login to add items to your wishlist.");
+      alert("Please login to manage your wishlist.");
       return;
     }
     try {
-      await addToWishlist(product.id, user.id);
-      alert(`"${product.name}" added to wishlist!`);
+      const existingWishitem = wishlist.find(w => w.product_id === product.id || (w as any).id === product.id);
+      if (existingWishitem) {
+        await removeFromWishlist(existingWishitem.id);
+        alert(`"${product.name}" removed from wishlist.`);
+      } else {
+        await addToWishlist(product.id, user.id);
+        alert(`"${product.name}" added to wishlist!`);
+      }
       const wishs = await getWishlistItems(user.id);
       setWishlist(wishs);
     } catch (err: any) {
       console.warn(err);
-      alert(err.message || "Failed to add item to wishlist.");
+      const wishs = await getWishlistItems(user.id).catch(() => []);
+      setWishlist(wishs);
     }
   };
 
@@ -973,6 +980,7 @@ export default function Home() {
           onAddToCart={handleAddToCart}
           onAddToWishlist={handleAddToWishlist}
           onBuyNow={() => setShowCart(true)}
+          isWishlisted={wishlist.some(w => w.product_id === previewProduct.id || (w as any).id === previewProduct.id)}
         />
       )}
 
