@@ -2550,7 +2550,7 @@ async def get_seller_followers(seller_id: str):
             rows = await conn.fetch(
                 """
                 SELECT u.id, u.name, u.email, sf.created_at
-                FROM store_followers sf
+                FROM seller_followers sf
                 JOIN users u ON sf.user_id = u.id
                 WHERE sf.seller_id = $1
                 ORDER BY sf.created_at DESC
@@ -2567,7 +2567,7 @@ async def follow_seller(seller_id: str, user_id: str):
         try:
             await conn.execute(
                 """
-                INSERT INTO store_followers (user_id, seller_id)
+                INSERT INTO seller_followers (user_id, seller_id)
                 VALUES ($1::uuid, $2::uuid)
                 ON CONFLICT DO NOTHING
                 """, user_id, seller_id
@@ -2581,7 +2581,7 @@ async def unfollow_seller(seller_id: str, user_id: str):
     async with pool.acquire() as conn:
         try:
             await conn.execute(
-                "DELETE FROM store_followers WHERE user_id = $1::uuid AND seller_id = $2::uuid",
+                "DELETE FROM seller_followers WHERE user_id = $1::uuid AND seller_id = $2::uuid",
                 user_id, seller_id
             )
             return {"success": True, "message": "Store unfollowed"}

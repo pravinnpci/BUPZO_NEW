@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { fetchSellers } from '@/lib/api';
+import { fetchSellers, API_BASE_URL } from '@/lib/api';
 import { Navbar } from '@/components/Navbar';
 import { useUser } from '@/lib/authStore';
 import Link from 'next/link';
@@ -22,24 +22,34 @@ export default function ShopsPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const toggleFollow = (sellerId: string, e: React.MouseEvent) => {
+  const toggleFollow = async (sellerId: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setFollowedSellers(prev => {
-      const isFollowing = !prev[sellerId];
-      // Sync follow count on state
-      setSellers(sList => sList.map(s => {
-        if (s.id === sellerId) {
-          const currentCount = s.followers_count || s.followers || 0;
-          return {
-            ...s,
-            followers_count: isFollowing ? currentCount + 1 : Math.max(0, currentCount - 1)
-          };
-        }
-        return s;
-      }));
-      return { ...prev, [sellerId]: isFollowing };
-    });
+    const isCurrentlyFollowing = !!followedSellers[sellerId];
+    const newFollowingState = !isCurrentlyFollowing;
+
+    setFollowedSellers(prev => ({ ...prev, [sellerId]: newFollowingState }));
+    setSellers(sList => sList.map(s => {
+      if (s.id === sellerId) {
+        const currentCount = s.followers_count || 0;
+        return {
+          ...s,
+          followers_count: newFollowingState ? currentCount + 1 : Math.max(0, currentCount - 1)
+        };
+      }
+      return s;
+    }));
+
+    try {
+      const defaultUserId = 'e6db98c7-06a2-4887-aab2-539bd9280f01';
+      if (newFollowingState) {
+        await fetch(`${API_BASE_URL}/api/sellers/${sellerId}/follow?user_id=${defaultUserId}`, { method: 'POST' });
+      } else {
+        await fetch(`${API_BASE_URL}/api/sellers/${sellerId}/follow?user_id=${defaultUserId}`, { method: 'DELETE' });
+      }
+    } catch (err) {
+      console.error("Failed to update follow status in DB:", err);
+    }
   };
 
   return (
