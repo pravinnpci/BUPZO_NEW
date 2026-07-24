@@ -44,6 +44,7 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, onA
     fetchReviewsAndStats();
     
     const fetchSeller = async () => {
+      if (!product.seller_id || product.seller_id === 'undefined') return;
       try {
         const resp = await fetch(`${API_BASE_URL}/api/sellers/${product.seller_id}`);
         if (resp.ok) {

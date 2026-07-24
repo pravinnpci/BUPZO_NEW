@@ -63,9 +63,9 @@ export function SellerDashboard({ onSwitchToCustomer }: { onSwitchToCustomer?: (
       const allSellers = await fetchSellers().catch(() => []);
       const sId = (user as any)?.seller_id || user?.id;
       let mySeller = allSellers.find(s => 
-        (user?.id && s.user_id && s.user_id.toString() === user.id.toString()) || 
-        (sId && s.id.toString() === sId.toString()) ||
-        (user?.name && s.business_name && s.business_name.toLowerCase().includes(user.name.toLowerCase()))
+        (user?.id && s.user_id && String(s.user_id) === String(user.id)) || 
+        (sId && String(s.id) === String(sId)) ||
+        (user?.name && s.business_name && String(s.business_name).toLowerCase().includes(String(user.name).toLowerCase()))
       );
 
       if (!mySeller && allSellers.length > 0) {
