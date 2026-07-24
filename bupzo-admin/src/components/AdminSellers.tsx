@@ -10,6 +10,8 @@ interface Seller {
   owner?: string;
   owner_email?: string;
   owner_phone?: string;
+  followers?: number;
+  followers_count?: number;
   kyc_details?: any;
 }
 
@@ -173,9 +175,9 @@ export const AdminSellers: React.FC<AdminSellersProps> = ({
     let aVal = a[sortKey];
     let bVal = b[sortKey];
 
-    if (sortKey === 'commission') {
-      aVal = Number(aVal) || 0;
-      bVal = Number(bVal) || 0;
+    if (sortKey === 'commission' || (sortKey as string) === 'followers') {
+      aVal = Number((sortKey as string) === 'followers' ? (a.followers_count !== undefined ? a.followers_count : a.followers || 0) : aVal) || 0;
+      bVal = Number((sortKey as string) === 'followers' ? (b.followers_count !== undefined ? b.followers_count : b.followers || 0) : bVal) || 0;
     } else {
       aVal = String(aVal || '').toLowerCase();
       bVal = String(bVal || '').toLowerCase();
@@ -212,7 +214,7 @@ export const AdminSellers: React.FC<AdminSellersProps> = ({
               placeholder="Search merchants..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8 pr-4 py-2 w-64 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-xs outline-none focus:border-primary"
+              className="pl-8 pr-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-medium w-64 outline-none focus:border-primary"
             />
           </div>
           <button 
@@ -236,6 +238,7 @@ export const AdminSellers: React.FC<AdminSellersProps> = ({
                 <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('businessName')}>Store Name {renderSortIndicator('businessName')}</th>
                 <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('owner')}>Owner (User ID) {renderSortIndicator('owner')}</th>
                 <th className="py-2.5">Contacts</th>
+                <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('followers' as any)}>Followers {renderSortIndicator('followers' as any)}</th>
                 <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('commission')}>Commission Rate {renderSortIndicator('commission')}</th>
                 <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('status')}>Status {renderSortIndicator('status')}</th>
                 <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('date')}>Date {renderSortIndicator('date')}</th>
@@ -257,6 +260,7 @@ export const AdminSellers: React.FC<AdminSellersProps> = ({
                     {s.owner_email && <div>{s.owner_email}</div>}
                     {s.owner_phone && <div>{s.owner_phone}</div>}
                   </td>
+                  <td className="py-3 font-mono font-bold text-blue-600">👥 {s.followers_count !== undefined ? s.followers_count : (s.followers || 0)}</td>
                   <td className="py-3 font-mono font-bold">{s.commission}%</td>
                   <td className="py-3">
                     <span className={`px-2 py-0.5 rounded font-bold ${s.status === 'Approved' ? 'bg-green-100 text-green-700' : s.status === 'Pending KYC' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>

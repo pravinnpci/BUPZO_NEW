@@ -29,7 +29,7 @@ export default function Home() {
   const [sellerTab, setSellerTab] = useState<'overview' | 'products' | 'orders' | 'escrow' | 'kyc' | 'disputes' | 'vouchers'>('overview');
   const { theme, setTheme, resolvedTheme } = useTheme();
 
-  // Redirect old affiliate links to new route & detect seller dashboard switch
+  // Redirect old affiliate links to new route & detect seller dashboard switch & tab query param
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
@@ -37,6 +37,11 @@ export default function Home() {
       const tabParam = urlParams.get('tab');
       if (isSellerParam === 'true' || tabParam === 'seller') {
         setUserRole('seller');
+      } else if (tabParam) {
+        setUserRole('customer');
+        if (['home', 'categories', 'orders', 'wallet', 'wishlist', 'kyc', 'settings', 'messages'].includes(tabParam.toLowerCase())) {
+          setCustomerTab(tabParam.toLowerCase() as any);
+        }
       }
       const pid = urlParams.get('product_id');
       const ref = urlParams.get('ref');
