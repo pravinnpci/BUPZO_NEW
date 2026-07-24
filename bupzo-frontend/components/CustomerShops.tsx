@@ -42,10 +42,12 @@ export function CustomerShops({ onSelectShop }: CustomerShopsProps) {
     setFollowedSellers(prev => ({ ...prev, [sellerId]: newFollowingState }));
     setSellers(sList => sList.map(s => {
       if (s.id === sellerId) {
-        const currentCount = s.followers_count || 0;
+        const currentCount = s.followers_count !== undefined ? s.followers_count : (s.followers || 0);
+        const newCount = newFollowingState ? currentCount + 1 : Math.max(0, currentCount - 1);
         return {
           ...s,
-          followers_count: newFollowingState ? currentCount + 1 : Math.max(0, currentCount - 1)
+          followers: newCount,
+          followers_count: newCount
         };
       }
       return s;

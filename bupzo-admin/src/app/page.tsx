@@ -212,7 +212,9 @@ export default function AdminMainPage() {
               status: s.status === 'PENDING' ? 'Pending KYC' : s.status === 'APPROVED' ? 'Approved' : 'Rejected',
               commission: s.commission_rate,
               date: new Date(s.created_at).toLocaleDateString(),
-              rating: 4.5,
+              rating: s.rating || 4.5,
+              followers: s.followers_count !== undefined ? s.followers_count : 0,
+              followers_count: s.followers_count !== undefined ? s.followers_count : 0,
               kyc_details: s.kyc_details
             })));
           } else {

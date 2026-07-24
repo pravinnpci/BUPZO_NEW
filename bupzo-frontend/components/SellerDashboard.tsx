@@ -61,11 +61,13 @@ export function SellerDashboard({ onSwitchToCustomer }: { onSwitchToCustomer?: (
   const loadDashboardData = async () => {
     try {
       const allSellers = await fetchSellers().catch(() => []);
-      const sId = (user as any)?.seller_id || user?.id;
+      const activeUserId = user?.id || '';
+      const activeUserName = user?.name || '';
+      const sId = (user as any)?.seller_id || activeUserId;
       let mySeller = allSellers.find(s => 
-        (user?.id && s.user_id && String(s.user_id) === String(user.id)) || 
+        (activeUserId && s.user_id && String(s.user_id) === String(activeUserId)) || 
         (sId && String(s.id) === String(sId)) ||
-        (user?.name && s.business_name && String(s.business_name).toLowerCase().includes(String(user.name).toLowerCase()))
+        (activeUserName && s.business_name && String(s.business_name).toLowerCase().includes(String(activeUserName).toLowerCase()))
       );
 
       if (!mySeller && allSellers.length > 0) {
@@ -75,13 +77,15 @@ export function SellerDashboard({ onSwitchToCustomer }: { onSwitchToCustomer?: (
       const allCategories = await fetchCategories().catch(() => []);
       setCategories(allCategories);
 
-      const msgResp = await fetch(`${API_URL}/api/messages/?user_id=${user?.id}`).catch(() => null);
-      if(msgResp && msgResp.ok) msgResp.json().then(d => setMessages(Array.isArray(d) ? d : []));
+      if (activeUserId) {
+        const msgResp = await fetch(`${API_URL}/api/messages/?user_id=${activeUserId}`).catch(() => null);
+        if(msgResp && msgResp.ok) msgResp.json().then(d => setMessages(Array.isArray(d) ? d : []));
 
-      const notifResp = await fetch(`${API_URL}/api/notifications/?user_id=${user?.id}`).catch(() => null);
-      if(notifResp && notifResp.ok) notifResp.json().then(d => setNotifications(Array.isArray(d) ? d : []));
+        const notifResp = await fetch(`${API_URL}/api/notifications/?user_id=${activeUserId}`).catch(() => null);
+        if(notifResp && notifResp.ok) notifResp.json().then(d => setNotifications(Array.isArray(d) ? d : []));
+      }
 
-      const activeSellerId = mySeller?.id || sId || (allSellers[0]?.id || '4b7a2edb-b4dd-4677-9d48-df90952297bf');
+      const activeSellerId = mySeller?.id || (allSellers[0]?.id || '4b7a2edb-b4dd-4677-9d48-df90952297bf');
       setMySellerId(activeSellerId);
       setMySellerStatus('APPROVED');
       
@@ -111,8 +115,9 @@ export function SellerDashboard({ onSwitchToCustomer }: { onSwitchToCustomer?: (
 
   useEffect(() => {
     loadDashboardData();
+    if (!user?.id) return;
     const interval = setInterval(() => {
-      fetch(`${API_URL}/api/notifications/?user_id=${user?.id}`)
+      fetch(`${API_URL}/api/notifications/?user_id=${user.id}`)
         .then(res => res.json())
         .then(data => { if(Array.isArray(data)) setNotifications(data); })
         .catch(() => {});
