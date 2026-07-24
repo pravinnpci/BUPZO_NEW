@@ -88,12 +88,12 @@ export function SellerDashboard({ onSwitchToCustomer }: { onSwitchToCustomer?: (
       if (mySeller && typeof mySeller.kyc_details === 'string') {
         try { setMySellerKyc(JSON.parse(mySeller.kyc_details)); } catch(e) {}
       } else {
-        setMySellerKyc(mySeller?.kyc_details || { gst: '33AAACB1234F1Z0', fssai: '12421008000123' });
+        setMySellerKyc(mySeller?.kyc_details || {});
       }
       
       const allProducts = await fetchProducts().catch(() => []);
-      const sellerProds = allProducts.filter(p => p.seller_id === activeSellerId || !p.seller_id);
-      setProducts(sellerProds.length > 0 ? sellerProds : allProducts);
+      const sellerProds = allProducts.filter(p => p.seller_id === activeSellerId);
+      setProducts(sellerProds);
       
       const myOrders = await fetchSellerOrders(activeSellerId).catch(() => []);
       setOrders(myOrders);
