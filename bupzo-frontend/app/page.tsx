@@ -15,6 +15,7 @@ import { CustomerWallet } from '@/components/CustomerWallet';
 import { CustomerWishlist } from '@/components/CustomerWishlist';
 import { CustomerSettings } from '@/components/CustomerSettings';
 import { CustomerMessages } from '@/components/CustomerMessages';
+import { CustomerShops } from '@/components/CustomerShops';
 import { Navbar } from '@/components/Navbar';
 import SellerKYCModal from '@/components/SellerKYCModal';
 import ProductPreviewModal from '@/components/ProductPreviewModal';
@@ -39,7 +40,7 @@ export default function Home() {
         setUserRole('seller');
       } else if (tabParam) {
         setUserRole('customer');
-        if (['home', 'categories', 'orders', 'wallet', 'wishlist', 'kyc', 'settings', 'messages'].includes(tabParam.toLowerCase())) {
+        if (['home', 'categories', 'orders', 'wallet', 'wishlist', 'kyc', 'settings', 'messages', 'shops'].includes(tabParam.toLowerCase())) {
           setCustomerTab(tabParam.toLowerCase() as any);
         }
       }
@@ -95,7 +96,7 @@ export default function Home() {
   const [promoError, setPromoError] = useState('');
 
   // Storefront & Customer States
-  const [customerTab, setCustomerTab] = useState<'home' | 'categories' | 'orders' | 'wallet' | 'wishlist' | 'kyc' | 'settings' | 'messages'>('home');
+  const [customerTab, setCustomerTab] = useState<'home' | 'categories' | 'orders' | 'wallet' | 'wishlist' | 'kyc' | 'settings' | 'messages' | 'shops'>('home');
   const [previewProduct, setPreviewProduct] = useState<Product | null>(null);
   const [customerOrders, setCustomerOrders] = useState<any[]>([]);
   const [walletTransactions, setWalletTransactions] = useState<any[]>([]);
@@ -955,6 +956,10 @@ export default function Home() {
               {/* TAB: MESSAGES */}
               {customerTab === 'messages' && (
                 <CustomerMessages user={user} />
+              )}
+              {/* TAB: SHOPS */}
+              {customerTab === 'shops' && (
+                <CustomerShops onSelectShop={(sId) => window.location.href = `/shop/${sId}`} />
               )}
             </div>
           </div>
