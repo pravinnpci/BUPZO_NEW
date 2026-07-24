@@ -586,6 +586,9 @@ class SellerResponse(BaseModel):
     user_name: Optional[str] = None
     user_email: Optional[str] = None
     user_phone: Optional[str] = None
+    followers_count: Optional[int] = 0
+    review_count: Optional[int] = 0
+    rating: Optional[float] = 4.5
     created_at: datetime
     updated_at: datetime
 
@@ -1648,7 +1651,14 @@ async def ai_fraud_check(payload: FraudAnalysisRequest):
 @app.get("/api/sellers/", response_model=List[SellerResponse])
 async def read_sellers():
     import json
-    query = "SELECT s.id, s.user_id, s.business_name, s.commission_rate, s.status, s.kyc_details, s.created_at, s.updated_at, u.name as user_name, u.email as user_email, u.phone as user_phone FROM sellers s JOIN users u ON s.user_id = u.id"
+    query = """
+    SELECT s.id, s.user_id, s.business_name, s.commission_rate, s.status, s.kyc_details, s.created_at, s.updated_at,
+           u.name as user_name, u.email as user_email, u.phone as user_phone,
+           COALESCE((SELECT COUNT(*) FROM seller_followers sf WHERE sf.seller_id = s.id), 0) as followers_count,
+           COALESCE((SELECT COUNT(*) FROM reviews r JOIN products p ON r.product_id = p.id WHERE p.seller_id = s.id), 0) as review_count,
+           COALESCE((SELECT AVG(r.rating) FROM reviews r JOIN products p ON r.product_id = p.id WHERE p.seller_id = s.id), 4.5) as rating
+    FROM sellers s JOIN users u ON s.user_id = u.id
+    """
     res = await execute_query(query)
     processed = []
     for row in res:
@@ -1668,6 +1678,9 @@ async def read_sellers():
             "user_name": row["user_name"],
             "user_email": row["user_email"],
             "user_phone": row["user_phone"],
+            "followers_count": int(row.get('followers_count', 0) or 0),
+            "review_count": int(row.get('review_count', 0) or 0),
+            "rating": round(float(row.get('rating', 4.5) or 4.5), 1),
             "created_at": row['created_at'],
             "updated_at": row['updated_at']
         })
@@ -2470,6 +2483,12 @@ async def mark_message_read(message_id: UUID):
         if not row:
             raise HTTPException(status_code=404, detail="Message not found")
         return dict(row)
+
+@app.put("/api/messages/mark-all-read")
+async def mark_all_messages_read(user_id: str):
+    async with pool.acquire() as conn:
+        await conn.execute("UPDATE messages SET is_read = TRUE WHERE receiver_id = $1::uuid", user_id)
+        return {"success": True, "marked_user": user_id}
 
 @app.delete("/api/messages/{message_id}")
 async def delete_message(message_id: UUID):

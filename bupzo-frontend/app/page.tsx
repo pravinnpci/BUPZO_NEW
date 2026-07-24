@@ -830,7 +830,15 @@ export default function Home() {
       {userRole === 'customer' && (
         <div className="flex flex-col flex-1 w-full relative">
           <Navbar
-            onTabChange={(tab) => setCustomerTab(tab as any)}
+            onTabChange={(tab) => {
+              setUserRole('customer');
+              if (typeof window !== 'undefined' && window.location.search.includes('seller=true')) {
+                const url = new URL(window.location.href);
+                url.searchParams.delete('seller');
+                window.history.replaceState({}, '', url.toString());
+              }
+              setCustomerTab(tab as any);
+            }}
             onAuthClick={() => setIsAuthModalOpen(true)}
             onCartClick={() => setShowCart(true)}
             cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)}

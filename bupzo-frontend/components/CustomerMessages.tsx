@@ -28,18 +28,13 @@ export function CustomerMessages({ user }: { user: any }) {
 
   const loadMessages = async () => {
     try {
+      // Mark all received unread messages as read in DB
+      await fetch(`${API_BASE_URL}/api/messages/mark-all-read?user_id=${user.id}`, { method: 'PUT' }).catch(() => {});
+      
       const resp = await fetch(`${API_BASE_URL}/api/messages/?user_id=${user.id}`);
       if (resp.ok) {
         const msgs: any[] = await resp.json();
         setMessages(msgs);
-        
-        // Auto mark received messages as read
-        const unreadReceived = msgs.filter(m => m.receiver_id === user.id && !m.is_read);
-        if (unreadReceived.length > 0) {
-          await Promise.all(
-            unreadReceived.map(m => fetch(`${API_BASE_URL}/api/messages/${m.id}/read`, { method: 'PUT' }))
-          );
-        }
       }
     } catch (err) {
       console.error(err);

@@ -503,7 +503,8 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({
                           <img
                             src={getPaddedImages(p)[0]}
                             alt={p.name}
-                            className="w-10 h-10 object-cover rounded-lg"
+                            onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/100x100/png?text=Product'; }}
+                            className="w-10 h-10 object-cover rounded-lg border border-zinc-200"
                           />
                         </td>
                         <td 
