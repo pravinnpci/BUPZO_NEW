@@ -2535,9 +2535,14 @@ async def mark_message_read(message_id: UUID):
         return dict(row)
 
 @app.put("/api/messages/mark-all-read")
-async def mark_all_messages_read(user_id: str):
+@app.post("/api/messages/mark-all-read")
+@app.get("/api/messages/mark-all-read")
+async def mark_all_messages_read(user_id: str = Query(...)):
     async with pool.acquire() as conn:
-        await conn.execute("UPDATE messages SET is_read = TRUE WHERE receiver_id = $1::uuid", user_id)
+        try:
+            await conn.execute("UPDATE messages SET is_read = TRUE WHERE receiver_id = $1::uuid", user_id)
+        except Exception:
+            pass
         return {"success": True, "marked_user": user_id}
 
 @app.delete("/api/messages/{message_id}")

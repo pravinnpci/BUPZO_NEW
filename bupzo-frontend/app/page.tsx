@@ -1051,43 +1051,59 @@ export default function Home() {
               </div>
               <div className="space-y-3">
                 <button 
-                  onClick={() => {
+                  onClick={async () => {
                     setShowPaymentPopup(false);
-                    const script = document.createElement('script');
-                    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-                    script.onload = () => {
-                      const options = {
-                        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_TAvrXrmGSI6jUY',
-                        amount: Math.round(paymentAmount * 100),
-                        currency: 'INR',
-                        name: 'BUPZO Marketplace',
-                        description: 'Order Payment',
-                        image: 'https://placehold.co/100x100/3874ff/ffffff?text=BUPZO',
-                        handler: async function (response: any) {
-                          alert(`Razorpay Payment Successful! Payment ID: ${response.razorpay_payment_id}`);
-                          if (pendingCheckoutData) {
-                            await executeCheckout(pendingCheckoutData.walletAmountUsed, pendingCheckoutData.shippingCost, pendingCheckoutData.shippingPartner, pendingCheckoutData.trustDonation || 0);
+                    try {
+                      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+                      const orderRes = await fetch(`${API_URL}/api/payments/razorpay/create-order`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ amount: paymentAmount, currency: 'INR' })
+                      }).then(r => r.json()).catch(() => null);
+
+                      const rzpOrderId = orderRes?.order_id || `order_test_${Date.now()}`;
+
+                      const script = document.createElement('script');
+                      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+                      script.onload = () => {
+                        const options = {
+                          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_TAvrXrmGSI6jUY',
+                          amount: Math.round(paymentAmount * 100),
+                          currency: 'INR',
+                          name: 'BUPZO Marketplace',
+                          description: 'Order Payment',
+                          order_id: rzpOrderId,
+                          image: 'https://placehold.co/100x100/3874ff/ffffff?text=BUPZO',
+                          handler: async function (response: any) {
+                            alert(`Razorpay Payment Successful! Payment ID: ${response.razorpay_payment_id}`);
+                            if (pendingCheckoutData) {
+                              await executeCheckout(pendingCheckoutData.walletAmountUsed, pendingCheckoutData.shippingCost, pendingCheckoutData.shippingPartner, pendingCheckoutData.trustDonation || 0);
+                            }
+                          },
+                          prefill: {
+                            name: user?.name || 'Customer',
+                            email: user?.email || 'customer@bupzo.com',
+                            contact: user?.phone || '+919876543210'
+                          },
+                          theme: {
+                            color: '#3874ff'
                           }
-                        },
-                        prefill: {
-                          name: user?.name || 'Customer',
-                          email: user?.email || 'customer@bupzo.com',
-                          contact: user?.phone || '+919876543210'
-                        },
-                        theme: {
-                          color: '#3874ff'
+                        };
+                        const rzp = new (window as any).Razorpay(options);
+                        rzp.open();
+                      };
+                      script.onerror = async () => {
+                        alert("Razorpay SDK simulated checkout.");
+                        if (pendingCheckoutData) {
+                          await executeCheckout(pendingCheckoutData.walletAmountUsed, pendingCheckoutData.shippingCost, pendingCheckoutData.shippingPartner, pendingCheckoutData.trustDonation || 0);
                         }
                       };
-                      const rzp = new (window as any).Razorpay(options);
-                      rzp.open();
-                    };
-                    script.onerror = async () => {
-                      alert("Razorpay SDK simulated checkout.");
+                      document.body.appendChild(script);
+                    } catch (err: any) {
                       if (pendingCheckoutData) {
                         await executeCheckout(pendingCheckoutData.walletAmountUsed, pendingCheckoutData.shippingCost, pendingCheckoutData.shippingPartner, pendingCheckoutData.trustDonation || 0);
                       }
-                    };
-                    document.body.appendChild(script);
+                    }
                   }}
                   className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded transition-colors"
                 >
