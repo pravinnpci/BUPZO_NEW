@@ -61,6 +61,45 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     }
   };
 
+  const [orderSearch, setOrderSearch] = useState('');
+  const [orderSortKey, setOrderSortKey] = useState<string>('id');
+  const [orderSortOrder, setOrderSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  const handleOrderSort = (key: string) => {
+    if (orderSortKey === key) {
+      setOrderSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setOrderSortKey(key);
+      setOrderSortOrder('asc');
+    }
+  };
+
+  const filteredOrders = orders.filter((o: any) => {
+    const s = orderSearch.toLowerCase();
+    return (
+      (o.id || '').toLowerCase().includes(s) ||
+      (o.customer || o.customer_name || '').toLowerCase().includes(s) ||
+      (o.shipping_partner || '').toLowerCase().includes(s) ||
+      (o.payment_gateway || '').toLowerCase().includes(s) ||
+      (o.status || '').toLowerCase().includes(s)
+    );
+  });
+
+  const sortedOrders = [...filteredOrders].sort((a: any, b: any) => {
+    let aVal = a[orderSortKey] || '';
+    let bVal = b[orderSortKey] || '';
+    if (orderSortKey === 'total_amount') {
+      aVal = Number(aVal) || 0;
+      bVal = Number(bVal) || 0;
+    } else {
+      aVal = String(aVal).toLowerCase();
+      bVal = String(bVal).toLowerCase();
+    }
+    if (aVal < bVal) return orderSortOrder === 'asc' ? -1 : 1;
+    if (aVal > bVal) return orderSortOrder === 'asc' ? 1 : -1;
+    return 0;
+  });
+
   return (
     <div className="space-y-6 font-sans text-zinc-900 dark:text-zinc-100">
       <div>
@@ -223,32 +262,44 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       </div>
 
       {/* Recent Transactions Registry */}
-      <div className="bg-surface-container-lowest dark:bg-[#15131b] rounded-2xl border border-[#e8e1dd] dark:border-[#2f2b3b] p-6 shadow-sm">
-        <div className="mb-4">
-          <h3 className="text-xs uppercase font-extrabold tracking-wider text-outline">Recent Transactions Registry</h3>
-          <p className="text-[10px] text-zinc-400 font-sans mt-0.5">Ledger audit of orders synced from checkout aggregators.</p>
+      <div className="bg-surface-container-lowest dark:bg-[#15131b] rounded-2xl border border-[#e8e1dd] dark:border-[#2f2b3b] p-6 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h3 className="text-xs uppercase font-extrabold tracking-wider text-outline">Recent Transactions Registry</h3>
+            <p className="text-[10px] text-zinc-400 font-sans mt-0.5">Ledger audit of orders synced from checkout aggregators.</p>
+          </div>
+          <div className="relative">
+            <span className="absolute left-3 top-2.5 text-zinc-400 text-xs">🔍</span>
+            <input
+              type="text"
+              placeholder="Search order ID, customer, SLA..."
+              value={orderSearch}
+              onChange={(e) => setOrderSearch(e.target.value)}
+              className="pl-8 pr-3 py-1.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-medium w-64 outline-none focus:border-primary"
+            />
+          </div>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs min-w-[600px]">
             <thead>
-              <tr className="border-b border-outline-variant text-outline uppercase font-extrabold text-[9px] tracking-wider">
-                <th className="pb-3">Order ID</th>
-                <th className="pb-3">Customer</th>
-                <th className="pb-3">Courier SLA</th>
-                <th className="pb-3">Gateway</th>
-                <th className="pb-3">Total Amount</th>
-                <th className="pb-3">Status</th>
+              <tr className="border-b border-outline-variant text-outline uppercase font-extrabold text-[9px] tracking-wider select-none">
+                <th className="pb-3 cursor-pointer hover:text-primary" onClick={() => handleOrderSort('id')}>Order ID {orderSortKey === 'id' ? (orderSortOrder === 'asc' ? '▲' : '▼') : '⇅'}</th>
+                <th className="pb-3 cursor-pointer hover:text-primary" onClick={() => handleOrderSort('customer')}>Customer {orderSortKey === 'customer' ? (orderSortOrder === 'asc' ? '▲' : '▼') : '⇅'}</th>
+                <th className="pb-3 cursor-pointer hover:text-primary" onClick={() => handleOrderSort('shipping_partner')}>Courier SLA {orderSortKey === 'shipping_partner' ? (orderSortOrder === 'asc' ? '▲' : '▼') : '⇅'}</th>
+                <th className="pb-3 cursor-pointer hover:text-primary" onClick={() => handleOrderSort('payment_gateway')}>Gateway {orderSortKey === 'payment_gateway' ? (orderSortOrder === 'asc' ? '▲' : '▼') : '⇅'}</th>
+                <th className="pb-3 cursor-pointer hover:text-primary" onClick={() => handleOrderSort('total_amount')}>Total Amount {orderSortKey === 'total_amount' ? (orderSortOrder === 'asc' ? '▲' : '▼') : '⇅'}</th>
+                <th className="pb-3 cursor-pointer hover:text-primary" onClick={() => handleOrderSort('status')}>Status {orderSortKey === 'status' ? (orderSortOrder === 'asc' ? '▲' : '▼') : '⇅'}</th>
                 <th className="pb-3">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {orders.slice(0, 10).map((o: any) => (
+              {sortedOrders.map((o: any) => (
                 <tr key={o.id} className="border-b border-outline-variant/20 hover:bg-zinc-50 dark:hover:bg-zinc-900/30 transition-colors">
                   <td className="py-3 font-mono font-bold text-primary text-[10px] break-all max-w-[120px]">{o.id}</td>
                   <td className="py-3 font-medium">{o.customer || o.customer_name || 'Customer'}</td>
-                  <td className="py-3 font-mono text-on-surface-variant">{o.shipping_partner || 'N/A'}</td>
-                  <td className="py-3 font-medium">{o.payment_gateway || 'Wallet'}</td>
+                  <td className="py-3 font-mono text-on-surface-variant">{o.shipping_partner || 'Standard SLA'}</td>
+                  <td className="py-3 font-medium">{o.payment_gateway || 'Razorpay'}</td>
                   <td className="py-3 font-mono font-bold">₹{o.total_amount}</td>
                   <td className="py-3">
                     <span className={`font-bold px-2.5 py-0.5 rounded-full text-[10px] ${o.status === 'delivered' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
@@ -265,6 +316,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </td>
                 </tr>
               ))}
+              {sortedOrders.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="py-6 text-center text-zinc-400">No matching orders found.</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

@@ -1377,11 +1377,16 @@ export default function AdminMainPage() {
   // Filter & Sort Wallet Transactions
   const filteredWalletTransactions = walletTransactions.filter((tx: any) => {
     const s = walletSearchTerm.toLowerCase();
+    const userObj = users.find((u: any) => u.id === tx.user_id);
+    const uName = (userObj?.name || 'Shopper').toLowerCase();
+    const uPhone = (tx.mobile_number || userObj?.phone || '').toLowerCase();
     return (
       (tx.description || '').toLowerCase().includes(s) ||
       (tx.type || '').toLowerCase().includes(s) ||
       (tx.user_id || '').toLowerCase().includes(s) ||
-      (tx.id || '').toLowerCase().includes(s)
+      (tx.id || '').toLowerCase().includes(s) ||
+      uName.includes(s) ||
+      uPhone.includes(s)
     );
   });
 
@@ -1393,6 +1398,19 @@ export default function AdminMainPage() {
     if (walletSortKey === 'amount') {
       aVal = Number(aVal) || 0;
       bVal = Number(bVal) || 0;
+    } else if (walletSortKey === 'user_name') {
+      const uA = users.find((u: any) => u.id === a.user_id)?.name || '';
+      const uB = users.find((u: any) => u.id === b.user_id)?.name || '';
+      aVal = uA.toLowerCase();
+      bVal = uB.toLowerCase();
+    } else if (walletSortKey === 'mobile_number') {
+      const pA = a.mobile_number || users.find((u: any) => u.id === a.user_id)?.phone || '';
+      const pB = b.mobile_number || users.find((u: any) => u.id === b.user_id)?.phone || '';
+      aVal = pA.toLowerCase();
+      bVal = pB.toLowerCase();
+    } else if (walletSortKey === 'date' || walletSortKey === 'created_at') {
+      aVal = new Date(a.created_at || Date.now()).getTime();
+      bVal = new Date(b.created_at || Date.now()).getTime();
     } else {
       aVal = String(aVal || '').toLowerCase();
       bVal = String(bVal || '').toLowerCase();
@@ -1985,19 +2003,27 @@ export default function AdminMainPage() {
                         <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleWalletSort('id')}>
                           Tx ID {walletSortKey === 'id' ? (walletSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
                         </th>
-                        <th className="py-2.5">User Name</th>
+                        <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleWalletSort('user_name')}>
+                          User Name {walletSortKey === 'user_name' ? (walletSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
+                        </th>
                         <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleWalletSort('user_id')}>
                           User ID {walletSortKey === 'user_id' ? (walletSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
                         </th>
-                        <th className="py-2.5">Mobile No.</th>
+                        <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleWalletSort('mobile_number')}>
+                          Mobile No. {walletSortKey === 'mobile_number' ? (walletSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
+                        </th>
                         <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleWalletSort('amount')}>
                           Amount {walletSortKey === 'amount' ? (walletSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
                         </th>
                         <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleWalletSort('type')}>
                           Type {walletSortKey === 'type' ? (walletSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
                         </th>
-                        <th className="py-2.5">Description</th>
-                        <th className="py-2.5">Date</th>
+                        <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleWalletSort('description')}>
+                          Description {walletSortKey === 'description' ? (walletSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
+                        </th>
+                        <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleWalletSort('date')}>
+                          Date {walletSortKey === 'date' ? (walletSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
+                        </th>
                         <th className="py-2.5 text-right">Actions</th>
                       </tr>
                     </thead>
@@ -2313,7 +2339,12 @@ export default function AdminMainPage() {
                       <th className="px-4 py-3 cursor-pointer hover:text-primary" onClick={() => handleReviewSort('rating')}>
                         Rating {reviewSortKey === 'rating' ? (reviewSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
                       </th>
-                      <th className="px-4 py-3">Comment</th>
+                      <th className="px-4 py-3 cursor-pointer hover:text-primary" onClick={() => handleReviewSort('comment')}>
+                        Comment {reviewSortKey === 'comment' ? (reviewSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
+                      </th>
+                      <th className="px-4 py-3 cursor-pointer hover:text-primary" onClick={() => handleReviewSort('created_at')}>
+                        Date &amp; Time {reviewSortKey === 'created_at' ? (reviewSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
+                      </th>
                       <th className="px-4 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
@@ -2327,7 +2358,7 @@ export default function AdminMainPage() {
                                             (r.comment || '').toLowerCase().includes(s);
                       return matchesTab && matchesSearch;
                     }).length === 0 ? (
-                      <tr><td colSpan={5} className="px-4 py-8 text-center text-zinc-500 font-medium">No reviews found matching criteria.</td></tr>
+                      <tr><td colSpan={6} className="px-4 py-8 text-center text-zinc-500 font-medium">No reviews found matching criteria.</td></tr>
                     ) : reviews.filter((r: any) => {
                       const matchesTab = reviewTab === 'products' ? Boolean(r.product_id) : Boolean(r.seller_id);
                       const s = reviewSearchTerm.toLowerCase();
@@ -2338,6 +2369,7 @@ export default function AdminMainPage() {
                         <td className="px-4 py-3 text-blue-600 dark:text-blue-400 font-semibold">{r.product_name || r.seller_name || 'Store / Product'}</td>
                         <td className="px-4 py-3 text-amber-500 font-extrabold flex items-center gap-1">★ {r.rating} / 5</td>
                         <td className="px-4 py-3 max-w-xs text-zinc-700 dark:text-zinc-300 font-medium">{r.comment || 'No text review.'}</td>
+                        <td className="px-4 py-3 font-mono text-zinc-500 text-[11px] whitespace-nowrap">{r.created_at ? new Date(r.created_at).toLocaleString() : new Date().toLocaleString()}</td>
                         <td className="px-4 py-3 text-right">
                           <button 
                             onClick={async () => {
@@ -2398,7 +2430,12 @@ export default function AdminMainPage() {
                       <th className="px-4 py-3 cursor-pointer hover:text-primary" onClick={() => handleMsgSort('subject')}>
                         Subject {msgSortKey === 'subject' ? (msgSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
                       </th>
-                      <th className="px-4 py-3">Content</th>
+                      <th className="px-4 py-3 cursor-pointer hover:text-primary" onClick={() => handleMsgSort('content')}>
+                        Content {msgSortKey === 'content' ? (msgSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
+                      </th>
+                      <th className="px-4 py-3 cursor-pointer hover:text-primary" onClick={() => handleMsgSort('created_at')}>
+                        Date &amp; Time {msgSortKey === 'created_at' ? (msgSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
+                      </th>
                       <th className="px-4 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
@@ -2410,7 +2447,7 @@ export default function AdminMainPage() {
                              (m.subject || '').toLowerCase().includes(s) || 
                              (m.content || '').toLowerCase().includes(s);
                     }).length === 0 ? (
-                      <tr><td colSpan={5} className="px-4 py-8 text-center text-zinc-500 font-medium">No messages found.</td></tr>
+                      <tr><td colSpan={6} className="px-4 py-8 text-center text-zinc-500 font-medium">No messages found.</td></tr>
                     ) : messages.filter((m: any) => {
                       const s = msgSearchTerm.toLowerCase();
                       return (m.sender_name || '').toLowerCase().includes(s) || (m.receiver_name || '').toLowerCase().includes(s) || (m.subject || '').toLowerCase().includes(s) || (m.content || '').toLowerCase().includes(s);
@@ -2420,6 +2457,7 @@ export default function AdminMainPage() {
                         <td className="px-4 py-3 font-bold">{m.receiver_name || 'Bupzo Patron'}</td>
                         <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300 font-bold">{m.subject || 'Message Notice'}</td>
                         <td className="px-4 py-3 max-w-xs text-zinc-600 dark:text-zinc-400 font-medium truncate">{m.content}</td>
+                        <td className="px-4 py-3 font-mono text-zinc-500 text-[11px] whitespace-nowrap">{m.created_at ? new Date(m.created_at).toLocaleString() : new Date().toLocaleString()}</td>
                         <td className="px-4 py-3 text-right">
                           <button 
                             onClick={async () => {

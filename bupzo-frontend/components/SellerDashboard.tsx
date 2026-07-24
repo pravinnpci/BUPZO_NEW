@@ -81,7 +81,7 @@ export function SellerDashboard({ onSwitchToCustomer }: { onSwitchToCustomer?: (
       const notifResp = await fetch(`${API_URL}/api/notifications/?user_id=${user?.id}`).catch(() => null);
       if(notifResp && notifResp.ok) notifResp.json().then(d => setNotifications(Array.isArray(d) ? d : []));
 
-      const activeSellerId = mySeller?.id || sId || 'd9c0ed8a-5c73-4fe9-80dc-4a7549432714';
+      const activeSellerId = mySeller?.id || sId || (allSellers[0]?.id || '4b7a2edb-b4dd-4677-9d48-df90952297bf');
       setMySellerId(activeSellerId);
       setMySellerStatus('APPROVED');
       
