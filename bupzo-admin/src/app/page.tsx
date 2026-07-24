@@ -1340,10 +1340,13 @@ export default function AdminMainPage() {
   // Filter & Sort Coupons
   const filteredCoupons = coupons.filter((cp: any) => {
     const s = voucherSearchTerm.toLowerCase();
+    const isExpired = new Date(cp.expiry_date).getTime() < new Date().getTime();
+    const expiryStatusText = isExpired ? 'expired' : 'active';
     return (
       (cp.code || '').toLowerCase().includes(s) ||
       (cp.status || '').toLowerCase().includes(s) ||
-      (cp.id || '').toLowerCase().includes(s)
+      (cp.id || '').toLowerCase().includes(s) ||
+      expiryStatusText.includes(s)
     );
   });
 
@@ -1352,9 +1355,15 @@ export default function AdminMainPage() {
     let aVal = a[voucherSortKey];
     let bVal = b[voucherSortKey];
 
-    if (voucherSortKey === 'discount_percent' || voucherSortKey === 'min_order_value') {
+    if (voucherSortKey === 'expiry_status') {
+      aVal = new Date(a.expiry_date).getTime() < new Date().getTime() ? 'expired' : 'active';
+      bVal = new Date(b.expiry_date).getTime() < new Date().getTime() ? 'expired' : 'active';
+    } else if (voucherSortKey === 'discount_percent' || voucherSortKey === 'min_order_value') {
       aVal = Number(aVal) || 0;
       bVal = Number(bVal) || 0;
+    } else if (voucherSortKey === 'expiry_date') {
+      aVal = new Date(aVal || 0).getTime();
+      bVal = new Date(bVal || 0).getTime();
     } else {
       aVal = String(aVal || '').toLowerCase();
       bVal = String(bVal || '').toLowerCase();
@@ -2623,6 +2632,9 @@ export default function AdminMainPage() {
                           <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleVoucherSort('expiry_date')}>
                             Expiry Date {voucherSortKey === 'expiry_date' ? (voucherSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
                           </th>
+                          <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleVoucherSort('expiry_status')}>
+                            Expiry Status {voucherSortKey === 'expiry_status' ? (voucherSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
+                          </th>
                           <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleVoucherSort('is_premium_only')}>
                             Premium Only {voucherSortKey === 'is_premium_only' ? (voucherSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
                           </th>
@@ -2633,7 +2645,9 @@ export default function AdminMainPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {sortedCoupons.map((cp: any) => (
+                        {sortedCoupons.map((cp: any) => {
+                          const isExpired = new Date(cp.expiry_date).getTime() < new Date().getTime();
+                          return (
                           <tr key={cp.id} className="border-b border-zinc-100 dark:border-zinc-905">
                             <td 
                               className="py-3 font-semibold text-[#3874ff] cursor-pointer hover:underline"
@@ -2644,6 +2658,11 @@ export default function AdminMainPage() {
                             <td className="py-3 font-mono">{cp.discount_percent}%</td>
                             <td className="py-3 font-mono">₹{cp.min_order_value}</td>
                             <td className="py-3 text-zinc-500">{new Date(cp.expiry_date).toLocaleDateString()}</td>
+                            <td className="py-3">
+                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${isExpired ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'}`}>
+                                {isExpired ? 'EXPIRED' : 'ACTIVE'}
+                              </span>
+                            </td>
                             <td className="py-3">
                               <span className={`px-2 py-0.5 rounded font-bold ${cp.is_premium_only ? 'bg-amber-100/10 text-amber-500' : 'bg-green-100/10 text-green-500'}`}>
                                 {cp.is_premium_only ? 'Yes' : 'No'}
@@ -2700,10 +2719,11 @@ export default function AdminMainPage() {
                               </div>
                             </td>
                           </tr>
-                        ))}
+                        );
+                      })}
                         {coupons.length === 0 && (
                           <tr>
-                            <td colSpan={7} className="py-6 text-center text-zinc-400">No active systemwide promo vouchers found.</td>
+                            <td colSpan={8} className="py-6 text-center text-zinc-400">No active systemwide promo vouchers found.</td>
                           </tr>
                         )}
                       </tbody>
