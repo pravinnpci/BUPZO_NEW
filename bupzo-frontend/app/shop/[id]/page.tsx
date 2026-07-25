@@ -385,9 +385,9 @@ export default function SellerShopPage() {
               <p className="text-xs text-emerald-800 font-bold mt-1">Verified Customer Store Rating</p>
             </div>
 
-            <div className="space-y-3 max-h-64 overflow-y-auto text-xs">
+            <div className="space-y-3 max-h-60 overflow-y-auto text-xs">
               {storeReviews.length === 0 ? (
-                <p className="text-center text-gray-500 italic py-4">No reviews recorded yet for this merchant.</p>
+                <p className="text-center text-gray-500 italic py-3">No reviews recorded yet for this merchant.</p>
               ) : (
                 storeReviews.map((r, idx) => (
                   <div key={r.id || idx} className="p-3 border rounded-lg bg-gray-50 space-y-1">
@@ -401,6 +401,53 @@ export default function SellerShopPage() {
                 ))
               )}
             </div>
+
+            {/* Write a Review Form */}
+            <form 
+              onSubmit={async (e) => {
+                e.preventDefault();
+                let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+                apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
+                try {
+                  const firstProdId = products[0]?.id || 'p-1';
+                  const res = await fetch(`${apiUrl}/api/reviews/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      user_id: user?.id || 'a01b1234-5678-abcd-ef01-1234567890aa',
+                      product_id: firstProdId,
+                      rating: newRating,
+                      comment: newComment || 'Great store and products!'
+                    })
+                  });
+                  if (res.ok) {
+                    alert("Thank you for your feedback!");
+                    setNewComment('');
+                    loadFollowersAndReviews();
+                  }
+                } catch(err) { alert("Failed to submit review"); }
+              }}
+              className="pt-3 border-t space-y-2"
+            >
+              <h4 className="font-bold text-xs text-gray-800">Write a Review for Store</h4>
+              <div className="flex items-center gap-2">
+                <select value={newRating} onChange={e => setNewRating(Number(e.target.value))} className="border rounded p-1.5 text-xs font-bold bg-gray-50">
+                  <option value={5}>5 ★ - Excellent</option>
+                  <option value={4}>4 ★ - Very Good</option>
+                  <option value={3}>3 ★ - Good</option>
+                  <option value={2}>2 ★ - Average</option>
+                  <option value={1}>1 ★ - Poor</option>
+                </select>
+                <input 
+                  type="text" 
+                  value={newComment}
+                  onChange={e => setNewComment(e.target.value)}
+                  placeholder="Share your experience..." 
+                  className="flex-1 border rounded p-1.5 text-xs outline-none focus:border-[#23bb75]"
+                />
+                <button type="submit" className="bg-[#23bb75] hover:bg-emerald-600 text-white font-bold px-3 py-1.5 rounded text-xs transition">Submit</button>
+              </div>
+            </form>
           </div>
         </div>
       )}

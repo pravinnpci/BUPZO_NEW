@@ -362,7 +362,7 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, onA
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                          user_id: user.id,
+                          user_id: user?.id || 'a01b1234-5678-abcd-ef01-1234567890aa',
                           product_id: product.id,
                           rating,
                           comment,
@@ -371,10 +371,12 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, onA
                       });
                       if (res.ok) {
                         const newRev = await res.json();
-                        setReviews([newRev, ...reviews]);
+                        setReviews(prev => [newRev, ...prev]);
+                        alert("Thank you! Your review has been submitted successfully.");
+                        form.reset();
                         setStats((prev: any) => {
                           const oldRatings = prev?.total_ratings || 0;
-                          const oldAvg = parseFloat(prev?.average_rating || '0');
+                          const oldAvg = parseFloat(prev?.average_rating || '4.5');
                           const newRatings = oldRatings + 1;
                           const newAvg = ((oldAvg * oldRatings + rating) / newRatings).toFixed(1);
                           return {
