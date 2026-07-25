@@ -15,60 +15,6 @@ interface ProductPreviewModalProps {
 export default function ProductPreviewModal({ product, onClose, onAddToCart, onAddToWishlist, onBuyNow, isWishlisted = false }: ProductPreviewModalProps) {
   const { user } = useUser();
   const cartStore = useCartStore();
-  const [activeImage, setActiveImage] = useState(product.image_url || 'https://placehold.co/400/png');
-  const [referralLink, setReferralLink] = useState('');
-  const [reviews, setReviews] = useState<any[]>([]);
-  const [loadingReviews, setLoadingReviews] = useState(true);
-  const [selectedSize, setSelectedSize] = useState<string>('Double');
-  const [sellerName, setSellerName] = useState<string>('Seller');
-  const [stats, setStats] = useState<any>(null);
-  const [localWishlisted, setLocalWishlisted] = useState<boolean>(isWishlisted);
-
-  useEffect(() => {
-    const fetchReviewsAndStats = async () => {
-      try {
-        const [reviewsResp, statsResp] = await Promise.all([
-          fetch(`${API_BASE_URL}/api/reviews/?product_id=${product.id}`),
-          fetch(`${API_BASE_URL}/api/products/${product.id}/stats`)
-        ]);
-        if (reviewsResp.ok) {
-          setReviews(await reviewsResp.json());
-        }
-        if (statsResp.ok) {
-          setStats(await statsResp.json());
-        }
-      } catch (e) {
-        console.warn("Failed to load reviews/stats", e);
-      } finally {
-        setLoadingReviews(false);
-      }
-    };
-    fetchReviewsAndStats();
-    
-    const fetchSeller = async () => {
-      if (!product.seller_id || product.seller_id === 'undefined') return;
-      try {
-        const resp = await fetch(`${API_BASE_URL}/api/sellers/${product.seller_id}`);
-        if (resp.ok) {
-          const data = await resp.json();
-          if (data.business_name) setSellerName(data.business_name);
-        }
-      } catch (e) {}
-    }
-    fetchSeller();
-  }, [product.id, product.seller_id]);
-
-  const generateReferralLink = () => {
-    if (!user) {
-      alert("Please sign in to generate a referral link.");
-      return;
-    }
-    const link = `${window.location.origin}/product/${product.id}?ref=${user.id}`;
-    setReferralLink(link);
-    navigator.clipboard.writeText(link);
-    alert("Referral link copied to clipboard!");
-  };
-
   let parsedImages: string[] = [];
   try {
     if (product.images && typeof product.images === 'string') parsedImages = JSON.parse(product.images);
@@ -82,6 +28,36 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, onA
       parsedImages = [product.image_url];
     }
   }
+
+  const initialMainImage = parsedImages.find(img => img && img.startsWith('http')) 
+    || (product.image_url && product.image_url.startsWith('http') ? product.image_url : null)
+    || (product.name?.toLowerCase().includes('halwa') || product.name?.toLowerCase().includes('sweet') ? 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=500&auto=format&fit=crop' : 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop');
+
+  const [activeImage, setActiveImage] = useState(initialMainImage);
+  const [referralLink, setReferralLink] = useState('');
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [loadingReviews, setLoadingReviews] = useState(true);
+  const [selectedSize, setSelectedSize] = useState<string>('Double');
+  const [sellerName, setSellerName] = useState<string>('Seller');
+  const [stats, setStats] = useState<any>(null);
+  const [localWishlisted, setLocalWishlisted] = useState<boolean>(isWishlisted);
+
+  useEffect(() => {
+    if (initialMainImage) {
+      setActiveImage(initialMainImage);
+    }
+  }, [product.id, initialMainImage]);
+
+  const generateReferralLink = () => {
+    if (!user) {
+      alert("Please sign in to generate a referral link.");
+      return;
+    }
+    const link = `${window.location.origin}/product/${product.id}?ref=${user.id}`;
+    setReferralLink(link);
+    navigator.clipboard.writeText(link);
+    alert("Referral link copied to clipboard!");
+  };
 
   const images = parsedImages.slice(0, 4);
   
@@ -141,7 +117,12 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, onA
             </div>
             {/* Main Image */}
             <div className="flex-1 relative border border-gray-100 rounded flex items-center justify-center min-h-[350px] p-2">
-              <img src={activeImage} alt={product.name} className="w-full h-auto max-h-[450px] object-contain mix-blend-multiply dark:mix-blend-normal" />
+              <img 
+                src={activeImage || initialMainImage} 
+                onError={(e) => { e.currentTarget.src = initialMainImage; }} 
+                alt={product.name} 
+                className="w-full h-auto max-h-[450px] object-contain" 
+              />
             </div>
           </div>
           

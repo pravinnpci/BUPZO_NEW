@@ -6,6 +6,7 @@ import { AdminDashboard } from '@/components/AdminDashboard';
 import { AdminUsers } from '@/components/AdminUsers';
 import { AdminProducts } from '@/components/AdminProducts';
 import { AdminSellers } from '@/components/AdminSellers';
+import { AdminFollowers } from '@/components/AdminFollowers';
 
 // Mock Data removed
 
@@ -1586,6 +1587,17 @@ export default function AdminMainPage() {
                 {!isSidebarReduced && <span className="text-sm font-semibold">Merchant Directory</span>}
               </button>
             </li>
+
+            <li>
+              <button 
+                onClick={() => { setActiveTab('followers'); setIsAdminSidebarOpen(false); }} 
+                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2 rounded-full transition-all duration-250 ${activeTab === 'followers' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                title="Followers Management"
+              >
+                <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: activeTab === 'followers' ? "'FILL' 1" : "'FILL' 0" }}>person_add</span>
+                {!isSidebarReduced && <span className="text-sm font-semibold">Followers Management</span>}
+              </button>
+            </li>
             
             <li>
               <button 
@@ -1832,6 +1844,14 @@ export default function AdminMainPage() {
               onDeleteSeller={handleDeleteSeller}
               onUpdateSeller={handleUpdateSeller}
               onCreateSeller={handleCreateSeller}
+            />
+          )}
+
+          {/* TAB: FOLLOWERS MANAGEMENT */}
+          {activeTab === 'followers' && (
+            <AdminFollowers 
+              sellers={sellers}
+              users={users}
             />
           )}
 

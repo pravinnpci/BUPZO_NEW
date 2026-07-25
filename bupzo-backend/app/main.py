@@ -2691,6 +2691,31 @@ async def unfollow_seller(seller_id: str, user_id: str):
         except Exception as e:
             return {"success": True, "message": "Store unfollowed"}
 
+@app.get("/api/sellers/all-followers")
+async def get_all_followers():
+    async with pool.acquire() as conn:
+        try:
+            rows = await conn.fetch(
+                """
+                SELECT 
+                    sf.id::text as id,
+                    sf.user_id::text as user_id,
+                    sf.seller_id::text as seller_id,
+                    COALESCE(u.name, 'Customer Shopper') as user_name,
+                    COALESCE(u.email, 'customer@bupzo.com') as user_email,
+                    COALESCE(u.phone, '+91 98765 43210') as user_phone,
+                    COALESCE(s.business_name, 'Merchant Store') as seller_name,
+                    sf.created_at::text as created_at
+                FROM seller_followers sf
+                LEFT JOIN users u ON sf.user_id = u.id
+                LEFT JOIN sellers s ON sf.seller_id = s.id
+                ORDER BY sf.created_at DESC
+                """
+            )
+            return [dict(r) for r in rows]
+        except Exception:
+            return []
+
 @app.get("/api/users/{user_id}/followed-sellers")
 async def get_user_followed_sellers(user_id: str):
     async with pool.acquire() as conn:

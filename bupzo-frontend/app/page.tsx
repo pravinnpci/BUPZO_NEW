@@ -855,6 +855,9 @@ export default function Home() {
                 window.history.replaceState({}, '', url.toString());
               }
               setCustomerTab(tab as any);
+              if (tab === 'messages') {
+                setUnreadMsgs(0);
+              }
             }}
             onAuthClick={() => setIsAuthModalOpen(true)}
             onCartClick={() => setShowCart(true)}
