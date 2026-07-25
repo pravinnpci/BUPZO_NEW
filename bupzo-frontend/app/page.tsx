@@ -790,7 +790,7 @@ export default function Home() {
   }
 
   return (
-    <div className={`${mountedTheme === 'dark' ? 'dark bg-[#0f111a] text-[#e3e6ed]' : 'bg-[#f9fbfd] text-[#141824]'} min-h-screen font-sans transition-colors duration-300 flex w-full`}>
+    <div className={`${mountedTheme === 'dark' ? 'dark bg-[#0f111a] text-[#e3e6ed]' : 'bg-[#f9fbfd] text-[#141824]'} min-h-screen font-sans transition-colors duration-300 flex flex-col w-full`}>
       {/* Top Controls -> Moved to Bottom to fix UI overlap */}
       <div className="fixed bottom-4 right-4 z-50 flex space-x-2">
         <button
