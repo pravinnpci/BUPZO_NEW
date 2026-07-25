@@ -19,6 +19,7 @@ import { CustomerShops } from '@/components/CustomerShops';
 import { Navbar } from '@/components/Navbar';
 import SellerKYCModal from '@/components/SellerKYCModal';
 import ProductPreviewModal from '@/components/ProductPreviewModal';
+import Footer from '@/components/Footer';
 
 export default function Home() {
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
@@ -1122,6 +1123,7 @@ export default function Home() {
         </div>
       )}
 
+      <Footer />
     </div>
   );
 }

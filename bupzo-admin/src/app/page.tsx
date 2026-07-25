@@ -1526,9 +1526,12 @@ export default function AdminMainPage() {
       )}
       <aside className={`fixed inset-y-0 left-0 ${isSidebarReduced ? 'md:w-20' : 'md:w-[280px]'} w-[280px] z-50 shadow-lg bg-white dark:bg-[#0f111a] flex flex-col h-full py-6 px-4 border-r border-gray-200 dark:border-gray-800 transition-all duration-300 ease-in-out transform ${isAdminSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:static`}>
         <div className="flex items-center justify-between mb-8 px-2">
-          <h2 className="text-xl font-extrabold text-blue-700 dark:text-blue-400 tracking-tight">
-            {isSidebarReduced ? 'BUP' : 'BUPZO ADMIN'}
-          </h2>
+          <div className="flex items-center gap-2.5">
+            <img src="/Bupzo-logo.png" alt="Bupzo Logo" className="w-8 h-8 object-contain rounded-lg" />
+            <h2 className="text-xl font-extrabold text-blue-700 dark:text-blue-400 tracking-tight">
+              {isSidebarReduced ? 'BUP' : 'BUPZO ADMIN'}
+            </h2>
+          </div>
           <button 
             onClick={() => setIsAdminSidebarOpen(false)}
             className="text-gray-600 dark:text-gray-400 p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full flex items-center justify-center transition-colors md:hidden"

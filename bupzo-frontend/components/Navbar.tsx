@@ -71,8 +71,9 @@ export function Navbar({
 
       {/* Main Header */}
       <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-6">
-        <div className="flex items-center cursor-pointer" onClick={() => onTabChange('home')}>
-           <span className="text-3xl font-extrabold tracking-tighter text-[#e52e06]">BUPZO</span>
+        <div className="flex items-center gap-2 cursor-pointer" onClick={() => onTabChange('home')}>
+           <img src="/Bupzo-logo.png" alt="Bupzo Logo" className="h-10 w-auto object-contain rounded-xl" />
+           <span className="text-2xl font-extrabold tracking-tighter text-[#e52e06] hidden sm:inline">BUPZO</span>
         </div>
 
         {/* Search Bar (Sprylo Style) */}
