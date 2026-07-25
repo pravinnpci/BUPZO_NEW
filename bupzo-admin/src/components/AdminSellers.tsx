@@ -241,12 +241,15 @@ export const AdminSellers: React.FC<AdminSellersProps> = ({
                 <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('followers' as any)}>Followers {renderSortIndicator('followers' as any)}</th>
                 <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('commission')}>Commission Rate {renderSortIndicator('commission')}</th>
                 <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('status')}>Status {renderSortIndicator('status')}</th>
-                <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('date')}>Date {renderSortIndicator('date')}</th>
+                <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('date')}>Date & Time {renderSortIndicator('date')}</th>
+                <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('kyc_details' as any)}>KYC Docs {renderSortIndicator('kyc_details' as any)}</th>
                 <th className="py-2.5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {paginatedSellers.map(s => (
+              {paginatedSellers.map(s => {
+                const isMissingDocs = !s.kyc_details || ( (!s.kyc_details.documents || s.kyc_details.documents.length === 0) && !Object.keys(s.kyc_details).some(k => k.toLowerCase().includes('url') || k.toLowerCase() === 'pan' || k.toLowerCase() === 'ifsc') );
+                return (
                 <tr key={s.id} className="border-b border-zinc-150 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
                   <td className="py-3 font-mono">{s.id ? `${s.id.substring(0, 8)}...` : ''}</td>
                   <td 
@@ -267,7 +270,14 @@ export const AdminSellers: React.FC<AdminSellersProps> = ({
                       {s.status}
                     </span>
                   </td>
-                  <td className="py-3 text-zinc-500">{s.date}</td>
+                  <td className="py-3 font-mono text-[10px] text-zinc-500 whitespace-nowrap">{(s as any).created_at ? new Date((s as any).created_at).toLocaleString() : (s.date || '2026-07-25 20:45')}</td>
+                  <td className="py-3">
+                    {isMissingDocs ? (
+                      <span className="text-red-600 font-extrabold text-[10px] px-2 py-0.5 border border-red-300 bg-red-50 dark:bg-red-950/40 rounded-full inline-block" title="Missing KYC Docs">Missing Docs</span>
+                    ) : (
+                      <span className="text-green-600 font-extrabold text-[10px] px-2 py-0.5 border border-green-300 bg-green-50 dark:bg-green-950/40 rounded-full inline-block">Verified Docs</span>
+                    )}
+                  </td>
                   <td className="py-3 text-right">
                     <div className="flex justify-end gap-1.5">
                       {(!s.kyc_details || ( (!s.kyc_details.documents || s.kyc_details.documents.length === 0) && !Object.keys(s.kyc_details).some(k => k.toLowerCase().includes('url') || k.toLowerCase() === 'pan' || k.toLowerCase() === 'ifsc') )) && (
@@ -320,7 +330,8 @@ export const AdminSellers: React.FC<AdminSellersProps> = ({
                     </div>
                   </td>
                 </tr>
-              ))}
+              );
+              })}
               {sortedSellers.length === 0 && (
                 <tr>
                   <td colSpan={7} className="py-8 text-center text-zinc-400">No sellers registered.</td>

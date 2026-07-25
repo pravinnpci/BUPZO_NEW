@@ -226,7 +226,7 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
             {/* Background Bupzo Branding Video / Promo Visual */}
             <div className="absolute inset-0 z-0 opacity-85">
               <video 
-                src="https://assets.mixkit.co/videos/preview/mixkit-shopping-fun-in-a-clothing-store-40845-large.mp4" 
+                src="/bupzo-gif.mp4" 
                 autoPlay 
                 loop 
                 muted 
