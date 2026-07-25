@@ -96,7 +96,7 @@ export function CustomerShops({ onSelectShop, onRequireAuth }: CustomerShopsProp
           {sellers.map((seller) => {
             const ratingVal = seller.rating ? Number(seller.rating).toFixed(1) : '4.5';
             const reviewCountVal = seller.review_count !== undefined ? seller.review_count : 0;
-            const followersCountVal = seller.followers_count !== undefined ? seller.followers_count : 0;
+            const followersCountVal = seller.followers_count ?? seller.followers ?? 0;
             const isFollowing = !!followedSellers[seller.id];
 
             return (

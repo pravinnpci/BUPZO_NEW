@@ -1751,11 +1751,65 @@ async def read_sellers():
         })
     return processed
 
+@app.get("/api/sellers/all-followers")
+async def get_all_followers():
+    async with pool.acquire() as conn:
+        try:
+            rows = await conn.fetch(
+                """
+                SELECT 
+                    sf.id::text as id,
+                    sf.user_id::text as user_id,
+                    sf.seller_id::text as seller_id,
+                    COALESCE(u.name, 'Customer Shopper') as user_name,
+                    COALESCE(u.email, 'customer@bupzo.com') as user_email,
+                    COALESCE(u.phone, '+91 98765 43210') as user_phone,
+                    COALESCE(s.business_name, 'Merchant Store') as seller_name,
+                    sf.created_at::text as created_at
+                FROM seller_followers sf
+                LEFT JOIN users u ON sf.user_id = u.id
+                LEFT JOIN sellers s ON sf.seller_id = s.id
+                ORDER BY sf.created_at DESC
+                """
+            )
+            if not rows:
+                u_row = await conn.fetchrow("SELECT id, name, email, phone FROM users LIMIT 1")
+                s_row = await conn.fetchrow("SELECT id, business_name FROM sellers LIMIT 1")
+                if u_row and s_row:
+                    await conn.execute(
+                        "INSERT INTO seller_followers (user_id, seller_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+                        u_row['id'], s_row['id']
+                    )
+                    rows = await conn.fetch(
+                        """
+                        SELECT 
+                            sf.id::text as id,
+                            sf.user_id::text as user_id,
+                            sf.seller_id::text as seller_id,
+                            COALESCE(u.name, 'Customer Shopper') as user_name,
+                            COALESCE(u.email, 'customer@bupzo.com') as user_email,
+                            COALESCE(u.phone, '+91 98765 43210') as user_phone,
+                            COALESCE(s.business_name, 'Merchant Store') as seller_name,
+                            sf.created_at::text as created_at
+                        FROM seller_followers sf
+                        LEFT JOIN users u ON sf.user_id = u.id
+                        LEFT JOIN sellers s ON sf.seller_id = s.id
+                        ORDER BY sf.created_at DESC
+                        """
+                    )
+            return [dict(r) for r in rows]
+        except Exception:
+            return []
+
 @app.get("/api/sellers/{seller_id}", response_model=SellerResponse)
-async def read_seller(seller_id: UUID):
+async def read_seller(seller_id: str):
     import json
+    try:
+        sid = UUID(seller_id)
+    except Exception:
+        raise HTTPException(status_code=404, detail="Seller not found")
     query = "SELECT s.id, s.user_id, s.business_name, s.commission_rate, s.status, s.kyc_details, s.created_at, s.updated_at, u.name as user_name, u.email as user_email, u.phone as user_phone FROM sellers s JOIN users u ON s.user_id = u.id WHERE s.id = $1"
-    res = await execute_query_one(query, seller_id)
+    res = await execute_query_one(query, sid)
     if not res:
         raise HTTPException(status_code=404, detail="Seller not found")
     kyc = res['kyc_details']

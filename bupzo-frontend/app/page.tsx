@@ -147,6 +147,15 @@ export default function Home() {
       setIsSidebarReduced(reduced);
     } catch (e) {}
 
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab');
+      if (tabParam && ['home', 'categories', 'orders', 'wallet', 'wishlist', 'kyc', 'settings', 'messages', 'shops', 'pricing', 'invoices', 'faq'].includes(tabParam)) {
+        setCustomerTab(tabParam as any);
+        if (tabParam === 'messages') setUnreadMsgs(0);
+      }
+    }
+
     const handleReturn = () => setUserRole('customer');
     window.addEventListener('returnToStorefront', handleReturn);
     return () => window.removeEventListener('returnToStorefront', handleReturn);
