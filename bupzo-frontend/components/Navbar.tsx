@@ -8,6 +8,7 @@ type NavbarProps = {
   cartCount?: number;
   wishlistCount?: number;
   unreadMsgs?: number;
+  categories?: any[];
 };
 
 export function Navbar({ 
@@ -16,14 +17,24 @@ export function Navbar({
   onCartClick = () => {}, 
   cartCount = 0, 
   wishlistCount = 0, 
-  unreadMsgs = 0 
+  unreadMsgs = 0,
+  categories: initialCategories = []
 }: NavbarProps) {
   const { user, clearUser } = useUser();
   const [mounted, setMounted] = React.useState(false);
+  const [dbCategories, setDbCategories] = React.useState<any[]>(initialCategories);
 
   React.useEffect(() => {
     setMounted(true);
+    let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+    apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
+    fetch(`${apiUrl}/api/categories`)
+      .then(res => res.ok ? res.json() : [])
+      .then(data => { if (Array.isArray(data) && data.length > 0) setDbCategories(data); })
+      .catch(console.error);
   }, []);
+
+  const categories = dbCategories.length > 0 ? dbCategories : initialCategories;
 
   return (
     <div className="w-full bg-white shadow-sm font-sans sticky top-0 z-50">
@@ -78,10 +89,14 @@ export function Navbar({
 
         {/* Search Bar (Sprylo Style) */}
         <div className="flex-1 max-w-2xl hidden md:flex border-2 border-[#e52e06] rounded-full overflow-hidden items-center h-12 relative">
-           <select className="h-full px-4 border-r border-gray-200 bg-gray-50 text-sm outline-none cursor-pointer text-gray-600 font-medium">
-             <option>All Categories</option>
-             <option>Electronics</option>
-             <option>Fashion</option>
+           <select 
+             onChange={(e) => onTabChange && onTabChange('categories')}
+             className="h-full px-4 border-r border-gray-200 bg-gray-50 text-sm outline-none cursor-pointer text-gray-700 font-bold"
+           >
+             <option value="all">All Categories</option>
+             {categories && categories.map((cat: any) => (
+               <option key={cat.id || cat.name} value={cat.id || cat.name}>{cat.name}</option>
+             ))}
            </select>
            <input type="text" placeholder="Search products..." className="flex-1 h-full px-4 outline-none text-sm" />
            <button className="h-full px-6 bg-[#e52e06] text-white hover:bg-[#cc2805] transition flex items-center justify-center">

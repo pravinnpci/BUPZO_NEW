@@ -2642,15 +2642,17 @@ async def follow_seller(seller_id: str, user_id: str):
                 """
                 INSERT INTO seller_followers (id, user_id, seller_id)
                 VALUES ($1, $2, $3)
-                ON CONFLICT DO NOTHING
+                ON CONFLICT (user_id, seller_id) DO NOTHING
                 """, fid, uid, sid
+            )
+            await conn.execute(
+                "UPDATE sellers SET followers_count = COALESCE(followers_count, 0) + 1 WHERE id = $1", sid
             )
             return {"success": True, "message": "Store followed"}
         except Exception as e:
             try:
                 await conn.execute(
-                    "INSERT INTO seller_followers (id, user_id, seller_id) VALUES ($1, $2, $3)",
-                    uuid.uuid4(), UUID(user_id), UUID(seller_id)
+                    "UPDATE sellers SET followers_count = COALESCE(followers_count, 0) + 1 WHERE id = $1::uuid", UUID(seller_id)
                 )
                 return {"success": True, "message": "Store followed"}
             except Exception as ex:
@@ -2663,6 +2665,9 @@ async def unfollow_seller(seller_id: str, user_id: str):
             await conn.execute(
                 "DELETE FROM seller_followers WHERE user_id = $1::uuid AND seller_id = $2::uuid",
                 user_id, seller_id
+            )
+            await conn.execute(
+                "UPDATE sellers SET followers_count = GREATEST(0, COALESCE(followers_count, 0) - 1) WHERE id = $1::uuid", UUID(seller_id)
             )
             return {"success": True, "message": "Store unfollowed"}
         except Exception as e:

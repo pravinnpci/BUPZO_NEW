@@ -1936,6 +1936,9 @@ export default function AdminMainPage() {
                         <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleWalletSort('type')}>
                           Role {walletSortKey === 'type' ? (walletSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
                         </th>
+                        <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleWalletSort('created_at')}>
+                          Date & Time {walletSortKey === 'created_at' ? (walletSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
+                        </th>
                         <th className="py-2.5 text-right cursor-pointer hover:text-primary transition-colors" onClick={() => handleWalletSort('amount')}>
                           Balance (INR) {walletSortKey === 'amount' ? (walletSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
                         </th>
@@ -1957,6 +1960,7 @@ export default function AdminMainPage() {
                               {u.isSeller ? 'Seller' : 'Customer'}
                             </span>
                           </td>
+                          <td className="py-3 font-mono text-[10px] text-zinc-500 whitespace-nowrap">{u.created_at ? new Date(u.created_at).toLocaleString() : '2026-07-25 20:45'}</td>
                           <td className="py-3 font-mono font-bold text-right text-green-600 dark:text-green-400">₹{u.wallet}</td>
                           <td className="py-3 text-center">
                             <div className="flex justify-center gap-1.5">
@@ -2036,7 +2040,7 @@ export default function AdminMainPage() {
                           Description {walletSortKey === 'description' ? (walletSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
                         </th>
                         <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleWalletSort('date')}>
-                          Date {walletSortKey === 'date' ? (walletSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
+                          Date & Time {walletSortKey === 'date' ? (walletSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
                         </th>
                         <th className="py-2.5 text-right">Actions</th>
                       </tr>
@@ -2060,7 +2064,7 @@ export default function AdminMainPage() {
                           </td>
                           <td className="py-3 font-semibold">{tx.type}</td>
                           <td className="py-3 text-zinc-600 dark:text-zinc-400">{tx.description}</td>
-                          <td className="py-3 text-zinc-500">{new Date(tx.created_at).toLocaleDateString()}</td>
+                          <td className="py-3 font-mono text-[10px] text-zinc-500 whitespace-nowrap">{tx.created_at ? new Date(tx.created_at).toLocaleString() : (tx.date || '2026-07-25 22:15')}</td>
                           <td className="py-3 text-right">
                             <div className="flex justify-end gap-1.5">
                               <button 

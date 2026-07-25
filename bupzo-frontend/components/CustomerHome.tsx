@@ -88,11 +88,19 @@ export function CustomerHome({
                  {/* Product Image Box */}
                  <div className="bg-white rounded h-[220px] mb-4 flex items-center justify-center p-4 relative overflow-hidden">
                     <img 
-                      src={product.image_url} 
-                      onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&auto=format&fit=crop' }}
-                      alt={product.name} 
-                      className="w-full h-full object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-300" 
-                    />
+                       src={
+                         product.image_url && product.image_url.startsWith('http') 
+                           ? product.image_url 
+                           : (product.name?.toLowerCase().includes('halwa') || product.name?.toLowerCase().includes('sweet') || product.name?.toLowerCase().includes('dry') || product.category_name?.toLowerCase().includes('nagore'))
+                           ? 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=500&auto=format&fit=crop'
+                           : (product.name?.toLowerCase().includes('headphone') || product.name?.toLowerCase().includes('tesss') || product.name?.toLowerCase().includes('wrewrew') || product.category_name?.toLowerCase().includes('electronic'))
+                           ? 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop'
+                           : 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=500&auto=format&fit=crop'
+                       } 
+                       onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=500&auto=format&fit=crop' }}
+                       alt={product.name} 
+                       className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300" 
+                     />
                     {/* Hover Actions Overlay */}
                     <div className="absolute inset-0 bg-black/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition duration-300">
                        <button 
