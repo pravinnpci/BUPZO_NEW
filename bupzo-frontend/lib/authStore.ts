@@ -13,6 +13,9 @@ interface User {
   isAdmin?: boolean;
   address?: string;
   pincode?: string;
+  address_lat?: number;
+  address_lng?: number;
+  is_2fa_enabled?: boolean;
   avatar_url?: string;
   is_premium?: boolean;
   signup_platform?: string;
@@ -62,6 +65,9 @@ const normalizeUser = (user: any): User | null => {
     seller_status: user.seller_status || undefined,
     address: user.address,
     pincode: user.pincode,
+    address_lat: user.address_lat ? Number(user.address_lat) : undefined,
+    address_lng: user.address_lng ? Number(user.address_lng) : undefined,
+    is_2fa_enabled: user.is_2fa_enabled ?? false,
   };
 };
 

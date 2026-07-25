@@ -2,15 +2,22 @@ import React from 'react';
 import { useUser } from '@/lib/authStore';
 
 type NavbarProps = {
-  onTabChange: (tab: string) => void;
-  onAuthClick: () => void;
-  onCartClick: () => void;
-  cartCount: number;
-  wishlistCount: number;
-  unreadMsgs: number;
+  onTabChange?: (tab: string) => void;
+  onAuthClick?: () => void;
+  onCartClick?: () => void;
+  cartCount?: number;
+  wishlistCount?: number;
+  unreadMsgs?: number;
 };
 
-export function Navbar({ onTabChange, onAuthClick, onCartClick, cartCount, wishlistCount, unreadMsgs }: NavbarProps) {
+export function Navbar({ 
+  onTabChange = () => {}, 
+  onAuthClick = () => {}, 
+  onCartClick = () => {}, 
+  cartCount = 0, 
+  wishlistCount = 0, 
+  unreadMsgs = 0 
+}: NavbarProps) {
   const { user, clearUser } = useUser();
   const [mounted, setMounted] = React.useState(false);
 
