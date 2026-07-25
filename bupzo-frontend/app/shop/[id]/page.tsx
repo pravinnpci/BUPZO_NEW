@@ -46,9 +46,10 @@ export default function SellerShopPage() {
       if (fData) {
         setFollowersCount(fData.count || 0);
         setFollowersList(fData.followers || []);
-        const activeUid = user?.id || 'e6db98c7-06a2-4887-aab2-539bd9280f01';
-        if (fData.followers?.some((f: any) => f.id === activeUid || f.user_id === activeUid)) {
+        if (user?.id && fData.followers?.some((f: any) => f.id === user.id || f.user_id === user.id)) {
           setIsFollowing(true);
+        } else {
+          setIsFollowing(false);
         }
       }
       if (rData) {
@@ -74,17 +75,20 @@ export default function SellerShopPage() {
       }
     }
     loadData();
-  }, [id]);
+  }, [id, user?.id]);
 
   const handleToggleFollow = async () => {
-    const activeUid = user?.id || 'e6db98c7-06a2-4887-aab2-539bd9280f01';
+    if (!user) {
+      alert('Please login to follow this store!');
+      return;
+    }
     try {
       if (isFollowing) {
-        await unfollowSeller(id, activeUid);
+        await unfollowSeller(id, user.id);
         setIsFollowing(false);
         setFollowersCount(c => Math.max(0, c - 1));
       } else {
-        await followSeller(id, activeUid);
+        await followSeller(id, user.id);
         setIsFollowing(true);
         setFollowersCount(c => c + 1);
       }

@@ -970,7 +970,10 @@ export default function Home() {
               )}
               {/* TAB: SHOPS */}
               {customerTab === 'shops' && (
-                <CustomerShops onSelectShop={(sId) => window.location.href = `/shop/${sId}`} />
+                <CustomerShops 
+                  onSelectShop={(sId) => window.location.href = `/shop/${sId}`} 
+                  onRequireAuth={() => setIsAuthModalOpen(true)}
+                />
               )}
               {/* TAB: PRICING */}
               {customerTab === 'pricing' && (

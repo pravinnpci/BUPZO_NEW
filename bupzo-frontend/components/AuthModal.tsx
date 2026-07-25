@@ -176,152 +176,242 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
 
   return (
     <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || 'dummy-client-id.apps.googleusercontent.com'}>
-      {/* Shiprocket-style Full Screen Layout */}
-      <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#F3F4F9] overflow-y-auto" style={{ backgroundImage: "url('https://www.transparenttextures.com/patterns/cubes.png')" }}>
+      {/* Materialize Split-Screen Cover Layout Modal */}
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
         
-        {/* Top Logo */}
-        <div className="absolute top-10 flex items-center justify-center gap-3 select-none">
-          <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg">
-             <span className="text-white font-black text-2xl">B</span>
-          </div>
-          <span className="text-3xl font-extrabold text-gray-900 tracking-tight">Bupzo</span>
-        </div>
-
         {/* Floating Close Button */}
-        <button onClick={onClose} className="absolute top-6 right-6 w-10 h-10 bg-white rounded-full flex items-center justify-center shadow hover:bg-gray-100 text-gray-600 font-bold z-10 transition-colors">
+        <button 
+          onClick={onClose} 
+          className="fixed top-6 right-6 w-10 h-10 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center shadow-lg hover:bg-gray-100 text-gray-700 dark:text-gray-200 font-bold z-50 transition-colors"
+        >
           ✕
         </button>
 
-        {/* Main Card */}
-        <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl p-10 mt-16 relative z-10 border border-gray-100">
+        {/* Main Split Container */}
+        <div className="w-full max-w-5xl bg-white dark:bg-[#141824] rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[620px] border border-gray-100 dark:border-gray-800 my-auto">
           
-          {mode === 'verify-otp' ? (
-            <div className="animate-fade-in">
-              <button onClick={() => setMode('register')} className="text-sm font-semibold text-indigo-600 flex items-center gap-1 mb-6 hover:underline">
-                <span>&lt;</span> Back
-              </button>
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">OTP Verification</h2>
-              <p className="text-sm text-gray-600 mb-6 font-medium">Enter OTP sent to <span className="text-gray-900 font-bold">{phone}</span></p>
-              
-              {renderOtpInputs()}
-              
-              <div className="flex justify-end mb-8">
-                <span className="text-xs font-bold text-gray-500 flex items-center gap-1">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                  00:24
-                </span>
-              </div>
-
-              <button
-                onClick={handleRegister}
-                disabled={isLoading}
-                className="w-full bg-gray-400 text-white py-4 rounded-xl font-bold text-lg shadow hover:bg-gray-500 transition-colors disabled:opacity-50"
-              >
-                {isLoading ? 'Verifying...' : 'Verify My Phone'}
-              </button>
+          {/* LEFT COLUMN: Materialize Cover Video & Stat Overlay (50% Width) */}
+          <div className="w-full md:w-1/2 bg-[#f4f5fa] dark:bg-[#0f111a] p-8 flex flex-col justify-between relative overflow-hidden hidden md:flex border-r border-gray-100 dark:border-gray-800">
+            {/* Background Bupzo Branding Video / Promo Visual */}
+            <div className="absolute inset-0 z-0 opacity-85">
+              <video 
+                src="https://cdn.pixabay.com/video/2021/08/04/83912-583801831_large.mp4" 
+                autoPlay 
+                loop 
+                muted 
+                playsInline
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent"></div>
             </div>
-          ) : (
-            <div className="animate-fade-in">
-              <h2 className="text-xl font-bold text-gray-900 mb-6 text-center">
-                {mode === 'login' ? 'Login To Bupzo Using' : mode === 'register' ? 'Sign Up For Bupzo' : 'Reset Your Password'}
-              </h2>
 
-              {/* Login Method Tabs */}
-              {mode === 'login' && (
-                <div className="flex gap-3 mb-6">
-                  <button onClick={() => setLoginMethod('google')} className={`flex-1 py-2.5 rounded-lg border font-semibold text-sm flex items-center justify-center gap-2 transition-colors ${loginMethod === 'google' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
-                    <span className="w-4 h-4 bg-[url('https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg')] bg-cover"></span> Google
-                  </button>
-                  <button onClick={() => setLoginMethod('phone')} className={`flex-1 py-2.5 rounded-lg border font-semibold text-sm flex items-center justify-center gap-2 transition-colors ${loginMethod === 'phone' ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
-                    📱 Phone No
-                  </button>
-                </div>
-              )}
+            {/* Top Brand Logo */}
+            <div className="relative z-10 flex items-center gap-3">
+              <img src="/Bupzo-logo.png" alt="Bupzo" className="h-10 object-contain drop-shadow" />
+            </div>
 
-              {mode === 'login' && (
-                <div className="relative flex py-4 items-center">
-                  <div className="flex-grow border-t border-dashed border-gray-300"></div>
-                  <span className="flex-shrink-0 mx-4 text-gray-400 text-xs font-semibold">or</span>
-                  <div className="flex-grow border-t border-dashed border-gray-300"></div>
-                </div>
-              )}
-
-              {message && (
-                <div className={`mb-6 p-3 rounded-lg text-sm font-semibold border ${message.includes('success') ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
-                  {message}
-                </div>
-              )}
-
-              <div className="space-y-4">
-                {mode === 'register' && (
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">Full Name</label>
-                    <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full px-4 py-3 rounded-lg border border-gray-300 outline-none focus:border-indigo-600 transition-colors bg-gray-50 focus:bg-white" placeholder="Enter Full Name" />
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">{mode === 'register' ? 'Email ID (Optional)' : 'Email ID / Phone'}</label>
-                  <input type="text" value={username} onChange={e => setUsername(e.target.value)} className="w-full px-4 py-3 rounded-lg border border-gray-300 outline-none focus:border-indigo-600 transition-colors bg-gray-50 focus:bg-white" placeholder="Enter your Email ID" />
-                </div>
-
-                {mode === 'register' && (
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">Phone Number</label>
-                    <div className="flex">
-                      <span className="inline-flex items-center px-4 rounded-l-lg border border-r-0 border-gray-300 bg-gray-100 text-gray-500 font-bold text-sm">+91</span>
-                      <input type="text" value={phone} onChange={e => setPhone(e.target.value)} className="w-full px-4 py-3 rounded-r-lg border border-gray-300 outline-none focus:border-indigo-600 transition-colors bg-gray-50 focus:bg-white" placeholder="Enter Phone Number" />
+            {/* Materialize Floating Stat Badges */}
+            <div className="relative z-10 space-y-4 my-auto">
+              <div className="flex gap-4">
+                <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md p-4 rounded-2xl shadow-xl border border-white/20 flex-1 transform -rotate-1 hover:rotate-0 transition-transform">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center font-bold text-lg">🛍️</div>
+                    <div>
+                      <p className="text-xl font-black text-gray-900 dark:text-white">155k</p>
+                      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Total Orders</p>
                     </div>
                   </div>
+                </div>
+
+                <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md p-4 rounded-2xl shadow-xl border border-white/20 flex-1 transform rotate-1 hover:rotate-0 transition-transform">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-green-100 text-green-600 rounded-xl flex items-center justify-center font-bold text-lg">👥</div>
+                    <div>
+                      <p className="text-xl font-black text-gray-900 dark:text-white">2,856</p>
+                      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">New Customers</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-md p-4 rounded-2xl shadow-xl border border-white/20 max-w-xs ml-auto transform translate-x-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center font-bold">📈</div>
+                    <div>
+                      <p className="text-sm font-bold text-gray-900 dark:text-white">$38.5k</p>
+                      <p className="text-[9px] text-gray-400">Escrow Volume</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold text-green-500 bg-green-50 px-2 py-0.5 rounded">+62%</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Hero Tagline */}
+            <div className="relative z-10 text-white space-y-1">
+              <h3 className="text-lg font-bold">Next-Gen AI Multi-Vendor Marketplace</h3>
+              <p className="text-xs text-gray-200">Powered by PostgreSQL pgvector & Razorpay Escrow</p>
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN: Materialize Auth Cover Form (50% Width) */}
+          <div className="w-full md:w-1/2 p-8 md:p-12 flex flex-col justify-center bg-white dark:bg-[#141824]">
+            
+            {/* Header Brand */}
+            <div className="mb-6 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <img src="/Bupzo-logo.png" alt="Bupzo Logo" className="h-8 object-contain md:hidden" />
+              </div>
+            </div>
+
+            {mode === 'verify-otp' ? (
+              <div className="animate-fade-in space-y-6">
+                <button onClick={() => setMode('register')} className="text-xs font-bold text-indigo-600 flex items-center gap-1 hover:underline">
+                  <span>←</span> Back to Register
+                </button>
+                <div>
+                  <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Two-Step Verification 💬</h2>
+                  <p className="text-xs text-gray-500 mt-1">We sent a 5-digit verification code to <span className="font-bold text-gray-900 dark:text-gray-200">{phone}</span></p>
+                </div>
+                
+                {renderOtpInputs()}
+                
+                <button
+                  onClick={handleRegister}
+                  disabled={isLoading}
+                  className="w-full bg-[#635BFF] hover:bg-indigo-700 text-white py-3.5 rounded-xl font-bold text-sm shadow-lg shadow-indigo-200 dark:shadow-none transition-all disabled:opacity-50"
+                >
+                  {isLoading ? 'Verifying...' : 'Verify Code & Sign In'}
+                </button>
+              </div>
+            ) : (
+              <div className="animate-fade-in space-y-6">
+                <div>
+                  <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">
+                    {mode === 'login' ? 'Welcome to Bupzo! 👋' : mode === 'register' ? 'Adventure Starts Here 🚀' : 'Forgot Password? 🔒'}
+                  </h2>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {mode === 'login' 
+                      ? 'Please sign-in to your account and start your shopping adventure' 
+                      : mode === 'register' 
+                      ? 'Make your marketplace account and start buying and selling' 
+                      : 'Enter your email ID or phone number to reset password'}
+                  </p>
+                </div>
+
+                {message && (
+                  <div className={`p-3 rounded-xl text-xs font-bold border ${message.includes('success') || message.includes('Successful') ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                    {message}
+                  </div>
                 )}
+
+                <div className="space-y-4">
+                  {mode === 'register' && (
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Full Name</label>
+                      <input 
+                        type="text" 
+                        value={name} 
+                        onChange={e => setName(e.target.value)} 
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 outline-none focus:border-indigo-600 bg-gray-50 dark:bg-gray-900 text-sm font-medium transition-colors" 
+                        placeholder="john.doe" 
+                      />
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Email ID or Phone No</label>
+                    <input 
+                      type="text" 
+                      value={username} 
+                      onChange={e => setUsername(e.target.value)} 
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 outline-none focus:border-indigo-600 bg-gray-50 dark:bg-gray-900 text-sm font-medium transition-colors" 
+                      placeholder="admin@bupzo.com or +91 98765 43210" 
+                    />
+                  </div>
+
+                  {mode === 'register' && (
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Phone Number</label>
+                      <div className="flex">
+                        <span className="inline-flex items-center px-4 rounded-l-xl border border-r-0 border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-500 font-bold text-xs">+91</span>
+                        <input 
+                          type="text" 
+                          value={phone} 
+                          onChange={e => setPhone(e.target.value)} 
+                          className="w-full px-4 py-3 rounded-r-xl border border-gray-200 dark:border-gray-700 outline-none focus:border-indigo-600 bg-gray-50 dark:bg-gray-900 text-sm font-medium transition-colors" 
+                          placeholder="9876543210" 
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {(mode === 'login' || mode === 'register') && (
+                    <div>
+                      <div className="flex justify-between items-center mb-1">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300">Password</label>
+                        {mode === 'login' && (
+                          <button onClick={() => setMode('forgot')} className="text-xs font-bold text-indigo-600 hover:underline">
+                            Forgot Password?
+                          </button>
+                        )}
+                      </div>
+                      <div className="relative">
+                        <input 
+                          type={showPassword ? "text" : "password"} 
+                          value={password} 
+                          onChange={e => setPassword(e.target.value)} 
+                          className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 outline-none focus:border-indigo-600 bg-gray-50 dark:bg-gray-900 text-sm font-medium transition-colors" 
+                          placeholder="••••••••" 
+                        />
+                        <button onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                          👁️
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {mode === 'login' && (
+                  <div className="flex items-center">
+                    <input type="checkbox" id="remember" className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" defaultChecked />
+                    <label htmlFor="remember" className="ml-2 text-xs font-semibold text-gray-600 dark:text-gray-400">Remember Me</label>
+                  </div>
+                )}
+
+                <button
+                  onClick={mode === 'login' ? handleLogin : mode === 'register' ? handleRegister : handleForgotPassword}
+                  disabled={isLoading}
+                  className="w-full bg-[#635BFF] hover:bg-indigo-700 text-white py-3.5 rounded-xl font-bold text-sm shadow-lg shadow-indigo-200 dark:shadow-none transition-all active:scale-[0.98] disabled:opacity-50"
+                >
+                  {isLoading ? 'Processing...' : mode === 'login' ? 'Sign In' : mode === 'register' ? 'Create Account' : 'Send Reset Link'}
+                </button>
 
                 {(mode === 'login' || mode === 'register') && (
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 mb-1">Password</label>
-                    <div className="relative">
-                      <input type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} className="w-full px-4 py-3 rounded-lg border border-gray-300 outline-none focus:border-indigo-600 transition-colors bg-gray-50 focus:bg-white" placeholder="Enter Password" />
-                      <button onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={showPassword ? "M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" : "M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"} /></svg>
-                      </button>
+                  <>
+                    <div className="relative flex py-2 items-center">
+                      <div className="flex-grow border-t border-gray-200 dark:border-gray-800"></div>
+                      <span className="flex-shrink-0 mx-4 text-gray-400 text-xs font-bold uppercase tracking-wider">or</span>
+                      <div className="flex-grow border-t border-gray-200 dark:border-gray-800"></div>
                     </div>
-                  </div>
+
+                    <div className="flex justify-center">
+                      <GoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleError} />
+                    </div>
+                  </>
                 )}
-              </div>
 
-              {mode === 'login' && (
-                <div className="mt-4 mb-6">
-                  <button onClick={() => setMode('forgot')} className="text-sm font-semibold text-indigo-600 hover:underline">
-                    Forgot Password?
-                  </button>
+                <div className="text-center text-xs font-semibold text-gray-500 pt-2">
+                  {mode === 'login' ? (
+                    <>New on our platform? <button onClick={() => setMode('register')} className="text-indigo-600 font-bold hover:underline ml-1">Create an account</button></>
+                  ) : (
+                    <>Already have an account? <button onClick={() => setMode('login')} className="text-indigo-600 font-bold hover:underline ml-1">Sign in instead</button></>
+                  )}
                 </div>
-              )}
-
-              <button
-                onClick={mode === 'login' ? handleLogin : mode === 'register' ? handleRegister : handleForgotPassword}
-                disabled={isLoading}
-                className="w-full mt-6 bg-[#635BFF] text-white py-4 rounded-xl hover:bg-indigo-700 font-bold text-lg shadow-lg shadow-indigo-200 transition-all active:scale-[0.98] disabled:opacity-50"
-              >
-                {isLoading ? 'Processing...' : mode === 'login' ? 'Login' : mode === 'register' ? 'Sign Up' : 'Send Reset Link'}
-              </button>
-              
-              {(mode === 'login' || mode === 'register') && (
-                <div className="mt-6 pt-4 border-t border-gray-100 w-full flex flex-col items-center justify-center gap-3">
-                  <span className="text-xs text-gray-400 font-bold uppercase tracking-wider bg-white px-2 -mt-7 relative z-10">OR</span>
-                  <GoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleError} />
-                </div>
-              )}
-
-              <div className="mt-8 text-center text-sm font-semibold text-gray-500">
-                {mode === 'login' ? (
-                  <>New to Bupzo? <button onClick={() => setMode('register')} className="text-indigo-600 hover:underline ml-1">Signup Now</button></>
-                ) : mode === 'register' ? (
-                  <>Already have an account? <button onClick={() => setMode('login')} className="text-indigo-600 hover:underline ml-1">Login</button></>
-                ) : (
-                  <>Remembered your password? <button onClick={() => setMode('login')} className="text-indigo-600 hover:underline ml-1">Login</button></>
-                )}
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
     </GoogleOAuthProvider>

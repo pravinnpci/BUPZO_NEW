@@ -6,19 +6,28 @@ import { useUser } from '@/lib/authStore';
 
 interface CustomerShopsProps {
   onSelectShop?: (shopId: string) => void;
+  onRequireAuth?: () => void;
 }
 
-export function CustomerShops({ onSelectShop }: CustomerShopsProps) {
+export function CustomerShops({ onSelectShop, onRequireAuth }: CustomerShopsProps) {
   const { user } = useUser();
   const [sellers, setSellers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [followedSellers, setFollowedSellers] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    const activeUserId = user?.id || 'e6db98c7-06a2-4887-aab2-539bd9280f01';
+    if (!user) {
+      fetchSellers()
+        .then(data => setSellers(data.filter((s: any) => s.status === 'APPROVED')))
+        .catch(console.error)
+        .finally(() => setLoading(false));
+      setFollowedSellers({});
+      return;
+    }
+
     Promise.all([
       fetchSellers(),
-      fetch(`${API_BASE_URL}/api/users/${activeUserId}/followed-sellers`).then(res => res.ok ? res.json() : []).catch(() => [])
+      fetch(`${API_BASE_URL}/api/users/${user.id}/followed-sellers`).then(res => res.ok ? res.json() : []).catch(() => [])
     ])
       .then(([data, followedIds]) => {
         const approved = data.filter((s: any) => s.status === 'APPROVED');
@@ -36,6 +45,16 @@ export function CustomerShops({ onSelectShop }: CustomerShopsProps) {
   const toggleFollow = async (sellerId: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    if (!user) {
+      if (onRequireAuth) {
+        onRequireAuth();
+      } else {
+        alert('Please login to follow stores!');
+      }
+      return;
+    }
+
     const isCurrentlyFollowing = !!followedSellers[sellerId];
     const newFollowingState = !isCurrentlyFollowing;
 
@@ -54,11 +73,10 @@ export function CustomerShops({ onSelectShop }: CustomerShopsProps) {
     }));
 
     try {
-      const activeUserId = user?.id || 'e6db98c7-06a2-4887-aab2-539bd9280f01';
       if (newFollowingState) {
-        await fetch(`${API_BASE_URL}/api/sellers/${sellerId}/follow?user_id=${activeUserId}`, { method: 'POST' });
+        await fetch(`${API_BASE_URL}/api/sellers/${sellerId}/follow?user_id=${user.id}`, { method: 'POST' });
       } else {
-        await fetch(`${API_BASE_URL}/api/sellers/${sellerId}/follow?user_id=${activeUserId}`, { method: 'DELETE' });
+        await fetch(`${API_BASE_URL}/api/sellers/${sellerId}/follow?user_id=${user.id}`, { method: 'DELETE' });
       }
     } catch (err) {
       console.error("Failed to update follow status in DB:", err);

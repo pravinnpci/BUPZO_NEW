@@ -288,6 +288,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <th className="pb-3 cursor-pointer hover:text-primary" onClick={() => handleOrderSort('customer')}>Customer {orderSortKey === 'customer' ? (orderSortOrder === 'asc' ? '▲' : '▼') : '⇅'}</th>
                 <th className="pb-3 cursor-pointer hover:text-primary" onClick={() => handleOrderSort('shipping_partner')}>Courier SLA {orderSortKey === 'shipping_partner' ? (orderSortOrder === 'asc' ? '▲' : '▼') : '⇅'}</th>
                 <th className="pb-3 cursor-pointer hover:text-primary" onClick={() => handleOrderSort('payment_gateway')}>Gateway {orderSortKey === 'payment_gateway' ? (orderSortOrder === 'asc' ? '▲' : '▼') : '⇅'}</th>
+                <th className="pb-3 cursor-pointer hover:text-primary" onClick={() => handleOrderSort('created_at')}>Date & Time {orderSortKey === 'created_at' ? (orderSortOrder === 'asc' ? '▲' : '▼') : '⇅'}</th>
                 <th className="pb-3 cursor-pointer hover:text-primary" onClick={() => handleOrderSort('total_amount')}>Total Amount {orderSortKey === 'total_amount' ? (orderSortOrder === 'asc' ? '▲' : '▼') : '⇅'}</th>
                 <th className="pb-3 cursor-pointer hover:text-primary" onClick={() => handleOrderSort('status')}>Status {orderSortKey === 'status' ? (orderSortOrder === 'asc' ? '▲' : '▼') : '⇅'}</th>
                 <th className="pb-3">Actions</th>
@@ -300,6 +301,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <td className="py-3 font-medium">{o.customer || o.customer_name || 'Customer'}</td>
                   <td className="py-3 font-mono text-on-surface-variant">{o.shipping_partner || 'Standard SLA'}</td>
                   <td className="py-3 font-medium">{o.payment_gateway || 'Razorpay'}</td>
+                  <td className="py-3 font-mono text-[10px] text-zinc-500 whitespace-nowrap">{o.created_at ? new Date(o.created_at).toLocaleString() : '2026-07-25 20:45'}</td>
                   <td className="py-3 font-mono font-bold">₹{o.total_amount}</td>
                   <td className="py-3">
                     <span className={`font-bold px-2.5 py-0.5 rounded-full text-[10px] ${o.status === 'delivered' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
@@ -318,7 +320,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               ))}
               {sortedOrders.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="py-6 text-center text-zinc-400">No matching orders found.</td>
+                  <td colSpan={8} className="py-6 text-center text-zinc-400">No matching orders found.</td>
                 </tr>
               )}
             </tbody>
