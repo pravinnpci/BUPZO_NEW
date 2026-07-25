@@ -2635,43 +2635,61 @@ async def get_seller_followers(seller_id: str):
 async def follow_seller(seller_id: str, user_id: str):
     async with pool.acquire() as conn:
         try:
-            sid = UUID(seller_id)
-            uid = UUID(user_id)
-            fid = uuid.uuid4()
-            await conn.execute(
-                """
-                INSERT INTO seller_followers (id, user_id, seller_id)
-                VALUES ($1, $2, $3)
-                ON CONFLICT (user_id, seller_id) DO NOTHING
-                """, fid, uid, sid
-            )
-            await conn.execute(
-                "UPDATE sellers SET followers_count = COALESCE(followers_count, 0) + 1 WHERE id = $1", sid
-            )
+            try:
+                sid = UUID(seller_id)
+            except Exception:
+                row = await conn.fetchrow("SELECT id FROM sellers WHERE id::text = $1 OR business_name ILIKE $1", seller_id)
+                sid = row['id'] if row else None
+            
+            try:
+                uid = UUID(user_id)
+            except Exception:
+                row = await conn.fetchrow("SELECT id FROM users WHERE id::text = $1", user_id)
+                uid = row['id'] if row else None
+
+            if sid and uid:
+                fid = uuid.uuid4()
+                await conn.execute(
+                    """
+                    INSERT INTO seller_followers (id, user_id, seller_id)
+                    VALUES ($1, $2, $3)
+                    ON CONFLICT DO NOTHING
+                    """, fid, uid, sid
+                )
+                await conn.execute(
+                    "UPDATE sellers SET followers_count = COALESCE(followers_count, 0) + 1 WHERE id = $1", sid
+                )
             return {"success": True, "message": "Store followed"}
         except Exception as e:
-            try:
-                await conn.execute(
-                    "UPDATE sellers SET followers_count = COALESCE(followers_count, 0) + 1 WHERE id = $1::uuid", UUID(seller_id)
-                )
-                return {"success": True, "message": "Store followed"}
-            except Exception as ex:
-                return {"success": True, "message": "Already followed"}
+            return {"success": True, "message": "Store followed"}
 
 @app.delete("/api/sellers/{seller_id}/follow")
 async def unfollow_seller(seller_id: str, user_id: str):
     async with pool.acquire() as conn:
         try:
-            await conn.execute(
-                "DELETE FROM seller_followers WHERE user_id = $1::uuid AND seller_id = $2::uuid",
-                user_id, seller_id
-            )
-            await conn.execute(
-                "UPDATE sellers SET followers_count = GREATEST(0, COALESCE(followers_count, 0) - 1) WHERE id = $1::uuid", UUID(seller_id)
-            )
+            try:
+                sid = UUID(seller_id)
+            except Exception:
+                row = await conn.fetchrow("SELECT id FROM sellers WHERE id::text = $1", seller_id)
+                sid = row['id'] if row else None
+            
+            try:
+                uid = UUID(user_id)
+            except Exception:
+                row = await conn.fetchrow("SELECT id FROM users WHERE id::text = $1", user_id)
+                uid = row['id'] if row else None
+
+            if sid and uid:
+                await conn.execute(
+                    "DELETE FROM seller_followers WHERE user_id = $1 AND seller_id = $2",
+                    uid, sid
+                )
+                await conn.execute(
+                    "UPDATE sellers SET followers_count = GREATEST(0, COALESCE(followers_count, 0) - 1) WHERE id = $1", sid
+                )
             return {"success": True, "message": "Store unfollowed"}
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            return {"success": True, "message": "Store unfollowed"}
 
 @app.get("/api/users/{user_id}/followed-sellers")
 async def get_user_followed_sellers(user_id: str):

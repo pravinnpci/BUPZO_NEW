@@ -683,6 +683,86 @@ export const AdminSellers: React.FC<AdminSellersProps> = ({
           </div>
         </div>
       )}
+
+      {/* MESSAGE SELLER MODAL */}
+      {messageSeller && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#15131b] border border-[#e8e1dd] dark:border-[#2f2b3b] rounded-2xl w-full max-w-lg p-6 shadow-2xl relative text-zinc-900 dark:text-zinc-100">
+            <h3 className="text-lg font-bold font-heading mb-1 flex items-center gap-2">
+              <span className="material-symbols-outlined text-blue-500">mail</span>
+              Message Merchant: {messageSeller.businessName}
+            </h3>
+            <p className="text-xs text-zinc-500 mb-4">Send direct platform message to seller store management center</p>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+                apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
+                await fetch(`${apiUrl}/api/messages`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    sender_id: 'admin',
+                    receiver_id: messageSeller.id || (messageSeller as any).ownerId || (messageSeller as any).owner_id,
+                    subject: msgSubject,
+                    content: msgContent
+                  })
+                });
+                alert(`Message successfully sent to ${messageSeller.businessName}!`);
+                setMessageSeller(null);
+              } catch (err) {
+                alert('Failed to send message: ' + err);
+              }
+            }} className="space-y-4">
+              <div>
+                <label className="block text-[11px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Recipient</label>
+                <input 
+                  type="text" 
+                  value={`${messageSeller.businessName} (${(messageSeller as any).contactEmail || (messageSeller as any).phone || 'Store'})`}
+                  disabled
+                  className="w-full bg-zinc-100 dark:bg-zinc-800/60 border border-zinc-200 dark:border-zinc-700 px-3 py-2 rounded-lg text-sm text-zinc-600 dark:text-zinc-400 font-medium"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Subject</label>
+                <input 
+                  type="text"
+                  value={msgSubject}
+                  onChange={(e) => setMsgSubject(e.target.value)}
+                  className="w-full bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 px-3 py-2 rounded-lg text-sm outline-none focus:border-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-zinc-500 uppercase tracking-wider mb-1">Message Content</label>
+                <textarea 
+                  rows={4}
+                  value={msgContent}
+                  onChange={(e) => setMsgContent(e.target.value)}
+                  placeholder="Type message to merchant here..."
+                  className="w-full bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 px-3 py-2 rounded-lg text-sm outline-none focus:border-blue-500"
+                  required
+                />
+              </div>
+              <div className="flex gap-3 justify-end pt-2">
+                <button 
+                  type="button" 
+                  onClick={() => setMessageSeller(null)}
+                  className="px-4 py-2 border border-zinc-300 dark:border-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 font-bold text-xs"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-xs shadow-md transition-colors"
+                >
+                  Send Message
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

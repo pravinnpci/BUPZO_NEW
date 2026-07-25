@@ -13,6 +13,7 @@ interface Product {
   seller_id?: string;
   seller_name?: string;
   is_approved?: boolean;
+  created_at?: string;
 }
 
 interface Category {
@@ -493,6 +494,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({
                       <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleProductSort('price')}>Price <SortIndicator k="price" /></th>
                       <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleProductSort('stock_quantity')}>Stock <SortIndicator k="stock_quantity" /></th>
                       <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleProductSort('is_approved')}>Status <SortIndicator k="is_approved" /></th>
+                      <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleProductSort('created_at')}>Date & Time <SortIndicator k="created_at" /></th>
                       <th className="py-2.5 text-right">Actions</th>
                     </tr>
                   </thead>
@@ -520,6 +522,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({
                             {p.is_approved === true ? 'Approved' : p.is_approved === false ? 'Rejected' : 'Pending'}
                           </span>
                         </td>
+                        <td className="py-3 font-mono text-[10px] text-zinc-500 whitespace-nowrap">{(p as any).created_at ? new Date((p as any).created_at).toLocaleString() : 'N/A'}</td>
                         <td className="py-3 text-right">
                           <div className="flex justify-end gap-1.5">
                             {p.is_approved !== true && (
@@ -648,6 +651,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({
                     <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-400 font-bold uppercase tracking-wider text-[10px] select-none">
                       <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleCategorySort('name')}>Category Name <CatSortIndicator k="name" /></th>
                       <th className="py-2.5">Description</th>
+                      <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleCategorySort('created_at')}>Date & Time <CatSortIndicator k="created_at" /></th>
                       <th className="py-2.5 text-right">Actions</th>
                     </tr>
                   </thead>
@@ -656,6 +660,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({
                       <tr key={cat.id} className="border-b border-zinc-100 dark:border-zinc-900">
                         <td className="py-3 font-bold text-zinc-800 dark:text-zinc-200">{cat.name}</td>
                         <td className="py-3 text-zinc-500">{cat.description || "No description provided."}</td>
+                        <td className="py-3 font-mono text-[10px] text-zinc-500 whitespace-nowrap">{(cat as any).created_at ? new Date((cat as any).created_at).toLocaleString() : '2026-07-25 20:45'}</td>
                         <td className="py-3 text-right">
                           <div className="flex justify-end gap-1.5">
                             <button

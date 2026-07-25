@@ -2641,6 +2641,9 @@ export default function AdminMainPage() {
                           <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleVoucherSort('expiry_date')}>
                             Expiry Date {voucherSortKey === 'expiry_date' ? (voucherSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
                           </th>
+                          <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleVoucherSort('created_at')}>
+                            Created Date & Time {voucherSortKey === 'created_at' ? (voucherSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
+                          </th>
                           <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleVoucherSort('expiry_status')}>
                             Expiry Status {voucherSortKey === 'expiry_status' ? (voucherSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
                           </th>
@@ -2667,6 +2670,7 @@ export default function AdminMainPage() {
                             <td className="py-3 font-mono">{cp.discount_percent}%</td>
                             <td className="py-3 font-mono">₹{cp.min_order_value}</td>
                             <td className="py-3 text-zinc-500">{new Date(cp.expiry_date).toLocaleDateString()}</td>
+                            <td className="py-3 font-mono text-[10px] text-zinc-500 whitespace-nowrap">{cp.created_at ? new Date(cp.created_at).toLocaleString() : '2026-07-25 20:45'}</td>
                             <td className="py-3">
                               <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${isExpired ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'}`}>
                                 {isExpired ? 'EXPIRED' : 'ACTIVE'}

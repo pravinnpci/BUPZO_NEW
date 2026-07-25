@@ -20,6 +20,7 @@ export default function SellerShopPage() {
   const [followersList, setFollowersList] = useState<any[]>([]);
   const [followersCount, setFollowersCount] = useState<number>(0);
   const [storeReviews, setStoreReviews] = useState<any[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   
   // Dynamic Live Filter States
   const [searchQuery, setSearchQuery] = useState('');
@@ -66,10 +67,23 @@ export default function SellerShopPage() {
           fetchSellerProducts(id)
         ]);
         setSeller(sellerData);
-        setProducts(productsData);
+        setProducts(productsData || []);
+        
+        let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+        apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
+        const catRes = await fetch(`${apiUrl}/api/categories`);
+        const catData = catRes.ok ? await catRes.json() : [];
+
+        const prodCats = (productsData || []).map((p: any) => p.category_name || p.category).filter(Boolean);
+        const dbCatNames = (catData || []).map((c: any) => c.name).filter(Boolean);
+        const combinedCats = Array.from(new Set([...prodCats, ...dbCatNames]));
+        if (combinedCats.length > 0) {
+          setCategories(combinedCats);
+        }
+
         await loadFollowersAndReviews();
       } catch (e) {
-        console.error("Failed to load shop data", e);
+        console.error("Failed to load shop page data", e);
       } finally {
         setLoading(false);
       }
@@ -102,7 +116,7 @@ export default function SellerShopPage() {
   if (!seller) return <div className="text-center py-20 text-gray-500 font-bold">Shop not found.</div>;
 
   // Derive unique categories from seller products with fallback
-  const categories = Array.from(new Set(products.map(p => p.category_name || (p as any).category || 'General')));
+  const categoriesList = categories.length > 0 ? categories : Array.from(new Set(products.map(p => p.category_name || (p as any).category || 'General')));
 
   // Filtered & Sorted products
   const filteredProducts = products.filter(p => {
@@ -233,7 +247,7 @@ export default function SellerShopPage() {
                     />
                     All Categories ({products.length})
                   </label>
-                  {categories.map(cat => {
+                  {categoriesList.map(cat => {
                     const isChecked = selectedCategories.includes(cat);
                     const catCount = products.filter(p => (p.category_name || (p as any).category || 'General') === cat).length;
                     return (
