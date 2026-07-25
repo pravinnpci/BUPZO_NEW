@@ -55,16 +55,47 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
 
   const handleRegister = async () => {
     if (mode === 'register') {
-      if (!name.trim()) return setMessage('Full Name is required');
-      if (!phone.trim() || phone.length < 10) return setMessage('Valid 10-digit phone number is required');
-      if (!password || password.length < 6) return setMessage('Password must be at least 6 characters');
+      if (!name.trim()) return setMessage('⚠️ Full Name is required');
+      
+      const cleanPhone = phone.trim();
+      const phoneRegex = /^\d{10}$/;
+      if (!phoneRegex.test(cleanPhone)) {
+        return setMessage('⚠️ Phone number must be exactly 10 numeric digits (e.g. 9876543210)');
+      }
+
+      if (username.trim()) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(username.trim())) {
+          return setMessage('⚠️ Please enter a valid email address (e.g. name@domain.com)');
+        }
+      }
+
+      if (!password || password.length < 6) return setMessage('⚠️ Password must be at least 6 characters');
+
+      setIsLoading(true);
+      try {
+        let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+        apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
+        const checkRes = await fetch(`${apiUrl}/api/auth/check-exists?email=${encodeURIComponent(username.trim())}&phone=${encodeURIComponent(cleanPhone)}`);
+        const checkData = await checkRes.json();
+        if (checkData.exists_email || checkData.exists_phone || checkData.exists) {
+          setMessage('⚠️ This Email / Phone number is already registered in Bupzo! Please login.');
+          setIsLoading(false);
+          return;
+        }
+      } catch (e) {
+        console.warn("DB check error:", e);
+      } finally {
+        setIsLoading(false);
+      }
+
       setMode('verify-otp');
       return;
     }
 
     // mode === 'verify-otp'
     const fullOtp = otp.join('');
-    if (fullOtp.length < 5) return setMessage('Please enter the 5-digit OTP');
+    if (fullOtp.length < 5) return setMessage('⚠️ Please enter the 5-digit OTP');
     
     setIsLoading(true);
     try {
@@ -195,7 +226,7 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
             {/* Background Bupzo Branding Video / Promo Visual */}
             <div className="absolute inset-0 z-0 opacity-85">
               <video 
-                src="https://cdn.pixabay.com/video/2021/08/04/83912-583801831_large.mp4" 
+                src="https://assets.mixkit.co/videos/preview/mixkit-shopping-fun-in-a-clothing-store-40845-large.mp4" 
                 autoPlay 
                 loop 
                 muted 

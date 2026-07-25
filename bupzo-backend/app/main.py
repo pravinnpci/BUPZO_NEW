@@ -945,6 +945,21 @@ async def auth_register(payload: AuthRegisterRequest):
         "user": full_user
     }
 
+@app.get("/api/auth/check-exists")
+async def check_user_exists(email: Optional[str] = None, phone: Optional[str] = None):
+    exists_email = False
+    exists_phone = False
+    if email and email.strip():
+        u = await execute_query_one("SELECT id FROM users WHERE email = $1", email.strip())
+        if u:
+            exists_email = True
+    if phone and phone.strip():
+        clean_p = phone.strip().replace("+91", "").strip()
+        p = await execute_query_one("SELECT id FROM users WHERE phone = $1 OR phone = $2 OR phone = $3", clean_p, f"+91{clean_p}", phone.strip())
+        if p:
+            exists_phone = True
+    return {"exists_email": exists_email, "exists_phone": exists_phone, "exists": exists_email or exists_phone}
+
 @app.post("/api/auth/google", response_model=TokenResponse)
 async def auth_google(payload: AuthGoogleRequest):
     # Mock Google Auth Verification

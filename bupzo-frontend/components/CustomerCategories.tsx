@@ -19,16 +19,23 @@ export function CustomerCategories({
   handleAddToWishlist,
   handleAddToCart
 }: CustomerCategoriesProps) {
+  const [maxPrice, setMaxPrice] = React.useState<number>(10000);
 
   const selectedCatObj = categories.find(c => c.id === selectedCategoryFilter || c.name === selectedCategoryFilter);
-  const filteredProducts = selectedCategoryFilter && selectedCategoryFilter !== 'all'
-    ? products.filter(p => 
+  
+  const filteredProducts = products.filter(p => {
+    const pPrice = Number(p.price) || 0;
+    const matchesPrice = pPrice <= maxPrice;
+    const matchesCategory = !selectedCategoryFilter || selectedCategoryFilter === 'all'
+      ? true
+      : (
         p.category_id === selectedCategoryFilter || 
         p.category_name === selectedCategoryFilter || 
         (selectedCatObj && p.category_name === selectedCatObj.name) ||
         (selectedCatObj && p.category === selectedCatObj.name)
-      )
-    : products;
+      );
+    return matchesPrice && matchesCategory;
+  });
 
   return (
     <div className="w-full pb-20 bg-white">
@@ -40,8 +47,8 @@ export function CustomerCategories({
 
       <div className="container mx-auto px-4 py-12 flex flex-col lg:flex-row gap-8">
          {/* Left Sidebar */}
-         <div className="lg:w-1/4">
-            <div className="bg-[#f8f8f8] p-6 rounded mb-8">
+         <div className="lg:w-1/4 space-y-6">
+            <div className="bg-[#f8f8f8] p-6 rounded">
                <h3 className="text-xl font-bold text-[#232f3e] uppercase mb-4 border-b border-gray-200 pb-2">Categories</h3>
                <ul className="space-y-3">
                  <li 
@@ -57,6 +64,7 @@ export function CustomerCategories({
                      p.category_name === cat.name || 
                      p.category === cat.name
                    ).length;
+                   const displayCount = count > 0 ? count : (products.length > 0 ? Math.ceil(products.length / Math.max(1, categories.length)) : 0);
                    return (
                      <li 
                         key={cat.id} 
@@ -64,11 +72,41 @@ export function CustomerCategories({
                         onClick={() => setSelectedCategoryFilter(cat.id)}
                      >
                         <span>{cat.name}</span>
-                        <span className="bg-gray-200 text-xs px-2 py-0.5 rounded font-bold">{count > 0 ? count : (products.length > 0 ? Math.ceil(products.length / categories.length) : 0)}</span>
+                        <span className="bg-gray-200 text-xs px-2 py-0.5 rounded font-bold">{displayCount}</span>
                      </li>
                    )
                  })}
                </ul>
+            </div>
+
+            {/* LIVE FILTERS: Max Price Seekbar */}
+            <div className="bg-[#f8f8f8] p-6 rounded space-y-4">
+              <h3 className="text-sm font-bold text-[#232f3e] uppercase tracking-wider border-b border-gray-200 pb-2">Live Filters</h3>
+              <div>
+                <div className="flex justify-between items-center text-xs font-bold text-gray-700 mb-2">
+                  <span>Max Price (₹):</span>
+                  <span className="bg-white border border-gray-300 px-3 py-1 rounded text-sm text-[#e52e06] font-extrabold">{maxPrice}</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="10000" 
+                  step="100" 
+                  value={maxPrice} 
+                  onChange={(e) => setMaxPrice(Number(e.target.value))}
+                  className="w-full accent-[#e52e06] cursor-pointer"
+                />
+                <div className="flex justify-between text-[10px] font-bold text-gray-400 mt-1">
+                  <span>₹0</span>
+                  <span>₹10,000</span>
+                </div>
+              </div>
+              <button 
+                onClick={() => { setMaxPrice(10000); setSelectedCategoryFilter('all'); }}
+                className="w-full py-2 bg-white border border-red-200 text-[#e52e06] text-xs font-bold rounded hover:bg-red-50 transition"
+              >
+                Reset Filters
+              </button>
             </div>
             
             <div className="bg-[#fce5df] p-6 rounded flex flex-col items-center justify-center text-center">

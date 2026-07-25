@@ -125,11 +125,7 @@ export function Navbar({
       <div className="border-t border-gray-200">
         <div className="container mx-auto px-4 h-14 flex items-center justify-between">
            <div className="flex items-center gap-8 h-full">
-              {/* Category Dropdown Toggle */}
-              <button onClick={() => onTabChange('categories')} className="bg-[#e52e06] text-white h-full px-6 flex items-center gap-2 font-bold uppercase tracking-wider text-sm hover:bg-[#cc2805] transition">
-                 <span className="material-symbols-outlined">menu</span>
-                 Browse Categories
-              </button>
+
 
                <nav className="flex flex-wrap items-center gap-5 font-bold text-[12px] uppercase text-gray-700 tracking-wide">
                  <button onClick={() => onTabChange('home')} className="hover:text-[#e52e06] transition">Home</button>
