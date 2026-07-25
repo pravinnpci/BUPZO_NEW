@@ -29,8 +29,8 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, onA
     }
   }
 
-  const initialMainImage = parsedImages.find(img => img && img.startsWith('http')) 
-    || (product.image_url && product.image_url.startsWith('http') ? product.image_url : null)
+  const initialMainImage = parsedImages.find(img => img && (img.startsWith('http') || img.startsWith('/') || img.startsWith('data:'))) 
+    || (product.image_url && (product.image_url.startsWith('http') || product.image_url.startsWith('/') || product.image_url.startsWith('data:')) ? product.image_url : null)
     || (product.name?.toLowerCase().includes('halwa') || product.name?.toLowerCase().includes('sweet') ? 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=500&auto=format&fit=crop' : 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop');
 
   const [activeImage, setActiveImage] = useState(initialMainImage);
@@ -46,7 +46,36 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, onA
     if (initialMainImage) {
       setActiveImage(initialMainImage);
     }
-  }, [product.id, initialMainImage]);
+
+    async function loadProductData() {
+      setLoadingReviews(true);
+      try {
+        const [revRes, selRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/reviews/?product_id=${product.id}`).then(r => r.ok ? r.json() : []).catch(() => []),
+          product.seller_id ? fetch(`${API_BASE_URL}/api/sellers/${product.seller_id}`).then(r => r.ok ? r.json() : null).catch(() => null) : Promise.resolve(null)
+        ]);
+        if (Array.isArray(revRes)) {
+          setReviews(revRes);
+          if (revRes.length > 0) {
+            const avg = (revRes.reduce((s, r) => s + (r.rating || 0), 0) / revRes.length).toFixed(1);
+            setStats({
+              total_ratings: revRes.length,
+              total_reviews: revRes.length,
+              average_rating: avg
+            });
+          }
+        }
+        if (selRes && selRes.business_name) {
+          setSellerName(selRes.business_name);
+        }
+      } catch (e) {
+        console.error("Failed to load modal details:", e);
+      } finally {
+        setLoadingReviews(false);
+      }
+    }
+    loadProductData();
+  }, [product.id, initialMainImage, product.seller_id]);
 
   const generateReferralLink = () => {
     if (!user) {
@@ -109,6 +138,7 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, onA
                 <img 
                   key={i} 
                   src={img} 
+                  onError={(e) => { e.currentTarget.src = initialMainImage; }}
                   className={`w-14 h-14 rounded border cursor-pointer object-cover ${activeImage === img ? 'border-[#0055D4]' : 'border-gray-200 hover:border-gray-300'}`}
                   onClick={() => setActiveImage(img)}
                   alt={`${product.name} thumbnail ${i}`}
@@ -144,7 +174,7 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, onA
             <h3 className="font-bold text-gray-800 dark:text-gray-200 mb-3 text-sm">Similar Products</h3>
             <div className="flex gap-2">
                {images.slice(0, 3).map((img, i) => (
-                 <img key={`sim-${i}`} src={img} className="w-16 h-16 rounded border border-gray-200 object-cover" />
+                 <img key={`sim-${i}`} src={img} onError={(e) => { e.currentTarget.src = initialMainImage; }} className="w-16 h-16 rounded border border-gray-200 object-cover" />
                ))}
             </div>
           </div>
