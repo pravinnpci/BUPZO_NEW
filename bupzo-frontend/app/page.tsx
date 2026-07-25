@@ -17,6 +17,9 @@ import { CustomerSettings } from '@/components/CustomerSettings';
 import { CustomerMessages } from '@/components/CustomerMessages';
 import { CustomerShops } from '@/components/CustomerShops';
 import { Navbar } from '@/components/Navbar';
+import PricingPage from '@/app/pricing/page';
+import InvoicesPage from '@/app/invoices/page';
+import FAQPage from '@/app/faq/page';
 import SellerKYCModal from '@/components/SellerKYCModal';
 import ProductPreviewModal from '@/components/ProductPreviewModal';
 import Footer from '@/components/Footer';
@@ -41,7 +44,7 @@ export default function Home() {
         setUserRole('seller');
       } else if (tabParam) {
         setUserRole('customer');
-        if (['home', 'categories', 'orders', 'wallet', 'wishlist', 'kyc', 'settings', 'messages', 'shops'].includes(tabParam.toLowerCase())) {
+        if (['home', 'categories', 'orders', 'wallet', 'wishlist', 'kyc', 'settings', 'messages', 'shops', 'pricing', 'invoices', 'faq'].includes(tabParam.toLowerCase())) {
           setCustomerTab(tabParam.toLowerCase() as any);
         }
       }
@@ -97,7 +100,7 @@ export default function Home() {
   const [promoError, setPromoError] = useState('');
 
   // Storefront & Customer States
-  const [customerTab, setCustomerTab] = useState<'home' | 'categories' | 'orders' | 'wallet' | 'wishlist' | 'kyc' | 'settings' | 'messages' | 'shops'>('home');
+  const [customerTab, setCustomerTab] = useState<'home' | 'categories' | 'orders' | 'wallet' | 'wishlist' | 'kyc' | 'settings' | 'messages' | 'shops' | 'pricing' | 'invoices' | 'faq'>('home');
   const [previewProduct, setPreviewProduct] = useState<Product | null>(null);
   const [customerOrders, setCustomerOrders] = useState<any[]>([]);
   const [walletTransactions, setWalletTransactions] = useState<any[]>([]);
@@ -968,6 +971,18 @@ export default function Home() {
               {/* TAB: SHOPS */}
               {customerTab === 'shops' && (
                 <CustomerShops onSelectShop={(sId) => window.location.href = `/shop/${sId}`} />
+              )}
+              {/* TAB: PRICING */}
+              {customerTab === 'pricing' && (
+                <PricingPage />
+              )}
+              {/* TAB: INVOICES */}
+              {customerTab === 'invoices' && (
+                <InvoicesPage />
+              )}
+              {/* TAB: FAQ */}
+              {customerTab === 'faq' && (
+                <FAQPage />
               )}
             </div>
           </div>

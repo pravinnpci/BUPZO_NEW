@@ -20,18 +20,18 @@ export default function Footer() {
         <div className="space-y-3">
           <h4 className="font-bold text-gray-900 text-xs uppercase tracking-wider">Navigation</h4>
           <ul className="space-y-2 text-xs">
-            <li><Link href="/" className="hover:text-[#3874ff] transition-colors">Home Marketplace</Link></li>
-            <li><Link href="/shops" className="hover:text-[#3874ff] transition-colors">Merchant Shops</Link></li>
-            <li><Link href="/pricing" className="hover:text-[#3874ff] transition-colors">Seller Plans &amp; Pricing</Link></li>
-            <li><Link href="/invoices" className="hover:text-[#3874ff] transition-colors">Order Invoices</Link></li>
-            <li><Link href="/faq" className="hover:text-[#3874ff] transition-colors">FAQ &amp; Support</Link></li>
+            <li><Link href="/?tab=home" className="hover:text-[#3874ff] transition-colors">Home Marketplace</Link></li>
+            <li><Link href="/?tab=shops" className="hover:text-[#3874ff] transition-colors">Merchant Shops</Link></li>
+            <li><Link href="/?tab=pricing" className="hover:text-[#3874ff] transition-colors">Seller Plans &amp; Pricing</Link></li>
+            <li><Link href="/?tab=invoices" className="hover:text-[#3874ff] transition-colors">Order Invoices</Link></li>
+            <li><Link href="/?tab=faq" className="hover:text-[#3874ff] transition-colors">FAQ &amp; Support</Link></li>
           </ul>
         </div>
 
         <div className="space-y-3">
-          <h4 className="font-bold text-gray-900 text-xs uppercase tracking-wider">Account & Location</h4>
+          <h4 className="font-bold text-gray-900 text-xs uppercase tracking-wider">Account &amp; Location</h4>
           <ul className="space-y-2 text-xs">
-            <li><Link href="/account" className="hover:text-[#3874ff] transition-colors">Account Settings & Leaflet Pinpoint</Link></li>
+            <li><Link href="/?tab=settings" className="hover:text-[#3874ff] transition-colors">Account Settings &amp; Leaflet Pinpoint</Link></li>
             <li><Link href="/seller/create-merchant" className="hover:text-[#3874ff] transition-colors">Become a Merchant Seller</Link></li>
           </ul>
         </div>
