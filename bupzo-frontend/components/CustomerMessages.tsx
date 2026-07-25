@@ -123,30 +123,30 @@ export function CustomerMessages({ user }: { user: any }) {
         ) : (
           <div className="divide-y divide-gray-100">
             {messages.map((m: any) => (
-              <div key={m.id} className="p-4 hover:bg-gray-50 transition-colors">
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <span className="font-bold text-gray-800">
-                      {m.sender_id === user.id ? `To: ${m.receiver_name}` : `From: ${m.sender_name}`}
+              <div key={m.id} className="p-4 hover:bg-gray-50 transition-colors border-b border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-1">
+                    <span className="font-bold text-sm text-gray-900">
+                      {m.sender_id === user?.id ? `To: ${m.receiver_name || 'Seller'}` : `From: ${m.sender_name || 'Admin / Seller'}`}
                     </span>
-                    <span className="text-xs text-gray-500 ml-3">
-                      {new Date(m.created_at).toLocaleString()}
+                    <span className="text-[11px] text-gray-400 font-mono">
+                      {m.created_at ? new Date(m.created_at).toLocaleString() : '2026-07-25 20:45'}
                     </span>
                   </div>
-                  {m.sender_id !== user.id && (
-                    <button
-                      onClick={() => {
-                        setReplyTo(m);
-                        setShowReplyModal(true);
-                      }}
-                      className="text-xs font-bold text-blue-600 hover:underline"
-                    >
-                      Reply
-                    </button>
-                  )}
+                  <div className="font-semibold text-sm text-blue-700 dark:text-blue-400 mb-1">{m.subject}</div>
+                  <p className="text-xs text-gray-600 dark:text-gray-300 font-medium leading-relaxed">{m.content}</p>
                 </div>
-                <div className="font-semibold text-sm text-gray-700 mb-1">{m.subject}</div>
-                <p className="text-sm text-gray-600">{m.content}</p>
+
+                <button
+                  onClick={() => {
+                    setReplyTo(m);
+                    setReplyContent('');
+                    setShowReplyModal(true);
+                  }}
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3.5 py-1.5 rounded-lg shadow-sm transition flex items-center gap-1 shrink-0"
+                >
+                  <span>Reply ↩️</span>
+                </button>
               </div>
             ))}
           </div>

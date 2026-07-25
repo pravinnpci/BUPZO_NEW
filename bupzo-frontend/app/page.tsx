@@ -169,6 +169,10 @@ export default function Home() {
   // Fetch unread messages count for logged-in user
   useEffect(() => {
     if (!user?.id) return;
+    if (customerTab === 'messages') {
+      setUnreadMsgs(0);
+      return;
+    }
     const checkUnread = async () => {
       try {
         const resp = await fetch(`${API_URL}/api/messages/?user_id=${user.id}`);
