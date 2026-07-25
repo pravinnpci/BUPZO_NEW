@@ -100,8 +100,8 @@ export function CustomerCategories({
                       {/* Product Image Box */}
                       <div className="bg-white rounded h-[220px] mb-4 flex items-center justify-center p-4 relative overflow-hidden">
                          <img 
-                           src={product.image_url || 'https://placehold.co/300?text=No+Image/png'} 
-                           alt={product.name} 
+                           src={product.image_url || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&auto=format&fit=crop'} 
+                           onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&auto=format&fit=crop' }} 
                            className="max-h-full max-w-full object-contain group-hover:scale-110 transition duration-500" 
                          />
                          {/* Hover Actions Overlay */}

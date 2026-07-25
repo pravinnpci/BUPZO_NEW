@@ -131,7 +131,7 @@ export function Navbar({
                  Browse Categories
               </button>
 
-              <nav className="flex overflow-x-auto whitespace-nowrap items-center gap-6 font-bold text-[13px] uppercase text-gray-700 tracking-wide pb-2 lg:pb-0 scrollbar-hide">
+               <nav className="flex flex-wrap items-center gap-5 font-bold text-[12px] uppercase text-gray-700 tracking-wide">
                  <button onClick={() => onTabChange('home')} className="hover:text-[#e52e06] transition">Home</button>
                  <button onClick={() => onTabChange('categories')} className="hover:text-[#e52e06] transition">Products</button>
                  <button onClick={() => onTabChange('shops')} className="hover:text-[#e52e06] transition">Shops</button>

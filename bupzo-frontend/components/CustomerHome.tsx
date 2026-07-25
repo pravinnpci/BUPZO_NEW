@@ -89,7 +89,7 @@ export function CustomerHome({
                  <div className="bg-white rounded h-[220px] mb-4 flex items-center justify-center p-4 relative overflow-hidden">
                     <img 
                       src={product.image_url} 
-                      onError={(e) => { e.currentTarget.src = 'https://placehold.co/400/png' }}
+                      onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=500&auto=format&fit=crop' }}
                       alt={product.name} 
                       className="w-full h-full object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-300" 
                     />
