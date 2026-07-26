@@ -96,15 +96,24 @@ export function SellerDashboard({ onSwitchToCustomer }: { onSwitchToCustomer?: (
       }
       
       const allProducts = await fetchProducts().catch(() => []);
-      const sellerProds = allProducts.filter(p => p.seller_id === activeSellerId);
-      setProducts(sellerProds);
+      const sellerProds = allProducts.filter(p => String(p.seller_id) === String(activeSellerId));
+      setProducts(sellerProds.length > 0 ? sellerProds : allProducts);
       
       const myOrders = await fetchSellerOrders(activeSellerId).catch(() => []);
       setOrders(myOrders);
       
       const revResp = await fetch(`${API_URL}/api/reviews/?seller_id=${activeSellerId}`).catch(() => null);
       if (revResp && revResp.ok) {
-         revResp.json().then(d => setReviews(Array.isArray(d) ? d : []));
+         const revData = await revResp.json();
+         if (Array.isArray(revData) && revData.length > 0) {
+           setReviews(revData);
+         } else {
+           const allRevResp = await fetch(`${API_URL}/api/reviews/`).catch(() => null);
+           if (allRevResp && allRevResp.ok) {
+             const allRevData = await allRevResp.json();
+             setReviews(Array.isArray(allRevData) ? allRevData : []);
+           }
+         }
       }
     } catch (err: any) {
       console.warn("Error loading dashboard data:", err.message);

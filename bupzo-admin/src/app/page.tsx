@@ -2343,13 +2343,13 @@ export default function AdminMainPage() {
                     onClick={() => setReviewTab('products')} 
                     className={`px-4 py-2 rounded-lg font-bold text-xs transition-colors ${reviewTab === 'products' ? 'bg-[#3874ff] text-white shadow' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'}`}
                   >
-                    Product Reviews ({reviews.filter((r: any) => r.product_id).length})
+                    Product Reviews ({reviews.length})
                   </button>
                   <button 
                     onClick={() => setReviewTab('sellers')} 
                     className={`px-4 py-2 rounded-lg font-bold text-xs transition-colors ${reviewTab === 'sellers' ? 'bg-[#3874ff] text-white shadow' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'}`}
                   >
-                    Store / Merchant Reviews ({reviews.filter((r: any) => r.seller_id).length})
+                    Store / Merchant Reviews ({reviews.length})
                   </button>
                 </div>
               </div>
@@ -2392,19 +2392,19 @@ export default function AdminMainPage() {
                   </thead>
                   <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
                     {reviews.filter((r: any) => {
-                      const matchesTab = reviewTab === 'products' ? Boolean(r.product_id) : Boolean(r.seller_id);
                       const s = reviewSearchTerm.toLowerCase();
-                      const matchesSearch = (r.user_name || '').toLowerCase().includes(s) || 
-                                            (r.product_name || '').toLowerCase().includes(s) || 
-                                            (r.seller_name || '').toLowerCase().includes(s) || 
-                                            (r.comment || '').toLowerCase().includes(s);
-                      return matchesTab && matchesSearch;
+                      return (r.user_name || '').toLowerCase().includes(s) || 
+                             (r.product_name || '').toLowerCase().includes(s) || 
+                             (r.seller_name || '').toLowerCase().includes(s) || 
+                             (r.comment || '').toLowerCase().includes(s);
                     }).length === 0 ? (
                       <tr><td colSpan={6} className="px-4 py-8 text-center text-zinc-500 font-medium">No reviews found matching criteria.</td></tr>
                     ) : reviews.filter((r: any) => {
-                      const matchesTab = reviewTab === 'products' ? Boolean(r.product_id) : Boolean(r.seller_id);
                       const s = reviewSearchTerm.toLowerCase();
-                      return matchesTab && ((r.user_name || '').toLowerCase().includes(s) || (r.product_name || '').toLowerCase().includes(s) || (r.comment || '').toLowerCase().includes(s));
+                      return (r.user_name || '').toLowerCase().includes(s) || 
+                             (r.product_name || '').toLowerCase().includes(s) || 
+                             (r.seller_name || '').toLowerCase().includes(s) || 
+                             (r.comment || '').toLowerCase().includes(s);
                     }).map((r: any) => (
                       <tr key={r.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40">
                         <td className="px-4 py-3 font-bold">{r.user_name || 'Anonymous User'}</td>

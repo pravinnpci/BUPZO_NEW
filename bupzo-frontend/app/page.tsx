@@ -150,7 +150,11 @@ export default function Home() {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const tabParam = params.get('tab');
-      if (tabParam && ['home', 'categories', 'orders', 'wallet', 'wishlist', 'kyc', 'settings', 'messages', 'shops', 'pricing', 'invoices', 'faq'].includes(tabParam)) {
+      const sellerParam = params.get('seller');
+      if (sellerParam === 'true') {
+        setUserRole('seller');
+      } else if (tabParam && ['home', 'categories', 'orders', 'wallet', 'wishlist', 'kyc', 'settings', 'messages', 'shops', 'pricing', 'invoices', 'faq'].includes(tabParam)) {
+        setUserRole('customer');
         setCustomerTab(tabParam as any);
         if (tabParam === 'messages') setUnreadMsgs(0);
       }

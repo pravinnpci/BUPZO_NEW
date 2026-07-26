@@ -169,7 +169,11 @@ export default function SellerShopPage() {
                   onClick={() => setShowRatingsModal(true)}
                   className="flex items-center gap-1.5 font-extrabold text-gray-900 bg-gray-50 hover:bg-gray-100 px-3 py-1.5 rounded-lg border border-gray-200 transition cursor-pointer"
                 >
-                  <span className="text-[#23bb75] flex items-center gap-0.5">{seller.rating || '4.1'} ★</span>
+                  <span className="text-[#23bb75] flex items-center gap-0.5">
+                    {storeReviews.length > 0 
+                      ? (storeReviews.reduce((sum, r) => sum + (r.rating || 0), 0) / storeReviews.length).toFixed(1) 
+                      : (seller.rating || '4.5')} ★
+                  </span>
                   <span className="text-gray-500 font-medium">Ratings</span>
                 </button>
 

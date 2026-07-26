@@ -32,7 +32,7 @@ export default function Footer() {
           <h4 className="font-bold text-gray-900 text-xs uppercase tracking-wider">Account &amp; Location</h4>
           <ul className="space-y-2 text-xs">
             <li><Link href="/?tab=settings" className="hover:text-[#3874ff] transition-colors">Account Settings &amp; Leaflet Pinpoint</Link></li>
-            <li><Link href="/seller/create-merchant" className="hover:text-[#3874ff] transition-colors">Become a Merchant Seller</Link></li>
+            <li><Link href="/?seller=true" className="hover:text-[#3874ff] transition-colors">Become a Merchant Seller</Link></li>
           </ul>
         </div>
 
