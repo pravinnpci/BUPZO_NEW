@@ -397,10 +397,14 @@ export default function AdminMainPage() {
     }
   };
 
-  // Fetch live backend data on load
+  // Fetch live backend data on load and auto-refresh every 5s
   useEffect(() => {
     if (!hasMounted || isLoading) return;
     refreshAllAdminData();
+    const livePoll = setInterval(() => {
+      refreshAllAdminData();
+    }, 5000);
+    return () => clearInterval(livePoll);
   }, [hasMounted, isLoading]);
 
   // Telemetry log simulation loop

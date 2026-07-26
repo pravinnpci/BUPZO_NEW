@@ -2664,6 +2664,27 @@ async def create_review(rev: ReviewCreate):
                 RETURNING *, content as comment
                 """, uid, pid, rev.rating, rev.comment, images_json
             )
+            try:
+                await conn.execute(
+                    """
+                    UPDATE sellers SET rating = (
+                        SELECT ROUND(AVG(r.rating)::numeric, 1) 
+                        FROM reviews r 
+                        JOIN products p ON r.product_id = p.id 
+                        WHERE p.seller_id = (SELECT seller_id FROM products WHERE id = $1 LIMIT 1)
+                    ) WHERE id = (SELECT seller_id FROM products WHERE id = $1 LIMIT 1)
+                    """, pid
+                )
+            except Exception as rating_err:
+                print(f"Rating update error: {rating_err}")
+
+            if redis_client:
+                try:
+                    await redis_client.delete("all_sellers")
+                    await redis_client.delete(f"reviews:{pid}")
+                except Exception:
+                    pass
+
             return dict(row) if row else {"success": True, "message": "Review submitted successfully"}
         except Exception as e:
             return {"success": True, "message": "Review recorded successfully", "rating": rev.rating, "comment": rev.comment}
@@ -2672,11 +2693,11 @@ async def create_review(rev: ReviewCreate):
 async def get_all_reviews(product_id: Optional[str] = None, seller_id: Optional[str] = None):
     async with pool.acquire() as conn:
         if product_id:
-            rows = await conn.fetch("SELECT r.*, r.content as comment, p.name as product_name, u.name as user_name FROM reviews r JOIN products p ON r.product_id = p.id JOIN users u ON r.user_id = u.id WHERE r.product_id = $1 ORDER BY r.created_at DESC", product_id)
+            rows = await conn.fetch("SELECT r.*, r.content as comment, COALESCE(p.name, 'Product Item') as product_name, COALESCE(u.name, 'Verified Customer') as user_name FROM reviews r LEFT JOIN products p ON r.product_id = p.id LEFT JOIN users u ON r.user_id = u.id WHERE r.product_id::text = $1 OR p.id::text = $1 ORDER BY r.created_at DESC", product_id)
         elif seller_id:
-            rows = await conn.fetch("SELECT r.*, r.content as comment, p.name as product_name, u.name as user_name FROM reviews r JOIN products p ON r.product_id = p.id JOIN users u ON r.user_id = u.id WHERE p.seller_id = $1 ORDER BY r.created_at DESC", seller_id)
+            rows = await conn.fetch("SELECT r.*, r.content as comment, COALESCE(p.name, 'Product Item') as product_name, COALESCE(u.name, 'Verified Customer') as user_name FROM reviews r LEFT JOIN products p ON r.product_id = p.id LEFT JOIN users u ON r.user_id = u.id WHERE p.seller_id::text = $1 OR r.product_id IN (SELECT id FROM products WHERE seller_id::text = $1) ORDER BY r.created_at DESC", seller_id)
         else:
-            rows = await conn.fetch("SELECT r.*, r.content as comment, p.name as product_name, u.name as user_name FROM reviews r JOIN products p ON r.product_id = p.id JOIN users u ON r.user_id = u.id ORDER BY r.created_at DESC")
+            rows = await conn.fetch("SELECT r.*, r.content as comment, COALESCE(p.name, 'Product Item') as product_name, COALESCE(u.name, 'Verified Customer') as user_name FROM reviews r LEFT JOIN products p ON r.product_id = p.id LEFT JOIN users u ON r.user_id = u.id ORDER BY r.created_at DESC")
         import json
         results = []
         for row in rows:

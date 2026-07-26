@@ -11,6 +11,36 @@ export const getApiBaseUrl = (): string => {
 
 export const API_BASE_URL = getApiBaseUrl();
 
+export const getPrimaryProductImage = (product: any): string => {
+  if (!product) return 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop';
+  
+  let images: string[] = [];
+  try {
+    if (product.images && typeof product.images === 'string') {
+      images = JSON.parse(product.images);
+    } else if (Array.isArray(product.images)) {
+      images = product.images;
+    }
+  } catch(e) {}
+
+  if (images.length === 0 && product.image_url) {
+    if (typeof product.image_url === 'string' && product.image_url.includes(',')) {
+      images = product.image_url.split(',').map((u: string) => u.trim()).filter(Boolean);
+    } else if (typeof product.image_url === 'string') {
+      images = [product.image_url];
+    }
+  }
+
+  const raw = images.find(img => img && typeof img === 'string' && img.trim()) || (typeof product.image_url === 'string' ? product.image_url : null);
+  if (!raw) return 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop';
+  
+  const clean = raw.trim();
+  if (clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('data:')) return clean;
+  const baseUrl = getApiBaseUrl();
+  if (clean.startsWith('/')) return `${baseUrl}${clean}`;
+  return `${baseUrl}/${clean}`;
+};
+
 const buildUrl = (path: string): string => {
   if (path.startsWith('http://') || path.startsWith('https://')) return path;
   const baseUrl = getApiBaseUrl();

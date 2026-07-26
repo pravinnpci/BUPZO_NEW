@@ -14,6 +14,7 @@ export function CustomerShops({ onSelectShop, onRequireAuth }: CustomerShopsProp
   const [sellers, setSellers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [followedSellers, setFollowedSellers] = useState<Record<string, boolean>>({});
+  const [toastMessage, setToastMessage] = useState<string>('');
 
   useEffect(() => {
     if (!user) {
@@ -50,6 +51,14 @@ export function CustomerShops({ onSelectShop, onRequireAuth }: CustomerShopsProp
     const isCurrentlyFollowing = !!followedSellers[sellerId];
     const newFollowingState = !isCurrentlyFollowing;
 
+    const targetSeller = sellers.find(s => s.id === sellerId);
+    const sName = targetSeller?.business_name || targetSeller?.name || 'this merchant';
+    const msg = newFollowingState 
+      ? `🎉 Success! You are now following ${sName}!`
+      : `You have unfollowed ${sName}.`;
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(''), 4000);
+
     setFollowedSellers(prev => ({ ...prev, [sellerId]: newFollowingState }));
     setSellers(sList => sList.map(s => {
       if (s.id === sellerId) {
@@ -76,7 +85,12 @@ export function CustomerShops({ onSelectShop, onRequireAuth }: CustomerShopsProp
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl font-sans">
+    <div className="container mx-auto px-4 py-8 max-w-6xl font-sans relative">
+      {toastMessage && (
+        <div className="fixed top-20 right-5 z-[9999] bg-[#0055D4] text-white px-6 py-3.5 rounded-lg shadow-2xl flex items-center gap-3 animate-bounce font-bold text-sm border-2 border-white">
+          <span>{toastMessage}</span>
+        </div>
+      )}
       <div className="mb-8">
         <h1 className="text-3xl font-extrabold text-[#232f3e] mb-2">Merchant Directory</h1>
         <p className="text-gray-500 text-sm">Discover verified sellers, ratings, and exclusive stores on Bupzo.</p>

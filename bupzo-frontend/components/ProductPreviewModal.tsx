@@ -467,8 +467,8 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, onA
               {reviews.length === 0 ? (
                 <p className="text-sm text-gray-500 italic">No reviews yet.</p>
               ) : (
-                reviews.map(r => (
-                  <div key={r.id} className="pb-4 border-b border-gray-50 last:border-0">
+                reviews.map((r, idx) => (
+                  <div key={r.id ? `${r.id}-${idx}` : `rev-${idx}`} className="pb-4 border-b border-gray-50 last:border-0">
                     <div className="flex items-center gap-2 mb-2">
                       <div className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 text-xs font-bold">
                         {r.user_name ? r.user_name.charAt(0) : 'U'}
@@ -487,8 +487,8 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, onA
                       try { rImages = typeof r.images === 'string' ? JSON.parse(r.images) : r.images; } catch(e) {}
                       return rImages && rImages.length > 0 ? (
                         <div className="mt-3 flex gap-2">
-                          {rImages.map((img: string, idx: number) => (
-                            <img key={idx} src={img} className="w-16 h-16 object-cover rounded border border-gray-200" />
+                          {rImages.map((img: string, imgIdx: number) => (
+                            <img key={`rimg-${r.id || idx}-${imgIdx}`} src={img} className="w-16 h-16 rounded border border-gray-200 object-cover" />
                           ))}
                         </div>
                       ) : null;
