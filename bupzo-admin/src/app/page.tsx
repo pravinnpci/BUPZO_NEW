@@ -2391,46 +2391,70 @@ export default function AdminMainPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-                    {reviews.filter((r: any) => {
+                    {(() => {
                       const s = reviewSearchTerm.toLowerCase();
-                      return (r.user_name || '').toLowerCase().includes(s) || 
-                             (r.product_name || '').toLowerCase().includes(s) || 
-                             (r.seller_name || '').toLowerCase().includes(s) || 
-                             (r.comment || '').toLowerCase().includes(s);
-                    }).length === 0 ? (
-                      <tr><td colSpan={6} className="px-4 py-8 text-center text-zinc-500 font-medium">No reviews found matching criteria.</td></tr>
-                    ) : reviews.filter((r: any) => {
-                      const s = reviewSearchTerm.toLowerCase();
-                      return (r.user_name || '').toLowerCase().includes(s) || 
-                             (r.product_name || '').toLowerCase().includes(s) || 
-                             (r.seller_name || '').toLowerCase().includes(s) || 
-                             (r.comment || '').toLowerCase().includes(s);
-                    }).map((r: any) => (
-                      <tr key={r.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40">
-                        <td className="px-4 py-3 font-bold">{r.user_name || 'Anonymous User'}</td>
-                        <td className="px-4 py-3 text-blue-600 dark:text-blue-400 font-semibold">{r.product_name || r.seller_name || 'Store / Product'}</td>
-                        <td className="px-4 py-3 text-amber-500 font-extrabold flex items-center gap-1">★ {r.rating} / 5</td>
-                        <td className="px-4 py-3 max-w-xs text-zinc-700 dark:text-zinc-300 font-medium">{r.comment || 'No text review.'}</td>
-                        <td className="px-4 py-3 font-mono text-zinc-500 text-[11px] whitespace-nowrap">{r.created_at ? new Date(r.created_at).toLocaleString() : new Date().toLocaleString()}</td>
-                        <td className="px-4 py-3 text-right">
-                          <button 
-                            onClick={async () => {
-                              if (!confirm("Are you sure you want to delete this review?")) return;
-                              try {
-                                const resp = await fetch(`${API_URL}/api/reviews/${r.id}`, { method: 'DELETE' });
-                                if (resp.ok) {
-                                  alert("Review deleted successfully!");
-                                  setReviews(prev => prev.filter(item => item.id !== r.id));
-                                }
-                              } catch(e) { alert("Failed to delete review."); }
-                            }}
-                            className="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1 rounded text-xs font-bold transition shadow-sm"
-                          >
-                            Delete Review
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                      const filtered = reviews.filter((r: any) => {
+                        return (r.user_name || '').toLowerCase().includes(s) || 
+                               (r.product_name || '').toLowerCase().includes(s) || 
+                               (r.seller_name || '').toLowerCase().includes(s) || 
+                               (r.comment || '').toLowerCase().includes(s);
+                      });
+                      const sorted = [...filtered].sort((a: any, b: any) => {
+                        if (!reviewSortKey) return 0;
+                        let aVal = a[reviewSortKey];
+                        let bVal = b[reviewSortKey];
+                        if (reviewSortKey === 'rating') {
+                          aVal = Number(aVal || 0);
+                          bVal = Number(bVal || 0);
+                        } else if (reviewSortKey === 'created_at' || reviewSortKey === 'date') {
+                          aVal = new Date(a.created_at || a.date || Date.now()).getTime();
+                          bVal = new Date(b.created_at || b.date || Date.now()).getTime();
+                        } else if (reviewSortKey === 'seller_name') {
+                          aVal = String(a.seller_name || a.product_name || '').toLowerCase();
+                          bVal = String(b.seller_name || b.product_name || '').toLowerCase();
+                        } else {
+                          aVal = String(aVal || '').toLowerCase();
+                          bVal = String(bVal || '').toLowerCase();
+                        }
+                        if (aVal === bVal) return 0;
+                        return aVal < bVal ? (reviewSortOrder === 'asc' ? -1 : 1) : (reviewSortOrder === 'asc' ? 1 : -1);
+                      });
+
+                      if (sorted.length === 0) {
+                        return (
+                          <tr><td colSpan={6} className="px-4 py-8 text-center text-zinc-500 font-medium">No reviews found matching criteria.</td></tr>
+                        );
+                      }
+
+                      return sorted.map((r: any) => (
+                        <tr key={r.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40">
+                          <td className="px-4 py-3 font-bold">{r.user_name || 'Verified Customer'}</td>
+                          <td className="px-4 py-3 text-blue-600 dark:text-blue-400 font-semibold">
+                            {reviewTab === 'products' ? (r.product_name || 'Product Item') : (r.seller_name || 'Store Merchant')}
+                          </td>
+                          <td className="px-4 py-3 text-amber-500 font-extrabold flex items-center gap-1">★ {r.rating} / 5</td>
+                          <td className="px-4 py-3 max-w-xs text-zinc-700 dark:text-zinc-300 font-medium">{r.comment || 'No text review.'}</td>
+                          <td className="px-4 py-3 font-mono text-zinc-500 text-[11px] whitespace-nowrap">{r.created_at ? new Date(r.created_at).toLocaleString() : new Date().toLocaleString()}</td>
+                          <td className="px-4 py-3 text-right">
+                            <button 
+                              onClick={async () => {
+                                if (!confirm("Are you sure you want to delete this review?")) return;
+                                try {
+                                  const resp = await fetch(`${API_URL}/api/reviews/${r.id}`, { method: 'DELETE' });
+                                  if (resp.ok) {
+                                    alert("Review deleted successfully!");
+                                    setReviews(prev => prev.filter(item => item.id !== r.id));
+                                  }
+                                } catch(e) { alert("Failed to delete review."); }
+                              }}
+                              className="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1 rounded text-xs font-bold transition shadow-sm"
+                            >
+                              Delete Review
+                            </button>
+                          </td>
+                        </tr>
+                      ));
+                    })()}
                   </tbody>
                 </table>
               </div>

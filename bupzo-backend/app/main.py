@@ -2693,11 +2693,11 @@ async def create_review(rev: ReviewCreate):
 async def get_all_reviews(product_id: Optional[str] = None, seller_id: Optional[str] = None):
     async with pool.acquire() as conn:
         if product_id:
-            rows = await conn.fetch("SELECT r.*, r.content as comment, COALESCE(p.name, 'Product Item') as product_name, COALESCE(u.name, 'Verified Customer') as user_name FROM reviews r LEFT JOIN products p ON r.product_id = p.id LEFT JOIN users u ON r.user_id = u.id WHERE r.product_id::text = $1 OR p.id::text = $1 ORDER BY r.created_at DESC", product_id)
+            rows = await conn.fetch("SELECT r.*, r.content as comment, COALESCE(p.name, 'Product Item') as product_name, COALESCE(u.name, 'Verified Customer') as user_name, COALESCE(s.business_name, 'Store Merchant') as seller_name FROM reviews r LEFT JOIN products p ON r.product_id = p.id LEFT JOIN users u ON r.user_id = u.id LEFT JOIN sellers s ON p.seller_id = s.id WHERE r.product_id::text = $1 OR p.id::text = $1 ORDER BY r.created_at DESC", product_id)
         elif seller_id:
-            rows = await conn.fetch("SELECT r.*, r.content as comment, COALESCE(p.name, 'Product Item') as product_name, COALESCE(u.name, 'Verified Customer') as user_name FROM reviews r LEFT JOIN products p ON r.product_id = p.id LEFT JOIN users u ON r.user_id = u.id WHERE p.seller_id::text = $1 OR r.product_id IN (SELECT id FROM products WHERE seller_id::text = $1) ORDER BY r.created_at DESC", seller_id)
+            rows = await conn.fetch("SELECT r.*, r.content as comment, COALESCE(p.name, 'Product Item') as product_name, COALESCE(u.name, 'Verified Customer') as user_name, COALESCE(s.business_name, 'Store Merchant') as seller_name FROM reviews r LEFT JOIN products p ON r.product_id = p.id LEFT JOIN users u ON r.user_id = u.id LEFT JOIN sellers s ON p.seller_id = s.id WHERE p.seller_id::text = $1 OR r.product_id IN (SELECT id FROM products WHERE seller_id::text = $1) ORDER BY r.created_at DESC", seller_id)
         else:
-            rows = await conn.fetch("SELECT r.*, r.content as comment, COALESCE(p.name, 'Product Item') as product_name, COALESCE(u.name, 'Verified Customer') as user_name FROM reviews r LEFT JOIN products p ON r.product_id = p.id LEFT JOIN users u ON r.user_id = u.id ORDER BY r.created_at DESC")
+            rows = await conn.fetch("SELECT r.*, r.content as comment, COALESCE(p.name, 'Product Item') as product_name, COALESCE(u.name, 'Verified Customer') as user_name, COALESCE(s.business_name, 'Store Merchant') as seller_name FROM reviews r LEFT JOIN products p ON r.product_id = p.id LEFT JOIN users u ON r.user_id = u.id LEFT JOIN sellers s ON p.seller_id = s.id ORDER BY r.created_at DESC")
         import json
         results = []
         for row in rows:
