@@ -15,6 +15,15 @@ interface ProductPreviewModalProps {
 export default function ProductPreviewModal({ product, onClose, onAddToCart, onAddToWishlist, onBuyNow, isWishlisted = false }: ProductPreviewModalProps) {
   const { user } = useUser();
   const cartStore = useCartStore();
+  const resolveImageUrl = (url: string | null | undefined): string => {
+    if (!url || typeof url !== 'string') return 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop';
+    const clean = url.trim();
+    if (!clean) return 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop';
+    if (clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('data:')) return clean;
+    if (clean.startsWith('/')) return `${API_BASE_URL}${clean}`;
+    return `${API_BASE_URL}/${clean}`;
+  };
+
   let parsedImages: string[] = [];
   try {
     if (product.images && typeof product.images === 'string') parsedImages = JSON.parse(product.images);
@@ -29,9 +38,8 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, onA
     }
   }
 
-  const initialMainImage = parsedImages.find(img => img && (img.startsWith('http') || img.startsWith('/') || img.startsWith('data:'))) 
-    || (product.image_url && (product.image_url.startsWith('http') || product.image_url.startsWith('/') || product.image_url.startsWith('data:')) ? product.image_url : null)
-    || (product.name?.toLowerCase().includes('halwa') || product.name?.toLowerCase().includes('sweet') ? 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=500&auto=format&fit=crop' : 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop');
+  const validImages = parsedImages.map(img => resolveImageUrl(img)).filter(img => img);
+  const initialMainImage = validImages[0] || resolveImageUrl(product.image_url);
 
   const [activeImage, setActiveImage] = useState(initialMainImage);
   const [referralLink, setReferralLink] = useState('');
@@ -88,7 +96,7 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, onA
     alert("Referral link copied to clipboard!");
   };
 
-  const images = parsedImages.slice(0, 4);
+  const images = validImages.length > 0 ? validImages.slice(0, 4) : [initialMainImage];
   
   // Dynamic Sizes based on Category
   const cat = (product.category_name || '').toLowerCase();

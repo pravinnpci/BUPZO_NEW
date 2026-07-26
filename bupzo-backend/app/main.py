@@ -2725,7 +2725,7 @@ async def follow_seller(seller_id: str, user_id: str):
                 uid = row['id'] if row else None
 
             if sid and uid:
-                fid = uuid.uuid4()
+                fid = uuid4()
                 await conn.execute(
                     """
                     INSERT INTO seller_followers (id, user_id, seller_id)
@@ -2736,9 +2736,34 @@ async def follow_seller(seller_id: str, user_id: str):
                 await conn.execute(
                     "UPDATE sellers SET followers_count = COALESCE(followers_count, 0) + 1 WHERE id = $1", sid
                 )
-            return {"success": True, "message": "Store followed"}
+                # Create instant notification for seller & user
+                try:
+                    s_user = await conn.fetchrow("SELECT user_id, business_name FROM sellers WHERE id = $1", sid)
+                    u_user = await conn.fetchrow("SELECT name FROM users WHERE id = $1", uid)
+                    s_name = s_user['business_name'] if s_user else 'Store'
+                    u_name = u_user['name'] if u_user else 'Customer'
+                    if s_user and s_user['user_id']:
+                        await conn.execute(
+                            "INSERT INTO notifications (user_id, title, message, type) VALUES ($1, $2, $3, $4)",
+                            s_user['user_id'], 'New Store Follower! 🎉', f'{u_name} is now following {s_name}!', 'follow'
+                        )
+                    await conn.execute(
+                        "INSERT INTO notifications (user_id, title, message, type) VALUES ($1, $2, $3, $4)",
+                        uid, 'Store Followed! 🎉', f'You are now following {s_name}!', 'follow'
+                    )
+                except Exception as notif_err:
+                    print(f"Notification insert error: {notif_err}")
+
+            if redis_client:
+                try:
+                    await redis_client.delete(f"followers:{seller_id}")
+                    await redis_client.delete("all_followers")
+                except Exception:
+                    pass
+
+            return {"success": True, "message": "Store followed successfully", "is_following": True}
         except Exception as e:
-            return {"success": True, "message": "Store followed"}
+            return {"success": True, "message": "Store followed", "is_following": True}
 
 @app.delete("/api/sellers/{seller_id}/follow")
 async def unfollow_seller(seller_id: str, user_id: str):
@@ -2764,9 +2789,17 @@ async def unfollow_seller(seller_id: str, user_id: str):
                 await conn.execute(
                     "UPDATE sellers SET followers_count = GREATEST(0, COALESCE(followers_count, 0) - 1) WHERE id = $1", sid
                 )
-            return {"success": True, "message": "Store unfollowed"}
+
+            if redis_client:
+                try:
+                    await redis_client.delete(f"followers:{seller_id}")
+                    await redis_client.delete("all_followers")
+                except Exception:
+                    pass
+
+            return {"success": True, "message": "Store unfollowed successfully", "is_following": False}
         except Exception as e:
-            return {"success": True, "message": "Store unfollowed"}
+            return {"success": True, "message": "Store unfollowed", "is_following": False}
 
 @app.get("/api/sellers/all-followers")
 async def get_all_followers():

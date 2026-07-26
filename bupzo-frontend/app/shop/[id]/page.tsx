@@ -21,6 +21,7 @@ export default function SellerShopPage() {
   const [followersCount, setFollowersCount] = useState<number>(0);
   const [storeReviews, setStoreReviews] = useState<any[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
+  const [toastMessage, setToastMessage] = useState<string>('');
   
   // Dynamic Live Filter States
   const [searchQuery, setSearchQuery] = useState('');
@@ -97,6 +98,12 @@ export default function SellerShopPage() {
     setIsFollowing(nextState);
     setFollowersCount(c => nextState ? c + 1 : Math.max(0, c - 1));
     
+    const msg = nextState 
+      ? `🎉 Success! You are now following ${seller?.business_name || 'this merchant'}!`
+      : `You have unfollowed ${seller?.business_name || 'this merchant'}.`;
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(''), 4000);
+
     try {
       if (!nextState) {
         await unfollowSeller(id, activeUserId);
@@ -112,16 +119,16 @@ export default function SellerShopPage() {
   if (loading) return <div className="flex justify-center items-center h-screen bg-gray-50"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-[#e52e06]"></div></div>;
   if (!seller) return <div className="text-center py-20 text-gray-500 font-bold">Shop not found.</div>;
 
-  // Derive unique categories from seller products with fallback
-  const categoriesList = categories.length > 0 ? categories : Array.from(new Set(products.map(p => p.category_name || (p as any).category || 'General')));
+  // Derive unique categories dynamically from seller products
+  const categoriesList = Array.from(new Set(products.map(p => (p.category_name || (p as any).category || 'General').trim()))).filter(Boolean);
 
   // Filtered & Sorted products
   const filteredProducts = products.filter(p => {
-    const pCat = p.category_name || (p as any).category || 'General';
+    const pCat = (p.category_name || (p as any).category || 'General').trim();
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           (p.description && p.description.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesCat = selectedCategories.length === 0 || selectedCategories.includes(pCat);
-    const matchesPrice = p.price <= maxPrice;
+    const matchesCat = selectedCategories.length === 0 || selectedCategories.some(sc => sc.toLowerCase() === pCat.toLowerCase());
+    const matchesPrice = (p.price || 0) <= maxPrice;
     return matchesSearch && matchesCat && matchesPrice;
   }).sort((a, b) => {
     if (sortBy === 'low') return a.price - b.price;
@@ -139,6 +146,12 @@ export default function SellerShopPage() {
         onAuthClick={() => window.location.href = '/'}
         onCartClick={() => window.location.href = '/'}
       />
+
+      {toastMessage && (
+        <div className="fixed top-20 right-5 z-[9999] bg-[#0055D4] text-white px-6 py-3.5 rounded-lg shadow-2xl flex items-center gap-3 animate-bounce font-bold text-sm border-2 border-white">
+          <span>{toastMessage}</span>
+        </div>
+      )}
 
       {/* Header Profile Section */}
       <div className="bg-white border-b border-gray-200 shadow-sm">
@@ -245,8 +258,8 @@ export default function SellerShopPage() {
                     All Categories ({products.length})
                   </label>
                   {categoriesList.map(cat => {
-                    const isChecked = selectedCategories.includes(cat);
-                    const catCount = products.filter(p => (p.category_name || (p as any).category || 'General') === cat).length;
+                    const isChecked = selectedCategories.some(sc => sc.toLowerCase() === cat.toLowerCase());
+                    const catCount = products.filter(p => (p.category_name || (p as any).category || 'General').trim().toLowerCase() === cat.toLowerCase()).length;
                     return (
                       <label key={cat} className="flex items-center gap-2 cursor-pointer font-semibold hover:text-[#e52e06] transition-colors">
                         <input 
@@ -254,7 +267,7 @@ export default function SellerShopPage() {
                           checked={isChecked} 
                           onChange={() => {
                             if (isChecked) {
-                              setSelectedCategories(prev => prev.filter(c => c !== cat));
+                              setSelectedCategories(prev => prev.filter(c => c.toLowerCase() !== cat.toLowerCase()));
                             } else {
                               setSelectedCategories(prev => [...prev, cat]);
                             }
@@ -262,7 +275,7 @@ export default function SellerShopPage() {
                           className="accent-[#e52e06] w-3.5 h-3.5 rounded" 
                         />
                         <span>{cat}</span>
-                        <span className="text-[10px] text-gray-400 font-mono">({catCount})</span>
+                        <span className="text-[10px] text-gray-400 font-mono font-bold">({catCount})</span>
                       </label>
                     );
                   })}
