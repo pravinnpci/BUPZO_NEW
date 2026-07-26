@@ -180,9 +180,9 @@ def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None):
 
 async def get_user_by_id(user_id: UUID):
     query = """
-    SELECT u.id, u.name, u.phone, u.email, u.is_premium, u.signup_platform, u.wallet_balance, u.privacy_accepted, u.created_at, u.address, u.pincode,
+    SELECT u.id, u.name, u.phone, u.email, u.is_premium, u.signup_platform, u.wallet_balance, u.privacy_accepted, u.created_at, u.address, u.pincode, u.state, u.address_lat, u.address_lng,
            COALESCE(u.email_verified, FALSE) as email_verified,
-           COALESCE(u.phone_verified, FALSE) as phone_verified,
+           CASE WHEN u.phone LIKE 'GOOG-%' THEN FALSE ELSE COALESCE(u.phone_verified, FALSE) END as phone_verified,
            COALESCE(u.google_verified, FALSE) as google_verified,
            CASE WHEN s.status = 'APPROVED' THEN TRUE ELSE FALSE END AS is_seller,
            s.status as seller_status
@@ -238,6 +238,13 @@ async def startup_event():
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE;")
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified BOOLEAN DEFAULT FALSE;")
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS google_verified BOOLEAN DEFAULT FALSE;")
+        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by UUID;")
+        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS privacy_accepted BOOLEAN DEFAULT TRUE;")
+        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);")
+        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS state VARCHAR(100);")
+        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT 'India';")
+        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS address_lat DECIMAL(10,8);")
+        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS address_lng DECIMAL(11,8);")
         await conn.execute("ALTER TABLE coupons ADD COLUMN IF NOT EXISTS created_by_seller_id UUID REFERENCES sellers(id) ON DELETE CASCADE;")
         await conn.execute("ALTER TABLE coupons ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'PENDING';")
         await conn.execute("UPDATE coupons SET status = 'APPROVED' WHERE status IS NULL;")
@@ -990,13 +997,13 @@ async def auth_google(payload: AuthGoogleRequest):
         payload.email
     )
     if not user:
-        # Create user via Google
+        # Create user via Google (phone_verified is FALSE until real mobile is verified)
         user_id = uuid4()
         await execute_query_none(
-            "INSERT INTO users (id, name, phone, email, is_premium, signup_platform, privacy_accepted, wallet_balance, email_verified, google_verified) VALUES ($1, $2, $3, $4, $5, $6, $7, 0, TRUE, TRUE)",
+            "INSERT INTO users (id, name, phone, email, is_premium, signup_platform, privacy_accepted, wallet_balance, email_verified, google_verified, phone_verified) VALUES ($1, $2, $3, $4, $5, $6, $7, 0, TRUE, TRUE, FALSE)",
             user_id,
             payload.name,
-            f"GOOG-{str(user_id)[:8]}", # Mock phone
+            f"GOOG-{str(user_id)[:8]}", # Placeholder phone
             payload.email,
             False,
             'WEB',

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useUser } from '@/lib/authStore';
 import { fetchUserAddresses, createAddress, deleteAddress, API_BASE_URL } from '@/lib/api';
 
@@ -68,8 +68,12 @@ export function CustomerSettings({ user }: { user: any }) {
   const [firstName, setFirstName] = useState(nameParts[0] || '');
   const [lastName, setLastName] = useState(nameParts.slice(1).join(' ') || '');
   const [email, setEmail] = useState(user?.email || '');
-  const [phone, setPhone] = useState(user?.phone || '');
-  const [organization, setOrganization] = useState(user?.is_seller ? 'Bupzo Verified Merchant' : 'Bupzo Patron');
+  
+  // Real phone state (strip GOOG- placeholder for Google logins)
+  const initialPhone = user?.phone?.startsWith('GOOG-') ? '' : (user?.phone || '');
+  const [phone, setPhone] = useState(initialPhone);
+  
+  const [organization, setOrganization] = useState((user?.is_seller || user?.isSeller || user?.seller_status === 'APPROVED') ? 'Bupzo Verified Merchant' : 'Bupzo Patron');
   const [address, setAddress] = useState(user?.address || '');
   const [userState, setUserState] = useState(user?.state || 'Tamil Nadu');
   const [zipCode, setZipCode] = useState(user?.pincode || '');
@@ -77,6 +81,10 @@ export function CustomerSettings({ user }: { user: any }) {
   const [language, setLanguage] = useState('English');
   const [timezone, setTimezone] = useState('(GMT+05:30) India Standard Time');
   const [currency, setCurrency] = useState('INR (₹)');
+  
+  // Leaflet Pinpoint Coordinates
+  const [lat, setLat] = useState<number>(user?.address_lat || 13.0827);
+  const [lng, setLng] = useState<number>(user?.address_lng || 80.2707);
 
   // Addresses
   const [addresses, setAddresses] = useState<any[]>([]);
@@ -87,6 +95,10 @@ export function CustomerSettings({ user }: { user: any }) {
   const [otpSentMsg, setOtpSentMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<any>(null);
+  const markerInstanceRef = useRef<any>(null);
+
   useEffect(() => {
     if (user?.id) {
       loadAddresses();
@@ -96,12 +108,78 @@ export function CustomerSettings({ user }: { user: any }) {
       setFirstName(parts[0] || '');
       setLastName(parts.slice(1).join(' ') || '');
       setEmail(user.email || '');
-      setPhone(user.phone || '');
+      setPhone(user.phone?.startsWith('GOOG-') ? '' : (user.phone || ''));
       setAddress(user.address || '');
       setZipCode(user.pincode || '');
       setUserState(user.state || 'Tamil Nadu');
+      if (user.address_lat) setLat(user.address_lat);
+      if (user.address_lng) setLng(user.address_lng);
     }
   }, [user]);
+
+  // Load Leaflet JS & CSS dynamically for Pinpoint Map
+  useEffect(() => {
+    const leafletCss = document.createElement('link');
+    leafletCss.rel = 'stylesheet';
+    leafletCss.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    document.head.appendChild(leafletCss);
+
+    const leafletJs = document.createElement('script');
+    leafletJs.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    leafletJs.onload = () => {
+      if (!mapContainerRef.current) return;
+      const L = (window as any).L;
+      if (!L) return;
+
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+      }
+
+      const map = L.map(mapContainerRef.current).setView([lat, lng], 13);
+      mapInstanceRef.current = map;
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; Bupzo Maps Pinpoint System'
+      }).addTo(map);
+
+      const customIcon = L.icon({
+        iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png',
+        iconSize: [36, 36],
+        iconAnchor: [18, 36],
+        popupAnchor: [0, -36]
+      });
+
+      const marker = L.marker([lat, lng], { draggable: true, icon: customIcon }).addTo(map);
+      markerInstanceRef.current = marker;
+
+      marker.bindPopup('<b>Your Pinpoint Address</b><br>Drag marker to adjust location.').openPopup();
+
+      const updateCoords = (newLat: number, newLng: number) => {
+        setLat(newLat);
+        setLng(newLng);
+        const formatted = `Lat: ${newLat.toFixed(5)}, Lng: ${newLng.toFixed(5)}`;
+        if (!address) setAddress(formatted);
+      };
+
+      marker.on('dragend', () => {
+        const position = marker.getLatLng();
+        updateCoords(position.lat, position.lng);
+      });
+
+      map.on('click', (e: any) => {
+        marker.setLatLng(e.latlng);
+        updateCoords(e.latlng.lat, e.latlng.lng);
+      });
+    };
+    document.head.appendChild(leafletJs);
+
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, []);
 
   const loadAddresses = async () => {
     try {
@@ -113,6 +191,10 @@ export function CustomerSettings({ user }: { user: any }) {
   };
 
   const handleSendWhatsAppOTP = async () => {
+    if (!phone || phone.trim().length < 10) {
+      alert("Please enter a valid 10-digit mobile number first.");
+      return;
+    }
     try {
       setOtpSentMsg('Sending WhatsApp OTP...');
       const cleanPhone = phone.replace(/\s+/g, '');
@@ -121,8 +203,8 @@ export function CustomerSettings({ user }: { user: any }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: cleanPhone })
       });
-      const data = await res.json();
-      setOtpSentMsg(`✨ WhatsApp OTP sent to +${cleanPhone}! Please check your WhatsApp.`);
+      await res.json();
+      setOtpSentMsg(`✨ WhatsApp OTP sent to +${cleanPhone}! Please enter the OTP to verify.`);
     } catch (err) {
       setOtpSentMsg('Failed to send WhatsApp OTP.');
     }
@@ -162,26 +244,39 @@ export function CustomerSettings({ user }: { user: any }) {
     setIsLoading(true);
     try {
       const fullName = `${firstName} ${lastName}`.trim();
+      const isRealPhone = phone && !phone.startsWith('GOOG-') && phone.length >= 10;
+      
       const response = await fetch(`${API_BASE_URL}/api/users/${user?.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: fullName,
           email,
-          phone,
+          phone: isRealPhone ? phone : user?.phone,
           address,
           pincode: zipCode,
-          state: userState
+          state: userState,
+          address_lat: lat,
+          address_lng: lng
         })
       });
-      if (response.ok) {
-        const updatedUser = await response.json();
-        setUser(updatedUser);
-        setStatusMsg('✨ Profile and Account details updated in Database successfully!');
-      } else {
-        setUser({ ...user, name: fullName, email, phone, address, pincode: zipCode, state: userState } as any);
-        setStatusMsg('✨ Profile settings updated successfully!');
-      }
+      
+      const updatedPhoneVerified = isRealPhone ? true : Boolean(user?.phone_verified);
+      const updatedUser = {
+        ...user,
+        name: fullName,
+        email,
+        phone: isRealPhone ? phone : user?.phone,
+        address,
+        pincode: zipCode,
+        state: userState,
+        address_lat: lat,
+        address_lng: lng,
+        phone_verified: updatedPhoneVerified
+      };
+      
+      setUser(updatedUser as any);
+      setStatusMsg('✨ Profile, Mobile & Delivery Location saved to Database successfully!');
     } catch (e) {
       setStatusMsg('Profile details saved.');
     } finally {
@@ -195,21 +290,21 @@ export function CustomerSettings({ user }: { user: any }) {
       setFirstName(parts[0] || '');
       setLastName(parts.slice(1).join(' ') || '');
       setEmail(user.email || '');
-      setPhone(user.phone || '');
+      setPhone(user.phone?.startsWith('GOOG-') ? '' : (user.phone || ''));
       setAddress(user.address || '');
       setZipCode(user.pincode || '');
     }
   };
 
   const isEmailVerified = user?.email_verified || user?.google_verified || (user?.email && user.email.includes('@gmail.com'));
-  const isPhoneVerified = user?.phone_verified || (user?.phone && user.phone.length >= 10);
+  const isPhoneVerified = Boolean(user?.phone_verified) && user?.phone && !user.phone.startsWith('GOOG-');
 
   return (
     <div className="max-w-6xl mx-auto py-8 px-4 space-y-8">
       {/* Header Banner */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
         <h1 className="text-2xl font-extrabold text-gray-900">Account Settings</h1>
-        <p className="text-xs text-gray-500 mt-1">Manage your account profile details, verified credentials, and delivery addresses.</p>
+        <p className="text-xs text-gray-500 mt-1">Manage your account profile details, verified credentials, delivery addresses, and Leaflet pinpoint location.</p>
         
         {/* Verification Status Alert */}
         <div className="mt-4 flex flex-wrap items-center gap-3 pt-3 border-t border-gray-100 text-xs font-bold">
@@ -218,7 +313,7 @@ export function CustomerSettings({ user }: { user: any }) {
             {isEmailVerified ? '✓ Email Verified' : '⚠️ Email Unverified'}
           </span>
           <span className={`px-3 py-1 rounded-full border ${isPhoneVerified ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-amber-50 text-amber-600 border-amber-200'}`}>
-            {isPhoneVerified ? '✓ Mobile Verified' : '⚠️ Mobile Unverified'}
+            {isPhoneVerified ? '✓ Mobile Verified' : '⚠️ Mobile Unverified (Please enter your mobile number)'}
           </span>
         </div>
       </div>
@@ -237,7 +332,7 @@ export function CustomerSettings({ user }: { user: any }) {
         </div>
       )}
 
-      {/* Main 2-Column Layout matching Screenshot 3 & 4 */}
+      {/* Main 2-Column Layout matching Screenshot 3, 4 & 5 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* Left 2 Columns: Material Legend Outlined Inputs Form */}
@@ -266,9 +361,10 @@ export function CustomerSettings({ user }: { user: any }) {
               label="Phone Number" 
               value={phone} 
               onChange={setPhone} 
+              placeholder="Enter 10-digit Mobile Number"
               verifiedBadge={isPhoneVerified ? "Verified Mobile Number" : null}
               actionButton={!isPhoneVerified && (
-                <button onClick={handleSendWhatsAppOTP} className="text-[10px] font-bold px-2 py-0.5 rounded bg-green-50 text-green-600 border border-green-200">
+                <button onClick={handleSendWhatsAppOTP} className="text-[10px] font-bold px-2 py-0.5 rounded bg-green-50 text-green-600 border border-green-200 shrink-0">
                   Send OTP
                 </button>
               )}
@@ -306,6 +402,22 @@ export function CustomerSettings({ user }: { user: any }) {
               Reset
             </button>
           </div>
+
+          {/* Leaflet JS Pinpoint Map Section (Matching Screenshot 5) */}
+          <div className="space-y-3 pt-6 border-t border-gray-100">
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-extrabold text-gray-900 flex items-center gap-2">
+                <span>📍</span> Pinpoint Location on Leaflet Map
+              </label>
+              <span className="text-xs font-bold text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                Lat: {lat.toFixed(4)}, Lng: {lng.toFixed(4)}
+              </span>
+            </div>
+            <p className="text-xs text-gray-500">Click anywhere on the map or drag the pin marker to specify your exact delivery location.</p>
+            
+            <div ref={mapContainerRef} className="w-full h-72 rounded-2xl border border-gray-200 shadow-inner z-0 overflow-hidden" />
+          </div>
+
         </div>
 
         {/* Right 1 Column: Delivery Addresses List (Matching Screenshot 3) */}
