@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Product, fetchSellerDetails, fetchSellerProducts, fetchSellerFollowers, followSeller, unfollowSeller, fetchSellerReviews, fetchCategories, getPrimaryProductImage, API_BASE_URL } from '@/lib/api';
 import { useParams } from 'next/navigation';
 import ProductPreviewModal from '@/components/ProductPreviewModal';
+import AuthModal from '@/components/AuthModal';
 import { useUser } from '@/lib/authStore';
 import { showCustomToast } from '@/components/Toast';
 import { useCartStore } from '@/lib/cartStore';
@@ -18,6 +19,7 @@ export default function SellerShopPage() {
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [followersList, setFollowersList] = useState<any[]>([]);
   const [followersCount, setFollowersCount] = useState<number>(0);
   const [storeReviews, setStoreReviews] = useState<any[]>([]);
@@ -94,7 +96,11 @@ export default function SellerShopPage() {
   }, [id, user?.id]);
 
   const handleToggleFollow = async () => {
-    const activeUserId = user?.id || 'a01b1234-5678-abcd-ef01-1234567890aa';
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+    const activeUserId = user.id;
     const nextState = !isFollowing;
     setIsFollowing(nextState);
     setFollowersCount(c => nextState ? c + 1 : Math.max(0, c - 1));
@@ -521,6 +527,10 @@ export default function SellerShopPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {showAuthModal && (
+        <AuthModal onClose={() => setShowAuthModal(false)} />
       )}
 
       {/* Switch to Seller Dashboard Floating Button */}
