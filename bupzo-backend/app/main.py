@@ -114,7 +114,7 @@ class AuthRegisterRequest(BaseModel):
     phone: str
     password: str
     name: str
-    email: Optional[EmailStr] = None
+    email: Optional[str] = None
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
@@ -1573,6 +1573,8 @@ async def forgot_password(payload: ForgotPasswordPayload):
         "reset_token": reset_token
     }
 
+whatsapp_otps: Dict[str, str] = {}
+
 class WhatsAppOTPRequest(BaseModel):
     phone: str
 
@@ -1580,11 +1582,16 @@ class WhatsAppOTPRequest(BaseModel):
 async def send_whatsapp_otp(payload: WhatsAppOTPRequest):
     import urllib.parse
     import urllib.request
+    import random
     clean_phone = payload.phone.strip().replace(" ", "").replace("+", "").replace("-", "")
     if not clean_phone.startswith("91") and len(clean_phone) == 10:
         clean_phone = "91" + clean_phone
     
-    otp_code = "12345"
+    # Generate REAL random 5-digit OTP code (e.g. 73920)
+    otp_code = str(random.randint(10000, 99999))
+    whatsapp_otps[clean_phone] = otp_code
+    whatsapp_otps[clean_phone[-10:]] = otp_code
+    
     instance_id = os.getenv("ULTRAMSG_INSTANCE_ID", "instance186236")
     token = os.getenv("ULTRAMSG_TOKEN", "wdqy9hp9g3lfubio")
     
@@ -1609,6 +1616,21 @@ async def send_whatsapp_otp(payload: WhatsAppOTPRequest):
         "message": f"✨ Verification OTP code sent to WhatsApp (+{clean_phone})!",
         "otp": otp_code
     }
+
+@app.get("/api/auth/whatsapp-status")
+async def get_whatsapp_status(status: str = "sent"):
+    import urllib.request
+    import json
+    instance_id = os.getenv("ULTRAMSG_INSTANCE_ID", "instance186236")
+    token = os.getenv("ULTRAMSG_TOKEN", "wdqy9hp9g3lfubio")
+    try:
+        url = f"https://api.ultramsg.com/{instance_id}/messages?token={token}&page=1&limit=100&status={status}"
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=5) as response:
+            res_data = response.read().decode('utf-8')
+            return json.loads(res_data)
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
 class CopywriterRequest(BaseModel):
     prompt: str

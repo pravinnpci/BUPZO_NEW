@@ -18,6 +18,7 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState(''); // For registration
   const [otp, setOtp] = useState(['', '', '', '', '']); // Array for 5-digit OTP
+  const [serverOtp, setServerOtp] = useState('');
   
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -54,10 +55,10 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
   };
 
   const handleRegister = async () => {
+    const cleanPhone = phone.trim().replace(/\s+/g, '');
     if (mode === 'register') {
       if (!name.trim()) return setMessage('⚠️ Full Name is required');
       
-      const cleanPhone = phone.trim();
       const phoneRegex = /^\d{10}$/;
       if (!phoneRegex.test(cleanPhone)) {
         return setMessage('⚠️ Phone number must be exactly 10 numeric digits (e.g. 9876543210)');
@@ -96,7 +97,10 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ phone: cleanPhone })
-        }).catch(err => console.warn("WhatsApp OTP dispatch:", err));
+        })
+        .then(res => res.json())
+        .then(d => { if (d.otp) setServerOtp(d.otp); })
+        .catch(err => console.warn("WhatsApp OTP dispatch:", err));
       } catch (err) {}
 
       setMode('verify-otp');
@@ -105,10 +109,7 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
 
     // mode === 'verify-otp'
     const fullOtp = otp.join('');
-    if (fullOtp.length < 5) return setMessage('⚠️ Please enter the 5-digit OTP');
-    if (fullOtp !== '12345' && fullOtp.length !== 5) {
-      return setMessage('⚠️ Invalid OTP code. Please enter 12345.');
-    }
+    if (fullOtp.length < 5) return setMessage('⚠️ Please enter the 5-digit OTP code');
 
     setIsLoading(true);
     try {
@@ -117,7 +118,12 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
       const response = await fetch(`${apiUrl}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, password, name, email: username })
+        body: JSON.stringify({
+          phone: cleanPhone,
+          password,
+          name,
+          email: username && username.trim() !== '' ? username.trim() : null
+        })
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || 'Registration failed');
