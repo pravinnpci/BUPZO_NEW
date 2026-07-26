@@ -5,6 +5,7 @@ import { Product, fetchSellerDetails, fetchSellerProducts, fetchSellerFollowers,
 import { useParams } from 'next/navigation';
 import ProductPreviewModal from '@/components/ProductPreviewModal';
 import { useUser } from '@/lib/authStore';
+import { showCustomToast } from '@/components/Toast';
 import { useCartStore } from '@/lib/cartStore';
 import { addToWishlist, getWishlistItems } from '@/lib/api';
 import { Navbar } from '@/components/Navbar';
@@ -435,11 +436,11 @@ export default function SellerShopPage() {
                     })
                   });
                   if (res.ok) {
-                    alert("Thank you for your feedback!");
+                    showCustomToast("🎉 Thank you! Your store feedback has been recorded.");
                     setNewComment('');
                     loadFollowersAndReviews();
                   }
-                } catch(err) { alert("Failed to submit review"); }
+                } catch(err) { showCustomToast("Failed to submit review", "error"); }
               }}
               className="pt-3 border-t space-y-2"
             >

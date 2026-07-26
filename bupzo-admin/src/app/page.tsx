@@ -7,6 +7,7 @@ import { AdminUsers } from '@/components/AdminUsers';
 import { AdminProducts } from '@/components/AdminProducts';
 import { AdminSellers } from '@/components/AdminSellers';
 import { AdminFollowers } from '@/components/AdminFollowers';
+import { showAdminToast } from '@/components/Toast';
 
 // Mock Data removed
 
@@ -2442,10 +2443,10 @@ export default function AdminMainPage() {
                                 try {
                                   const resp = await fetch(`${API_URL}/api/reviews/${r.id}`, { method: 'DELETE' });
                                   if (resp.ok) {
-                                    alert("Review deleted successfully!");
+                                    showAdminToast("🗑️ Review deleted successfully!");
                                     setReviews(prev => prev.filter(item => item.id !== r.id));
                                   }
-                                } catch(e) { alert("Failed to delete review."); }
+                                } catch(e) { showAdminToast("Failed to delete review.", "error"); }
                               }}
                               className="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1 rounded text-xs font-bold transition shadow-sm"
                             >

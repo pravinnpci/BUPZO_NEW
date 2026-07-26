@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { showAdminToast } from './Toast';
 
 interface Seller {
   id: string;
@@ -65,12 +66,13 @@ export const AdminSellers: React.FC<AdminSellersProps> = ({
       if (resp.ok) {
         const data = await resp.json();
         setAddAadharUrl(data.url);
+        showAdminToast("✨ Document uploaded successfully!");
       } else {
-        alert("File upload failed.");
+        showAdminToast("File upload failed.", "error");
       }
     } catch (err) {
       console.error(err);
-      alert("Error uploading file.");
+      showAdminToast("Error uploading file.", "error");
     } finally {
       setIsUploading(false);
     }

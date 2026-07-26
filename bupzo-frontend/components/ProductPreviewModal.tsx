@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Product, API_BASE_URL, uploadImage } from '@/lib/api';
+import { showCustomToast } from './Toast';
 import { useUser } from '@/lib/authStore';
 import { useCartStore } from '@/lib/cartStore';
 
@@ -425,13 +426,13 @@ export default function ProductPreviewModal({ product, onClose, onAddToCart, onA
                           };
                         });
                         form.reset();
-                        alert("Review submitted successfully!");
+                        showCustomToast("🎉 Success! Review submitted successfully!");
                       } else {
                         const err = await res.json();
-                        alert(err.detail || "Failed to submit review.");
+                        showCustomToast(err.detail || "Failed to submit review.", "error");
                       }
                     } catch(e) {
-                      alert("Error submitting review.");
+                      showCustomToast("Error submitting review.", "error");
                     }
                   }}>
                     <div className="flex gap-2 mb-2">
