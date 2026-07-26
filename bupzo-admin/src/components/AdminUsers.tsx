@@ -200,8 +200,8 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
                   <td className="py-3 font-semibold text-[#3874ff] cursor-pointer hover:underline" onClick={() => setPreviewUser(u)}>{u.name || 'Bupzo Patron'}</td>
                   <td className="py-3">{u.phone?.startsWith('GOOG-') ? 'Not Provided' : u.phone}</td>
                   <td className="py-3">
-                    <span className={`px-1.5 py-0.5 rounded font-bold text-[9px] ${(u as any).phone_verified || (!u.phone?.startsWith('GOOG-') && u.phone) ? 'bg-emerald-100/20 text-emerald-500 border border-emerald-500/30' : 'bg-amber-100/10 text-amber-500 border border-amber-500/30'}`}>
-                      {(u as any).phone_verified || (!u.phone?.startsWith('GOOG-') && u.phone) ? '✓ Verified' : '✕ Pending'}
+                    <span className={`px-1.5 py-0.5 rounded font-bold text-[9px] ${Boolean((u as any).phone_verified) && u.phone && !u.phone?.startsWith('GOOG-') ? 'bg-emerald-100/20 text-emerald-500 border border-emerald-500/30' : 'bg-amber-100/10 text-amber-500 border border-amber-500/30'}`}>
+                      {Boolean((u as any).phone_verified) && u.phone && !u.phone?.startsWith('GOOG-') ? '✓ Verified' : '✕ Pending'}
                     </span>
                   </td>
                   <td className="py-3">{u.email}</td>

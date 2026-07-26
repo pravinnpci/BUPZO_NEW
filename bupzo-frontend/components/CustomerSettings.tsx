@@ -407,7 +407,7 @@ export function CustomerSettings({ user }: { user: any }) {
         </div>
       )}
 
-      {/* Main 2-Column Layout matching Screenshot 3, 4 & 5 */}
+      {/* Main 2-Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* Left 2 Columns: Material Legend Outlined Inputs Form */}
@@ -477,69 +477,72 @@ export function CustomerSettings({ user }: { user: any }) {
               Reset
             </button>
           </div>
+        </div>
 
-          {/* Leaflet JS Pinpoint Map Section (Matching Screenshot 5) */}
-          <div className="space-y-3 pt-6 border-t border-gray-100">
+        {/* Right 1 Column: Delivery Addresses & Leaflet Map Stacked (Fills Height Perfectly) */}
+        <div className="space-y-6">
+          
+          {/* Delivery Addresses Card */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 space-y-4">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h2 className="text-lg font-bold text-gray-900">Delivery Addresses</h2>
+              <button onClick={() => setShowNewAddress(!showNewAddress)} className="text-xs font-bold text-[#e52e06] hover:underline">
+                + Add New Address
+              </button>
+            </div>
+
+            {/* New Address Input Form */}
+            {showNewAddress && (
+              <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-3 text-xs">
+                <input type="text" placeholder="Full Name" value={newAddr.name} onChange={e => setNewAddr({ ...newAddr, name: e.target.value })} className="w-full p-2 border rounded outline-none" />
+                <input type="text" placeholder="Street Address" value={newAddr.street} onChange={e => setNewAddr({ ...newAddr, street: e.target.value })} className="w-full p-2 border rounded outline-none" />
+                <div className="grid grid-cols-2 gap-2">
+                  <input type="text" placeholder="City" value={newAddr.city} onChange={e => setNewAddr({ ...newAddr, city: e.target.value })} className="w-full p-2 border rounded outline-none" />
+                  <input type="text" placeholder="Zip Code" value={newAddr.zip_code} onChange={e => setNewAddr({ ...newAddr, zip_code: e.target.value })} className="w-full p-2 border rounded outline-none" />
+                </div>
+                <button onClick={handleSaveAddress} className="w-full py-2 bg-[#e52e06] text-white font-bold rounded">
+                  Save Address
+                </button>
+              </div>
+            )}
+
+            {/* Saved Addresses List */}
+            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+              {addresses.length === 0 ? (
+                <div className="p-4 text-center text-xs text-gray-500 border border-dashed rounded-xl">
+                  No delivery addresses saved yet. Click + Add New Address above.
+                </div>
+              ) : (
+                addresses.map((addr) => (
+                  <div key={addr.id} className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 space-y-1 relative group">
+                    <div className="flex justify-between items-start">
+                      <span className="font-bold text-xs text-gray-900">{addr.name}</span>
+                      <button onClick={() => handleDeleteAddress(addr.id)} className="text-[10px] font-bold text-red-600 hover:underline">
+                        Delete
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-600 leading-snug">{addr.street}, {addr.city}</p>
+                    <p className="text-xs text-gray-500 font-mono">{addr.state} - {addr.zip_code}</p>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Leaflet JS Pinpoint Map Card (Placed Stacked under Delivery Addresses) */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 space-y-3">
             <div className="flex items-center justify-between">
               <label className="block text-sm font-extrabold text-gray-900 flex items-center gap-2">
-                <span>📍</span> Pinpoint Location on Leaflet Map
+                <span>📍</span> Pinpoint Location Map
               </label>
-              <span className="text-xs font-bold text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+              <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">
                 Lat: {lat.toFixed(4)}, Lng: {lng.toFixed(4)}
               </span>
             </div>
-            <p className="text-xs text-gray-500">Click anywhere on the map or drag the pin marker to specify your exact delivery location.</p>
-            
-            <div ref={mapContainerRef} className="w-full h-72 rounded-2xl border border-gray-200 shadow-inner z-0 overflow-hidden" />
+            <p className="text-xs text-gray-500">Drag marker to specify delivery location.</p>
+            <div ref={mapContainerRef} className="w-full h-56 rounded-xl border border-gray-200 shadow-inner z-0 overflow-hidden" />
           </div>
 
-        </div>
-
-        {/* Right 1 Column: Delivery Addresses List (Matching Screenshot 3) */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 space-y-4 h-fit">
-          <div className="flex justify-between items-center border-b pb-3">
-            <h2 className="text-lg font-bold text-gray-900">Delivery Addresses</h2>
-            <button onClick={() => setShowNewAddress(!showNewAddress)} className="text-xs font-bold text-[#e52e06] hover:underline">
-              + Add New Address
-            </button>
-          </div>
-
-          {/* New Address Input Form */}
-          {showNewAddress && (
-            <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-3 text-xs">
-              <input type="text" placeholder="Full Name" value={newAddr.name} onChange={e => setNewAddr({ ...newAddr, name: e.target.value })} className="w-full p-2 border rounded outline-none" />
-              <input type="text" placeholder="Street Address" value={newAddr.street} onChange={e => setNewAddr({ ...newAddr, street: e.target.value })} className="w-full p-2 border rounded outline-none" />
-              <div className="grid grid-cols-2 gap-2">
-                <input type="text" placeholder="City" value={newAddr.city} onChange={e => setNewAddr({ ...newAddr, city: e.target.value })} className="w-full p-2 border rounded outline-none" />
-                <input type="text" placeholder="Zip Code" value={newAddr.zip_code} onChange={e => setNewAddr({ ...newAddr, zip_code: e.target.value })} className="w-full p-2 border rounded outline-none" />
-              </div>
-              <button onClick={handleSaveAddress} className="w-full py-2 bg-[#e52e06] text-white font-bold rounded">
-                Save Address
-              </button>
-            </div>
-          )}
-
-          {/* Saved Addresses List */}
-          <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
-            {addresses.length === 0 ? (
-              <div className="p-4 text-center text-xs text-gray-500 border border-dashed rounded-xl">
-                No delivery addresses saved yet. Click + Add New Address above.
-              </div>
-            ) : (
-              addresses.map((addr) => (
-                <div key={addr.id} className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 space-y-1 relative group">
-                  <div className="flex justify-between items-start">
-                    <span className="font-bold text-xs text-gray-900">{addr.name}</span>
-                    <button onClick={() => handleDeleteAddress(addr.id)} className="text-[10px] font-bold text-red-600 hover:underline">
-                      Delete
-                    </button>
-                  </div>
-                  <p className="text-xs text-gray-600 leading-snug">{addr.street}, {addr.city}</p>
-                  <p className="text-xs text-gray-500 font-mono">{addr.state} - {addr.zip_code}</p>
-                </div>
-              ))
-            )}
-          </div>
         </div>
 
       </div>

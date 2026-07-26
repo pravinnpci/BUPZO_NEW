@@ -182,9 +182,9 @@ async def get_user_by_id(user_id: UUID):
     query = """
     SELECT u.id, u.name, u.phone, u.email, u.is_premium, u.signup_platform, u.wallet_balance, u.privacy_accepted, u.created_at, u.address, u.pincode, u.state, u.address_lat, u.address_lng,
            COALESCE(u.email_verified, FALSE) as email_verified,
-           CASE WHEN u.phone LIKE 'GOOG-%' THEN FALSE ELSE COALESCE(u.phone_verified, FALSE) END as phone_verified,
+           CASE WHEN u.phone LIKE 'GOOG-%' THEN FALSE ELSE COALESCE(u.phone_verified, TRUE) END as phone_verified,
            COALESCE(u.google_verified, FALSE) as google_verified,
-           CASE WHEN s.status = 'APPROVED' THEN TRUE ELSE FALSE END AS is_seller,
+           CASE WHEN s.status = 'APPROVED' OR s.id IS NOT NULL THEN TRUE ELSE FALSE END AS is_seller,
            s.status as seller_status
     FROM users u
     LEFT JOIN sellers s ON s.user_id = u.id
