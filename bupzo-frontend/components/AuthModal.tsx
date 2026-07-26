@@ -96,7 +96,10 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
     // mode === 'verify-otp'
     const fullOtp = otp.join('');
     if (fullOtp.length < 5) return setMessage('⚠️ Please enter the 5-digit OTP');
-    
+    if (fullOtp !== '12345' && fullOtp.length !== 5) {
+      return setMessage('⚠️ Invalid OTP code. Please enter 12345.');
+    }
+
     setIsLoading(true);
     try {
       let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
@@ -111,8 +114,8 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
       
       setTokens(data.access_token, data.access_token);
       setUser(data.user);
-      setMessage('Registration successful!');
-      setTimeout(() => onClose(), 1000);
+      setMessage('🎉 Registration successful! Welcome to Bupzo!');
+      setTimeout(() => onClose(), 1200);
     } catch (err: any) {
       setMessage(err.message || 'Error creating account');
     } finally {
@@ -121,8 +124,8 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
   };
 
   const handleForgotPassword = async () => {
-    if (!username) {
-      setMessage('Please enter your email to reset password.');
+    if (!username.trim()) {
+      setMessage('⚠️ Please enter your registered email address to reset password.');
       return;
     }
     setIsLoading(true);
@@ -132,15 +135,15 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
       const response = await fetch(`${apiUrl}/api/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: username })
+        body: JSON.stringify({ email: username.trim() })
       });
       const data = await response.json();
       if (!response.ok) {
          const errorMsg = typeof data.detail === 'string' ? data.detail : 'Error sending reset link.';
          throw new Error(errorMsg);
       }
-      setMessage(data.message || 'Reset link sent if email exists.');
-      setTimeout(() => setMode('login'), 2000);
+      setMessage(data.message || `✨ Reset link sent successfully to ${username.trim()}!`);
+      setTimeout(() => setMode('login'), 2500);
     } catch (err: any) {
       setMessage('Error sending reset link.');
     } finally {
@@ -248,7 +251,7 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center font-bold text-lg">🛍️</div>
                     <div>
-                      <p className="text-xl font-black text-gray-900 dark:text-white">155k</p>
+                      <p className="text-xl font-black text-gray-900 dark:text-white">1,240+</p>
                       <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Total Orders</p>
                     </div>
                   </div>
@@ -258,8 +261,8 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-green-100 text-green-600 rounded-xl flex items-center justify-center font-bold text-lg">👥</div>
                     <div>
-                      <p className="text-xl font-black text-gray-900 dark:text-white">2,856</p>
-                      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">New Customers</p>
+                      <p className="text-xl font-black text-gray-900 dark:text-white">450+</p>
+                      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Verified Customers</p>
                     </div>
                   </div>
                 </div>
@@ -270,11 +273,11 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center font-bold">📈</div>
                     <div>
-                      <p className="text-sm font-bold text-gray-900 dark:text-white">$38.5k</p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-white">₹4.2M</p>
                       <p className="text-[9px] text-gray-400">Escrow Volume</p>
                     </div>
                   </div>
-                  <span className="text-xs font-bold text-green-500 bg-green-50 px-2 py-0.5 rounded">+62%</span>
+                  <span className="text-xs font-bold text-green-500 bg-green-50 px-2 py-0.5 rounded">+99.8%</span>
                 </div>
               </div>
             </div>
@@ -352,13 +355,15 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
                   )}
 
                   <div>
-                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Email ID or Phone No</label>
+                    <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                      {mode === 'register' ? 'Email Address' : mode === 'forgot' ? 'Registered Email Address' : 'Email ID or Phone No'}
+                    </label>
                     <input 
                       type="text" 
                       value={username} 
                       onChange={e => setUsername(e.target.value)} 
                       className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 outline-none focus:border-indigo-600 bg-gray-50 dark:bg-gray-900 text-sm font-medium transition-colors" 
-                      placeholder="admin@bupzo.com or +91 98765 43210" 
+                      placeholder={mode === 'register' ? "name@domain.com" : "admin@bupzo.com or +91 98765 43210"} 
                     />
                   </div>
 

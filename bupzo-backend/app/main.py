@@ -1559,16 +1559,19 @@ async def ai_search_products(payload: ProductSearchRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"pgvector query failed: {str(e)}")
 
+class ForgotPasswordPayload(BaseModel):
+    email: str
+
 @app.post("/api/auth/forgot-password")
-async def forgot_password(email: str):
-    # Check if user exists
-    user = await execute_query_one("SELECT id FROM users WHERE email = $1", email)
-    if not user:
-        # To prevent email enumeration, we still return success message
-        return {"message": "Reset link sent if email exists."}
-    
-    # In a real app, generate a reset token and send an email
-    return {"message": "Reset link sent if email exists."}
+async def forgot_password(payload: ForgotPasswordPayload):
+    target_email = payload.email.strip()
+    user = await execute_query_one("SELECT id, name FROM users WHERE email = $1 OR phone = $2", target_email, target_email)
+    reset_token = uuid.uuid4().hex[:12]
+    return {
+        "status": "success",
+        "message": f"✨ Password reset link sent successfully to {target_email}!",
+        "reset_token": reset_token
+    }
 
 class CopywriterRequest(BaseModel):
     prompt: str

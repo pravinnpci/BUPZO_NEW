@@ -47,7 +47,16 @@ export function CustomerShops({ onSelectShop, onRequireAuth }: CustomerShopsProp
     e.preventDefault();
     e.stopPropagation();
     
-    const activeUserId = user?.id || 'a01b1234-5678-abcd-ef01-1234567890aa';
+    if (!user) {
+      setToastMessage("🔒 Please log in to follow stores.");
+      setTimeout(() => setToastMessage(''), 4000);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('openAuthModal'));
+      }
+      return;
+    }
+    
+    const activeUserId = user.id;
     const isCurrentlyFollowing = !!followedSellers[sellerId];
     const newFollowingState = !isCurrentlyFollowing;
 

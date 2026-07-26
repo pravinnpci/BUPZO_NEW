@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Product, fetchSellerDetails, fetchSellerProducts, fetchSellerFollowers, followSeller, unfollowSeller, fetchSellerReviews, API_BASE_URL } from '@/lib/api';
+import { Product, fetchSellerDetails, fetchSellerProducts, fetchSellerFollowers, followSeller, unfollowSeller, fetchSellerReviews, fetchCategories, getPrimaryProductImage, API_BASE_URL } from '@/lib/api';
 import { useParams } from 'next/navigation';
 import ProductPreviewModal from '@/components/ProductPreviewModal';
 import { useUser } from '@/lib/authStore';
@@ -120,8 +120,10 @@ export default function SellerShopPage() {
   if (loading) return <div className="flex justify-center items-center h-screen bg-gray-50"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-[#e52e06]"></div></div>;
   if (!seller) return <div className="text-center py-20 text-gray-500 font-bold">Shop not found.</div>;
 
-  // Derive unique categories dynamically from seller products
-  const categoriesList = Array.from(new Set(products.map(p => (p.category_name || (p as any).category || 'General').trim()))).filter(Boolean);
+  // Derive unique categories dynamically from DB & seller products
+  const categoriesList = categories.length > 0 
+    ? categories 
+    : Array.from(new Set(products.map(p => (p.category_name || (p as any).category || 'General').trim()))).filter(Boolean);
 
   // Filtered & Sorted products
   const filteredProducts = products.filter(p => {
@@ -333,7 +335,7 @@ export default function SellerShopPage() {
                 {filteredProducts.map(p => (
                   <div key={p.id} onClick={() => setSelectedProduct(p)} className="bg-white border border-gray-200 rounded-xl overflow-hidden cursor-pointer hover:shadow-xl transition-all duration-300 group flex flex-col">
                     <div className="aspect-[4/5] overflow-hidden bg-gray-50 relative p-4 flex items-center justify-center">
-                      <img src={p.image_url || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80'} onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80' }} alt={p.name} className="w-full h-full object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-300" />
+                      <img src={getPrimaryProductImage(p)} onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80' }} alt={p.name} className="w-full h-full object-contain mix-blend-multiply group-hover:scale-105 transition-transform duration-300" />
                     </div>
                     <div className="p-3.5 flex-1 flex flex-col">
                       <h3 className="text-sm font-semibold text-gray-800 truncate">{p.name}</h3>

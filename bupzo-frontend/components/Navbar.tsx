@@ -154,7 +154,20 @@ export function Navbar({
                       {unreadMsgs > 0 && <span className="bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-full ml-1">{unreadMsgs}</span>}
                     </button>
                  )}
-                 {mounted && !user?.isSeller && <button onClick={() => onTabChange('kyc')} className="text-[#e52e06] hover:text-red-700 transition">Become Seller</button>}
+                  {mounted && (!user || !user?.isSeller) && (
+                    <button 
+                      onClick={() => {
+                        if (!user) {
+                          onAuthClick();
+                        } else {
+                          onTabChange('kyc');
+                        }
+                      }} 
+                      className="text-[#e52e06] hover:text-red-700 transition"
+                    >
+                      Become Seller
+                    </button>
+                  )}
               </nav>
            </div>
            <div className="text-sm font-bold text-gray-600 hidden md:block">
