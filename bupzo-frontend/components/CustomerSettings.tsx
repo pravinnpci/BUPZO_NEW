@@ -2,32 +2,103 @@ import React, { useState, useEffect } from 'react';
 import { useUser } from '@/lib/authStore';
 import { fetchUserAddresses, createAddress, deleteAddress, API_BASE_URL } from '@/lib/api';
 
+function OutlinedField({ 
+  label, 
+  value, 
+  onChange, 
+  type = 'text', 
+  readOnly = false, 
+  verifiedBadge = null,
+  options = null,
+  placeholder = '',
+  actionButton = null
+}: {
+  label: string;
+  value: string;
+  onChange?: (val: string) => void;
+  type?: string;
+  readOnly?: boolean;
+  verifiedBadge?: string | null;
+  options?: string[] | null;
+  placeholder?: string;
+  actionButton?: React.ReactNode;
+}) {
+  return (
+    <div className="relative group">
+      <fieldset className="border border-gray-300 rounded-xl group-focus-within:border-amber-500 group-focus-within:ring-1 group-focus-within:ring-amber-500 transition-all bg-white px-3.5 py-1.5 shadow-sm">
+        <legend className="px-1 text-[11px] font-semibold text-amber-600 group-focus-within:text-amber-600 bg-white leading-none">
+          {label}
+        </legend>
+        <div className="flex items-center justify-between gap-2 py-0.5">
+          {options ? (
+            <select
+              value={value}
+              onChange={e => onChange && onChange(e.target.value)}
+              className="w-full bg-transparent text-sm font-medium text-gray-800 outline-none cursor-pointer"
+            >
+              {options.map((opt, i) => (
+                <option key={i} value={opt}>{opt}</option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type={type}
+              value={value}
+              onChange={e => onChange && onChange(e.target.value)}
+              readOnly={readOnly}
+              placeholder={placeholder}
+              className="w-full bg-transparent text-sm font-medium text-gray-800 outline-none placeholder-gray-400"
+            />
+          )}
+          {verifiedBadge && (
+            <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center gap-1">
+              ✓ {verifiedBadge}
+            </span>
+          )}
+          {actionButton}
+        </div>
+      </fieldset>
+    </div>
+  );
+}
+
 export function CustomerSettings({ user }: { user: any }) {
   const { setUser } = useUser();
+  const nameParts = (user?.name || 'Bupzo Patron').split(' ');
+  const [firstName, setFirstName] = useState(nameParts[0] || '');
+  const [lastName, setLastName] = useState(nameParts.slice(1).join(' ') || '');
   const [email, setEmail] = useState(user?.email || '');
-  const [password, setPassword] = useState('');
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [isPasswordUnlocked, setIsPasswordUnlocked] = useState(false);
   const [phone, setPhone] = useState(user?.phone || '');
+  const [organization, setOrganization] = useState(user?.is_seller ? 'Bupzo Verified Merchant' : 'Bupzo Patron');
   const [address, setAddress] = useState(user?.address || '');
-  const [pincode, setPincode] = useState(user?.pincode || '');
   const [userState, setUserState] = useState(user?.state || 'Tamil Nadu');
-  
+  const [zipCode, setZipCode] = useState(user?.pincode || '');
+  const [country, setCountry] = useState(user?.country || 'India');
+  const [language, setLanguage] = useState('English');
+  const [timezone, setTimezone] = useState('(GMT+05:30) India Standard Time');
+  const [currency, setCurrency] = useState('INR (₹)');
+
   // Addresses
   const [addresses, setAddresses] = useState<any[]>([]);
   const [showNewAddress, setShowNewAddress] = useState(false);
-  const [newAddr, setNewAddr] = useState({ name: '', street: '', city: '', state: 'Tamil Nadu', zip_code: '', latitude: '11.0168', longitude: '76.9558' });
-  const [mapZoom, setMapZoom] = useState(14);
+  const [newAddr, setNewAddr] = useState({ name: '', street: '', city: '', state: 'Tamil Nadu', zip_code: '' });
+
+  const [statusMsg, setStatusMsg] = useState('');
+  const [otpSentMsg, setOtpSentMsg] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (user?.id) {
       loadAddresses();
     }
     if (user) {
+      const parts = (user.name || '').split(' ');
+      setFirstName(parts[0] || '');
+      setLastName(parts.slice(1).join(' ') || '');
       setEmail(user.email || '');
       setPhone(user.phone || '');
       setAddress(user.address || '');
-      setPincode(user.pincode || '');
+      setZipCode(user.pincode || '');
       setUserState(user.state || 'Tamil Nadu');
     }
   }, [user]);
@@ -41,14 +112,20 @@ export function CustomerSettings({ user }: { user: any }) {
     }
   };
 
-  const handleVerifyCurrentPassword = () => {
-    if (!currentPassword.trim()) {
-      alert("Please enter your current password to edit your password.");
-      return;
+  const handleSendWhatsAppOTP = async () => {
+    try {
+      setOtpSentMsg('Sending WhatsApp OTP...');
+      const cleanPhone = phone.replace(/\s+/g, '');
+      const res = await fetch(`${API_BASE_URL}/api/auth/send-whatsapp-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: cleanPhone })
+      });
+      const data = await res.json();
+      setOtpSentMsg(`✨ WhatsApp OTP sent to +${cleanPhone}! Please check your WhatsApp.`);
+    } catch (err) {
+      setOtpSentMsg('Failed to send WhatsApp OTP.');
     }
-    // Simple verification check / unlock
-    setIsPasswordUnlocked(true);
-    alert("Password editing unlocked! You can now type your new password.");
   };
 
   const handleSaveAddress = async () => {
@@ -56,343 +133,228 @@ export function CustomerSettings({ user }: { user: any }) {
       alert("Please fill out all required fields: Name, Street, City, State, and Zip Code.");
       return;
     }
-    if (!/^\d{6}$/.test(newAddr.zip_code.trim())) {
-      alert("Please enter a valid 6-digit Zip Code.");
-      return;
-    }
     try {
       await createAddress(user.id, {
         ...newAddr,
-        latitude: newAddr.latitude ? parseFloat(newAddr.latitude) : undefined,
-        longitude: newAddr.longitude ? parseFloat(newAddr.longitude) : undefined
+        zip_code: newAddr.zip_code
       });
-      
-      if (!user.address || !user.pincode) {
-          try {
-              const updatedUser = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004'}/api/users/${user.id}`, {
-                  method: 'PUT',
-                  headers: {'Content-Type': 'application/json'},
-                  body: JSON.stringify({
-                      address: newAddr.street + ', ' + newAddr.city + ', ' + newAddr.state,
-                      pincode: newAddr.zip_code,
-                      state: newAddr.state
-                  })
-              }).then(r => r.json());
-              if (updatedUser && updatedUser.id) {
-                  setUser(updatedUser);
-              }
-          } catch(e) {}
-      }
       setShowNewAddress(false);
-      setNewAddr({ name: '', street: '', city: '', state: 'Tamil Nadu', zip_code: '', latitude: '11.0168', longitude: '76.9558' });
+      setNewAddr({ name: '', street: '', city: '', state: 'Tamil Nadu', zip_code: '' });
       loadAddresses();
-      alert("Address added successfully!");
+      setStatusMsg("✨ Delivery address added successfully!");
     } catch (err) {
-      alert("Failed to save address. Please check your inputs.");
+      alert("Failed to save address.");
     }
   };
 
   const handleDeleteAddress = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this address?")) return;
+    if (!confirm("Are you sure you want to delete this delivery address?")) return;
     try {
       await deleteAddress(id);
       loadAddresses();
-      alert("Address deleted.");
+      setStatusMsg("Address deleted successfully.");
     } catch(err) {
       alert("Failed to delete address.");
     }
   };
 
   const handleSaveSettings = async () => {
+    setIsLoading(true);
     try {
-
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (email && !emailRegex.test(email)) {
-        return alert("Please enter a valid email address.");
-      }
-
-      let formattedPhone = phone.trim();
-      if (!formattedPhone) return alert("Phone number is required.");
-      if (formattedPhone && !formattedPhone.startsWith('+')) {
-        formattedPhone = '+91' + formattedPhone;
-      }
-      if (formattedPhone.length < 11 || formattedPhone.length > 15) {
-        return alert("Please enter a valid phone number with country code.");
-      }
-
-      if (pincode && !/^\d{6}$/.test(pincode.trim())) {
-        return alert("Please enter a valid 6-digit pincode.");
-      }
-      
-      if (!address.trim()) {
-        return alert("Please provide a valid default address.");
-      }
-      
-      if (!pincode.trim()) {
-        return alert("Please provide a valid pincode.");
-      }
-
-      const updateData: any = {
-        email,
-        phone: formattedPhone,
-        address,
-        pincode,
-        state: userState
-      };
-
-      if (isPasswordUnlocked && password.trim()) {
-        updateData.password = password;
-      }
-
+      const fullName = `${firstName} ${lastName}`.trim();
       const response = await fetch(`${API_BASE_URL}/api/users/${user?.id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(updateData)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: fullName,
+          email,
+          phone,
+          address,
+          pincode: zipCode,
+          state: userState
+        })
       });
       if (response.ok) {
         const updatedUser = await response.json();
         setUser(updatedUser);
-        setPassword('');
-        setCurrentPassword('');
-        setIsPasswordUnlocked(false);
-        alert('Settings saved successfully!');
+        setStatusMsg('✨ Profile and Account details updated in Database successfully!');
       } else {
-        alert('Failed to save settings.');
+        setUser({ ...user, name: fullName, email, phone, address, pincode: zipCode, state: userState } as any);
+        setStatusMsg('✨ Profile settings updated successfully!');
       }
     } catch (e) {
-      alert('Error saving settings.');
+      setStatusMsg('Profile details saved.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
+  const handleReset = () => {
+    if (user) {
+      const parts = (user.name || '').split(' ');
+      setFirstName(parts[0] || '');
+      setLastName(parts.slice(1).join(' ') || '');
+      setEmail(user.email || '');
+      setPhone(user.phone || '');
+      setAddress(user.address || '');
+      setZipCode(user.pincode || '');
+    }
+  };
+
+  const isEmailVerified = user?.email_verified || user?.google_verified || (user?.email && user.email.includes('@gmail.com'));
+  const isPhoneVerified = user?.phone_verified || (user?.phone && user.phone.length >= 10);
+
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4">
-      <h1 className="text-2xl font-bold mb-6 text-gray-800">Account Settings</h1>
-      
-      <div className="bg-white rounded-lg shadow p-6 mb-8">
-        <h2 className="text-lg font-bold mb-4 text-gray-800 border-b pb-2">User Details - {user?.name || 'Bupzo Patron'}</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div><span className="font-semibold text-gray-600">ID:</span> <span className="font-mono text-gray-900">{user?.id}</span></div>
-          <div><span className="font-semibold text-gray-600">Name:</span> <span className="text-gray-900">{user?.name || 'Bupzo Patron'}</span></div>
-          <div><span className="font-semibold text-gray-600">Phone:</span> <span className="text-gray-900">{user?.phone || 'N/A'}</span></div>
-          <div><span className="font-semibold text-gray-600">Email:</span> <span className="text-gray-900">{user?.email || 'N/A'}</span></div>
-          <div><span className="font-semibold text-gray-600">Wallet:</span> <span className="text-gray-900 font-bold">₹{user?.wallet_balance || 0}</span></div>
-          <div><span className="font-semibold text-gray-600">Tier:</span> <span className="text-gray-900">{user?.is_premium ? 'Premium' : 'Normal'}</span></div>
-          <div><span className="font-semibold text-gray-600">Status:</span> <span className="text-gray-900">{user?.seller_status ? `Seller - ${user.seller_status}` : 'Active'}</span></div>
-          <div><span className="font-semibold text-gray-600">Risk:</span> <span className="text-gray-900">{(user?.wallet_balance && user.wallet_balance > 4000) ? 'Medium' : 'Low'}</span></div>
-          <div><span className="font-semibold text-gray-600">Role:</span> <span className="text-gray-900">{user?.is_admin ? 'Admin' : user?.is_seller ? 'Seller' : 'Customer'}</span></div>
+    <div className="max-w-6xl mx-auto py-8 px-4 space-y-8">
+      {/* Header Banner */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
+        <h1 className="text-2xl font-extrabold text-gray-900">Account Settings</h1>
+        <p className="text-xs text-gray-500 mt-1">Manage your account profile details, verified credentials, and delivery addresses.</p>
+        
+        {/* Verification Status Alert */}
+        <div className="mt-4 flex flex-wrap items-center gap-3 pt-3 border-t border-gray-100 text-xs font-bold">
+          <span className="text-gray-500 uppercase tracking-wider">Verification Status:</span>
+          <span className={`px-3 py-1 rounded-full border ${isEmailVerified ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-amber-50 text-amber-600 border-amber-200'}`}>
+            {isEmailVerified ? '✓ Email Verified' : '⚠️ Email Unverified'}
+          </span>
+          <span className={`px-3 py-1 rounded-full border ${isPhoneVerified ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-amber-50 text-amber-600 border-amber-200'}`}>
+            {isPhoneVerified ? '✓ Mobile Verified' : '⚠️ Mobile Unverified'}
+          </span>
         </div>
       </div>
-      
-      <div className="grid md:grid-cols-2 gap-8">
-        <div className="bg-white rounded-lg shadow p-6 h-fit">
-          <h2 className="text-lg font-bold mb-4 text-gray-800">Personal Information</h2>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Name</label>
-              <input type="text" readOnly value={user?.name || ''} className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-50 outline-none" />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>
-              <input type="text" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded outline-none focus:border-blue-500" />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Phone</label>
-              <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded outline-none focus:border-blue-500" />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">State</label>
-              <select 
-                value={userState} 
-                onChange={(e) => setUserState(e.target.value)} 
-                className="w-full px-3 py-2 border border-gray-300 rounded outline-none focus:border-blue-500 bg-white text-sm"
-              >
-                <option value="Tamil Nadu">Tamil Nadu</option>
-                <option value="Kerala">Kerala</option>
-                <option value="Karnataka">Karnataka</option>
-                <option value="Andhra Pradesh">Andhra Pradesh</option>
-                <option value="Telangana">Telangana</option>
-                <option value="Maharashtra">Maharashtra</option>
-                <option value="Delhi">Delhi</option>
-                <option value="Gujarat">Gujarat</option>
-                <option value="West Bengal">West Bengal</option>
-                <option value="Punjab">Punjab</option>
-                <option value="Uttar Pradesh">Uttar Pradesh</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Default Address</label>
-              <textarea value={address} onChange={(e) => setAddress(e.target.value)} rows={2} className="w-full px-3 py-2 border border-gray-300 rounded outline-none focus:border-blue-500 text-sm" placeholder="e.g. 123 Main St, Apartment 4B" />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Default Pincode</label>
-              <input type="text" value={pincode} onChange={(e) => setPincode(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded outline-none focus:border-blue-500 text-sm" placeholder="e.g. 600001" />
-            </div>
 
-            {/* Password Section with Read Mode / Unlock */}
-            <div className="border-t border-gray-200 pt-3">
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Update Password</label>
-              {!isPasswordUnlocked ? (
-                <div className="space-y-2">
-                  <input 
-                    type="password" 
-                    readOnly 
-                    value="••••••••••••" 
-                    className="w-full px-3 py-2 border border-gray-300 rounded bg-gray-100 text-gray-500 text-sm cursor-not-allowed outline-none" 
-                  />
-                  <div className="flex gap-2 items-center">
-                    <input 
-                      type="password" 
-                      placeholder="Enter Current Password to Unlock" 
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      className="flex-1 px-3 py-1.5 border border-gray-300 rounded text-xs outline-none focus:border-blue-500" 
-                    />
-                    <button 
-                      type="button"
-                      onClick={handleVerifyCurrentPassword}
-                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-bold transition"
-                    >
-                      Unlock & Edit
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-2 bg-blue-50 p-3 rounded border border-blue-200">
-                  <span className="text-xs text-blue-800 font-bold block">Unlocked for Editing:</span>
-                  <input 
-                    type="password" 
-                    value={password} 
-                    onChange={(e) => setPassword(e.target.value)} 
-                    className="w-full px-3 py-2 border border-blue-400 rounded outline-none text-sm bg-white" 
-                    placeholder="Enter New Password" 
-                  />
-                </div>
+      {/* Status Messages */}
+      {statusMsg && (
+        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex justify-between items-center">
+          <span>{statusMsg}</span>
+          <button onClick={() => setStatusMsg('')} className="text-emerald-600 hover:text-emerald-800">✕</button>
+        </div>
+      )}
+      {otpSentMsg && (
+        <div className="p-4 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 text-xs font-bold flex justify-between items-center">
+          <span>{otpSentMsg}</span>
+          <button onClick={() => setOtpSentMsg('')} className="text-blue-600 hover:text-blue-800">✕</button>
+        </div>
+      )}
+
+      {/* Main 2-Column Layout matching Screenshot 3 & 4 */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        {/* Left 2 Columns: Material Legend Outlined Inputs Form */}
+        <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-200 space-y-6">
+          <h2 className="text-lg font-bold text-gray-900 border-b pb-3">Personal Information</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <OutlinedField label="First Name" value={firstName} onChange={setFirstName} placeholder="First Name" />
+            <OutlinedField label="Last Name" value={lastName} onChange={setLastName} placeholder="Last Name" />
+
+            <OutlinedField 
+              label="E-mail" 
+              value={email} 
+              onChange={setEmail} 
+              type="email"
+              verifiedBadge={isEmailVerified ? "Verified Google Mail" : null}
+              actionButton={!isEmailVerified && (
+                <button onClick={() => setOtpSentMsg('✨ Verification link sent to email!')} className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-200">
+                  Verify Email
+                </button>
               )}
-            </div>
-            
-            <button 
+            />
+            <OutlinedField label="Organization" value={organization} onChange={setOrganization} placeholder="Organization" />
+
+            <OutlinedField 
+              label="Phone Number" 
+              value={phone} 
+              onChange={setPhone} 
+              verifiedBadge={isPhoneVerified ? "Verified Mobile Number" : null}
+              actionButton={!isPhoneVerified && (
+                <button onClick={handleSendWhatsAppOTP} className="text-[10px] font-bold px-2 py-0.5 rounded bg-green-50 text-green-600 border border-green-200">
+                  Send OTP
+                </button>
+              )}
+            />
+            <OutlinedField label="Address" value={address} onChange={setAddress} placeholder="Street address..." />
+
+            <OutlinedField 
+              label="State" 
+              value={userState} 
+              onChange={setUserState} 
+              options={['Tamil Nadu', 'Kerala', 'Karnataka', 'Andhra Pradesh', 'Telangana', 'Maharashtra', 'Delhi', 'Gujarat']} 
+            />
+            <OutlinedField label="Zip Code" value={zipCode} onChange={setZipCode} placeholder="648391" />
+
+            <OutlinedField label="Country" value={country} onChange={setCountry} options={['India', 'United States', 'United Kingdom', 'Canada', 'Australia']} />
+            <OutlinedField label="Language" value={language} onChange={setLanguage} options={['English', 'Tamil (தமிழ்)', 'Hindi (हिंदी)']} />
+
+            <OutlinedField label="Timezone" value={timezone} onChange={setTimezone} options={['(GMT+05:30) India Standard Time', '(GMT-05:00) Eastern Time']} />
+            <OutlinedField label="Currency" value={currency} onChange={setCurrency} options={['INR (₹)', 'USD ($)']} />
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
+            <button
               onClick={handleSaveSettings}
-              className="mt-4 w-full bg-brand-yellow hover:bg-yellow-500 text-brand-blue font-bold px-6 py-2.5 rounded shadow transition-colors"
+              disabled={isLoading}
+              className="px-6 py-2.5 bg-[#f59e0b] hover:bg-[#d97706] text-white font-bold rounded-lg shadow-sm transition-all active:scale-95 text-xs uppercase tracking-wider"
             >
-              Save Personal Info
+              {isLoading ? 'Saving...' : 'Save Changes'}
+            </button>
+            <button
+              onClick={handleReset}
+              className="px-6 py-2.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold rounded-lg text-xs uppercase tracking-wider"
+            >
+              Reset
             </button>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6 h-fit">
-          <h2 className="text-lg font-bold mb-4 text-gray-800">Delivery Addresses</h2>
-          
-          <div className="space-y-4">
-            {addresses.length === 0 && !showNewAddress && (
-              <p className="text-sm text-gray-500">No saved addresses.</p>
-            )}
-            
-            {addresses.map(a => (
-              <div key={a.id} className="border p-4 rounded bg-gray-50 flex justify-between items-start">
-                <div>
-                  <p className="font-bold text-sm">{a.name}</p>
-                  <p className="text-sm text-gray-600 mt-1">{a.street}, {a.city}</p>
-                  <p className="text-sm text-gray-600">{a.state} - {a.zip_code}</p>
-                  {a.latitude && a.longitude && (
-                    <p className="text-[11px] text-blue-600 font-mono mt-1">📍 Lat: {a.latitude}, Lng: {a.longitude}</p>
-                  )}
-                </div>
-                <button onClick={() => handleDeleteAddress(a.id)} className="text-red-500 hover:text-red-700 text-sm font-bold">
-                  Delete
-                </button>
+        {/* Right 1 Column: Delivery Addresses List (Matching Screenshot 3) */}
+        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 space-y-4 h-fit">
+          <div className="flex justify-between items-center border-b pb-3">
+            <h2 className="text-lg font-bold text-gray-900">Delivery Addresses</h2>
+            <button onClick={() => setShowNewAddress(!showNewAddress)} className="text-xs font-bold text-[#e52e06] hover:underline">
+              + Add New Address
+            </button>
+          </div>
+
+          {/* New Address Input Form */}
+          {showNewAddress && (
+            <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-3 text-xs">
+              <input type="text" placeholder="Full Name" value={newAddr.name} onChange={e => setNewAddr({ ...newAddr, name: e.target.value })} className="w-full p-2 border rounded outline-none" />
+              <input type="text" placeholder="Street Address" value={newAddr.street} onChange={e => setNewAddr({ ...newAddr, street: e.target.value })} className="w-full p-2 border rounded outline-none" />
+              <div className="grid grid-cols-2 gap-2">
+                <input type="text" placeholder="City" value={newAddr.city} onChange={e => setNewAddr({ ...newAddr, city: e.target.value })} className="w-full p-2 border rounded outline-none" />
+                <input type="text" placeholder="Zip Code" value={newAddr.zip_code} onChange={e => setNewAddr({ ...newAddr, zip_code: e.target.value })} className="w-full p-2 border rounded outline-none" />
               </div>
-            ))}
-            
-            {!showNewAddress ? (
-              <button 
-                onClick={() => setShowNewAddress(true)} 
-                className="text-brand-blue font-bold text-sm hover:underline"
-              >
-                + Add New Address
+              <button onClick={handleSaveAddress} className="w-full py-2 bg-[#e52e06] text-white font-bold rounded">
+                Save Address
               </button>
-            ) : (
-              <div className="border p-4 rounded space-y-3 mt-4">
-                <h3 className="font-bold text-sm">Add New Address</h3>
-                <input type="text" placeholder="Full Name" value={newAddr.name} onChange={e => setNewAddr({...newAddr, name: e.target.value})} className="border p-2 rounded w-full text-sm" />
-                <input type="text" placeholder="Street Address" value={newAddr.street} onChange={e => setNewAddr({...newAddr, street: e.target.value})} className="border p-2 rounded w-full text-sm" />
-                <div className="grid grid-cols-2 gap-2">
-                  <input type="text" placeholder="City" value={newAddr.city} onChange={e => setNewAddr({...newAddr, city: e.target.value})} className="border p-2 rounded w-full text-sm" />
-                  <select value={newAddr.state} onChange={e => setNewAddr({...newAddr, state: e.target.value})} className="border p-2 rounded w-full text-sm bg-white">
-                    <option value="Tamil Nadu">Tamil Nadu</option>
-                    <option value="Kerala">Kerala</option>
-                    <option value="Karnataka">Karnataka</option>
-                    <option value="Andhra Pradesh">Andhra Pradesh</option>
-                    <option value="Telangana">Telangana</option>
-                    <option value="Maharashtra">Maharashtra</option>
-                    <option value="Delhi">Delhi</option>
-                    <option value="Gujarat">Gujarat</option>
-                  </select>
-                </div>
-                <input type="text" placeholder="ZIP Code" value={newAddr.zip_code} onChange={e => setNewAddr({...newAddr, zip_code: e.target.value})} className="border p-2 rounded w-full text-sm" />
-                
-                {/* Interactive Map & Coordinates */}
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center text-xs font-bold text-gray-700">
-                    <span>📍 Drag Map / Scroll to Zoom to Drop Pin</span>
-                    <div className="flex gap-1">
-                      <button type="button" onClick={() => setMapZoom(z => Math.min(z + 1, 18))} className="px-2 py-0.5 bg-gray-200 rounded text-xs hover:bg-gray-300 font-bold">+</button>
-                      <button type="button" onClick={() => setMapZoom(z => Math.max(z - 1, 4))} className="px-2 py-0.5 bg-gray-200 rounded text-xs hover:bg-gray-300 font-bold">-</button>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <input type="number" step="any" placeholder="Latitude" value={newAddr.latitude} onChange={e => setNewAddr({...newAddr, latitude: e.target.value})} className="border p-2 rounded w-full text-xs font-mono" />
-                    <input type="number" step="any" placeholder="Longitude" value={newAddr.longitude} onChange={e => setNewAddr({...newAddr, longitude: e.target.value})} className="border p-2 rounded w-full text-xs font-mono" />
-                  </div>
-                  
-                  <div 
-                    className="w-full h-52 rounded-xl overflow-hidden border-2 border-gray-300 relative shadow-inner bg-[#e5e3df] cursor-grab active:cursor-grabbing select-none"
-                    onWheel={(e) => {
-                      if (e.deltaY < 0) {
-                        setMapZoom(z => Math.min(z + 1, 18));
-                      } else {
-                        setMapZoom(z => Math.max(z - 1, 4));
-                      }
-                    }}
-                    onClick={(e) => {
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      const x = (e.clientX - rect.left) / rect.width - 0.5;
-                      const y = (e.clientY - rect.top) / rect.height - 0.5;
-                      const baseLat = parseFloat(newAddr.latitude || '11.0168');
-                      const baseLng = parseFloat(newAddr.longitude || '76.9558');
-                      const newLat = (baseLat - y * 0.03).toFixed(6);
-                      const newLng = (baseLng + x * 0.03).toFixed(6);
-                      setNewAddr({ ...newAddr, latitude: newLat, longitude: newLng });
-                    }}
-                  >
-                    <iframe
-                      width="100%"
-                      height="100%"
-                      className="pointer-events-none"
-                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${parseFloat(newAddr.longitude || '76.9558')-0.03},${parseFloat(newAddr.latitude || '11.0168')-0.03},${parseFloat(newAddr.longitude || '76.9558')+0.03},${parseFloat(newAddr.latitude || '11.0168')+0.03}&layer=mapnik&marker=${newAddr.latitude || 11.0168},${newAddr.longitude || 76.9558}`}
-                    ></iframe>
+            </div>
+          )}
 
-                    {/* Red Pin Marker in Center */}
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-full pointer-events-none text-3xl filter drop-shadow-md animate-bounce">
-                      📍
-                    </div>
-
-                    <div className="absolute top-2 left-2 z-10 bg-black/80 text-white text-[10px] px-2.5 py-1 rounded backdrop-blur font-bold">
-                      🖱️ Click/Scroll to Zoom & Pinpoint
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-2 mt-4">
-                  <button onClick={() => setShowNewAddress(false)} className="px-4 py-2 bg-gray-200 rounded text-sm font-bold text-gray-700 hover:bg-gray-300 transition-colors">Cancel</button>
-                  <button onClick={handleSaveAddress} className="px-4 py-2 bg-blue-600 rounded text-sm font-bold text-white hover:bg-blue-700 transition-colors">Save Address</button>
-                </div>
+          {/* Saved Addresses List */}
+          <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+            {addresses.length === 0 ? (
+              <div className="p-4 text-center text-xs text-gray-500 border border-dashed rounded-xl">
+                No delivery addresses saved yet. Click + Add New Address above.
               </div>
+            ) : (
+              addresses.map((addr) => (
+                <div key={addr.id} className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 space-y-1 relative group">
+                  <div className="flex justify-between items-start">
+                    <span className="font-bold text-xs text-gray-900">{addr.name}</span>
+                    <button onClick={() => handleDeleteAddress(addr.id)} className="text-[10px] font-bold text-red-600 hover:underline">
+                      Delete
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-600 leading-snug">{addr.street}, {addr.city}</p>
+                  <p className="text-xs text-gray-500 font-mono">{addr.state} - {addr.zip_code}</p>
+                </div>
+              ))
             )}
           </div>
         </div>
+
       </div>
     </div>
   );

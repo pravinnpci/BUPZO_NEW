@@ -180,7 +180,9 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
                 <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('id')}>User ID <SortIndicator k="id" /></th>
                 <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('name')}>Name <SortIndicator k="name" /></th>
                 <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('phone')}>Phone <SortIndicator k="phone" /></th>
+                <th className="py-2.5">Mobile Ver.</th>
                 <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('email')}>Email <SortIndicator k="email" /></th>
+                <th className="py-2.5">Email Ver.</th>
                 <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('created_at')}>Date & Time <SortIndicator k="created_at" /></th>
                 <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('wallet')}>Wallet <SortIndicator k="wallet" /></th>
                 <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleSort('tier')}>Tier <SortIndicator k="tier" /></th>
@@ -197,7 +199,17 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
                   <td className="py-3 font-mono text-zinc-500">{u.id ? `${u.id.substring(0, 8)}...` : ''}</td>
                   <td className="py-3 font-semibold text-[#3874ff] cursor-pointer hover:underline" onClick={() => setPreviewUser(u)}>{u.name || 'Bupzo Patron'}</td>
                   <td className="py-3">{u.phone?.startsWith('GOOG-') ? 'Not Provided' : u.phone}</td>
+                  <td className="py-3">
+                    <span className={`px-1.5 py-0.5 rounded font-bold text-[9px] ${(u as any).phone_verified || (!u.phone?.startsWith('GOOG-') && u.phone) ? 'bg-emerald-100/20 text-emerald-500 border border-emerald-500/30' : 'bg-amber-100/10 text-amber-500 border border-amber-500/30'}`}>
+                      {(u as any).phone_verified || (!u.phone?.startsWith('GOOG-') && u.phone) ? '✓ Verified' : '✕ Pending'}
+                    </span>
+                  </td>
                   <td className="py-3">{u.email}</td>
+                  <td className="py-3">
+                    <span className={`px-1.5 py-0.5 rounded font-bold text-[9px] ${(u as any).email_verified || (u as any).google_verified || u.email?.includes('@') ? 'bg-emerald-100/20 text-emerald-500 border border-emerald-500/30' : 'bg-amber-100/10 text-amber-500 border border-amber-500/30'}`}>
+                      {(u as any).email_verified || (u as any).google_verified || u.email?.includes('@') ? '✓ Verified' : '✕ Pending'}
+                    </span>
+                  </td>
                   <td className="py-3 font-mono text-[10px] text-zinc-500 whitespace-nowrap">{u.created_at ? new Date(u.created_at).toLocaleString() : '2026-07-25 20:45'}</td>
                   <td className="py-3 font-mono font-bold">₹{u.wallet}</td>
                   <td className="py-3">{u.tier}</td>

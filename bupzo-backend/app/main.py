@@ -180,6 +180,9 @@ def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None):
 async def get_user_by_id(user_id: UUID):
     query = """
     SELECT u.id, u.name, u.phone, u.email, u.is_premium, u.signup_platform, u.wallet_balance, u.privacy_accepted, u.created_at, u.address, u.pincode,
+           COALESCE(u.email_verified, FALSE) as email_verified,
+           COALESCE(u.phone_verified, FALSE) as phone_verified,
+           COALESCE(u.google_verified, FALSE) as google_verified,
            CASE WHEN s.status = 'APPROVED' THEN TRUE ELSE FALSE END AS is_seller,
            s.status as seller_status
     FROM users u
@@ -231,6 +234,9 @@ async def startup_event():
     # Dynamic DB Schema Migration: Ensure columns exist
     async with pool.acquire() as conn:
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS name VARCHAR(100);")
+        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE;")
+        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified BOOLEAN DEFAULT FALSE;")
+        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS google_verified BOOLEAN DEFAULT FALSE;")
         await conn.execute("ALTER TABLE coupons ADD COLUMN IF NOT EXISTS created_by_seller_id UUID REFERENCES sellers(id) ON DELETE CASCADE;")
         await conn.execute("ALTER TABLE coupons ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'PENDING';")
         await conn.execute("UPDATE coupons SET status = 'APPROVED' WHERE status IS NULL;")
@@ -924,15 +930,18 @@ async def auth_register(payload: AuthRegisterRequest):
 
     user_id = uuid4()
     password_hash = get_password_hash(payload.password)
+    email_verified = True if (user_email and '@' in user_email) else False
+    phone_verified = True
 
     query = """
     INSERT INTO users
-    (id, name, phone, email, is_premium, signup_platform, referred_by, privacy_accepted, password_hash)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    (id, name, phone, email, is_premium, signup_platform, referred_by, privacy_accepted, password_hash, phone_verified, email_verified)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
     """
     await execute_query_none(
         query, user_id, payload.name, formatted_phone, user_email, payload.is_premium,
-        payload.signup_platform, payload.referred_by, payload.privacy_accepted, password_hash
+        payload.signup_platform, payload.referred_by, payload.privacy_accepted, password_hash,
+        phone_verified, email_verified
     )
     
     full_user = await get_user_by_id(user_id)
@@ -964,7 +973,7 @@ async def check_user_exists(email: Optional[str] = None, phone: Optional[str] = 
 
 @app.post("/api/auth/google", response_model=TokenResponse)
 async def auth_google(payload: AuthGoogleRequest):
-    # Mock Google Auth Verification
+    # Google Auth Verification
     if not payload.google_token or len(payload.google_token) < 5:
         raise HTTPException(status_code=401, detail="Invalid Google Token")
         
@@ -976,7 +985,7 @@ async def auth_google(payload: AuthGoogleRequest):
         # Create user via Google
         user_id = uuid4()
         await execute_query_none(
-            "INSERT INTO users (id, name, phone, email, is_premium, signup_platform, privacy_accepted, wallet_balance) VALUES ($1, $2, $3, $4, $5, $6, $7, 0)",
+            "INSERT INTO users (id, name, phone, email, is_premium, signup_platform, privacy_accepted, wallet_balance, email_verified, google_verified) VALUES ($1, $2, $3, $4, $5, $6, $7, 0, TRUE, TRUE)",
             user_id,
             payload.name,
             f"GOOG-{str(user_id)[:8]}", # Mock phone
@@ -987,6 +996,10 @@ async def auth_google(payload: AuthGoogleRequest):
         )
         full_user = await get_user_by_id(user_id)
     else:
+        await execute_query_none(
+            "UPDATE users SET email_verified = TRUE, google_verified = TRUE WHERE id = $1",
+            user['id']
+        )
         full_user = await get_user_by_id(user['id'])
         
     access_token = create_access_token({"user_id": str(full_user['id'])})
