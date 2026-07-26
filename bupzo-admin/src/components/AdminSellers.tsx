@@ -162,11 +162,16 @@ export const AdminSellers: React.FC<AdminSellersProps> = ({
 
   const filteredSellers = sellers.filter(s => {
     const term = searchTerm.toLowerCase();
+    const kyc = typeof s.kyc_details === 'string' ? JSON.parse(s.kyc_details || '{}') : (s.kyc_details || {});
+    const kycStatusStr = (kyc.aadharUrl || kyc.pan || kyc.gstin) ? 'verified docs verified' : 'missing docs missing';
     return (
       (s.businessName || '').toLowerCase().includes(term) ||
       (s.status || '').toLowerCase().includes(term) ||
       (s.id || '').toLowerCase().includes(term) ||
-      (s.owner || s.user_id || '').toLowerCase().includes(term)
+      (s.owner || s.user_id || '').toLowerCase().includes(term) ||
+      (s.owner_email || '').toLowerCase().includes(term) ||
+      (s.owner_phone || '').toLowerCase().includes(term) ||
+      kycStatusStr.includes(term)
     );
   });
 
@@ -175,7 +180,12 @@ export const AdminSellers: React.FC<AdminSellersProps> = ({
     let aVal = a[sortKey];
     let bVal = b[sortKey];
 
-    if (sortKey === 'commission' || (sortKey as string) === 'followers') {
+    if ((sortKey as string) === 'kyc_details') {
+      const kycA = typeof a.kyc_details === 'string' ? JSON.parse(a.kyc_details || '{}') : (a.kyc_details || {});
+      const kycB = typeof b.kyc_details === 'string' ? JSON.parse(b.kyc_details || '{}') : (b.kyc_details || {});
+      aVal = (kycA.aadharUrl || kycA.pan || kycA.gstin) ? 'Verified Docs' : 'Missing Docs';
+      bVal = (kycB.aadharUrl || kycB.pan || kycB.gstin) ? 'Verified Docs' : 'Missing Docs';
+    } else if (sortKey === 'commission' || (sortKey as string) === 'followers') {
       aVal = Number((sortKey as string) === 'followers' ? (a.followers_count !== undefined ? a.followers_count : a.followers || 0) : aVal) || 0;
       bVal = Number((sortKey as string) === 'followers' ? (b.followers_count !== undefined ? b.followers_count : b.followers || 0) : bVal) || 0;
     } else {
