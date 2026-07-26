@@ -808,11 +808,9 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({
                       <strong className="text-zinc-900 dark:text-white">{previewProduct.weight_grams}g</strong>
                     </div>
                   </div>
-                  {previewProduct.category_name && (
-                    <div className="inline-block px-2 py-1 bg-zinc-100 dark:bg-zinc-800 text-xs font-bold rounded">
-                      Category: {previewProduct.category_name}
-                    </div>
-                  )}
+                  <div className="inline-block px-2.5 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-xs font-bold rounded-lg border border-indigo-200 dark:border-indigo-800 mb-2">
+                    🏷️ Category: {previewProduct.category_name || (previewProduct as any).category || 'General'}
+                  </div>
                 </div>
               </div>
               

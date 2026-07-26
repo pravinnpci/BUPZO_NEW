@@ -120,10 +120,15 @@ export default function SellerShopPage() {
   if (loading) return <div className="flex justify-center items-center h-screen bg-gray-50"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-[#e52e06]"></div></div>;
   if (!seller) return <div className="text-center py-20 text-gray-500 font-bold">Shop not found.</div>;
 
-  // Derive unique categories dynamically from DB & seller products
-  const categoriesList = categories.length > 0 
-    ? categories 
-    : Array.from(new Set(products.map(p => (p.category_name || (p as any).category || 'General').trim()))).filter(Boolean);
+  // Derive unique active categories dynamically from seller products with non-zero counts
+  const sellerCatCounts: Record<string, number> = {};
+  products.forEach(p => {
+    const cName = (p.category_name || (p as any).category || 'General').trim();
+    sellerCatCounts[cName] = (sellerCatCounts[cName] || 0) + 1;
+  });
+  const categoriesList = Object.keys(sellerCatCounts).length > 0 
+    ? Object.keys(sellerCatCounts) 
+    : ['General'];
 
   // Filtered & Sorted products
   const filteredProducts = products.filter(p => {
@@ -419,52 +424,68 @@ export default function SellerShopPage() {
               )}
             </div>
 
-            {/* Write a Review Form */}
-            <form 
-              onSubmit={async (e) => {
-                e.preventDefault();
-                let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
-                apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
-                try {
-                  const firstProdId = products[0]?.id || 'p-1';
-                  const res = await fetch(`${apiUrl}/api/reviews/`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      user_id: user?.id || 'a01b1234-5678-abcd-ef01-1234567890aa',
-                      product_id: firstProdId,
-                      rating: newRating,
-                      comment: newComment || 'Great store and products!'
-                    })
-                  });
-                  if (res.ok) {
-                    showCustomToast("🎉 Thank you! Your store feedback has been recorded.");
-                    setNewComment('');
-                    loadFollowersAndReviews();
-                  }
-                } catch(err) { showCustomToast("Failed to submit review", "error"); }
-              }}
-              className="pt-3 border-t space-y-2"
-            >
-              <h4 className="font-bold text-xs text-gray-800">Write a Review for Store</h4>
-              <div className="flex items-center gap-2">
-                <select value={newRating} onChange={e => setNewRating(Number(e.target.value))} className="border rounded p-1.5 text-xs font-bold bg-gray-50">
-                  <option value={5}>5 ★ - Excellent</option>
-                  <option value={4}>4 ★ - Very Good</option>
-                  <option value={3}>3 ★ - Good</option>
-                  <option value={2}>2 ★ - Average</option>
-                  <option value={1}>1 ★ - Poor</option>
-                </select>
-                <input 
-                  type="text" 
-                  value={newComment}
-                  onChange={e => setNewComment(e.target.value)}
-                  placeholder="Share your experience..." 
-                  className="flex-1 border rounded p-1.5 text-xs outline-none focus:border-[#23bb75]"
-                />
-                <button type="submit" className="bg-[#23bb75] hover:bg-emerald-600 text-white font-bold px-3 py-1.5 rounded text-xs transition">Submit</button>
+            {/* Write a Review Form - Auth Guarded */}
+            {!user ? (
+              <div className="pt-3 border-t text-center">
+                <button 
+                  onClick={() => {
+                    setShowRatingsModal(false);
+                    if (typeof window !== 'undefined') {
+                      window.dispatchEvent(new CustomEvent('openAuthModal'));
+                    }
+                  }}
+                  className="w-full py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5"
+                >
+                  <span>🔒 Log in to write a review for this store</span>
+                </button>
               </div>
-            </form>
+            ) : (
+              <form 
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+                  apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
+                  try {
+                    const firstProdId = products[0]?.id || 'p-1';
+                    const res = await fetch(`${apiUrl}/api/reviews/`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        user_id: user.id,
+                        product_id: firstProdId,
+                        rating: newRating,
+                        comment: newComment || 'Great store and products!'
+                      })
+                    });
+                    if (res.ok) {
+                      showCustomToast("🎉 Thank you! Your store feedback has been recorded.");
+                      setNewComment('');
+                      loadFollowersAndReviews();
+                    }
+                  } catch(err) { showCustomToast("Failed to submit review", "error"); }
+                }}
+                className="pt-3 border-t space-y-2"
+              >
+                <h4 className="font-bold text-xs text-gray-800">Write a Review for Store</h4>
+                <div className="flex items-center gap-2">
+                  <select value={newRating} onChange={e => setNewRating(Number(e.target.value))} className="border rounded p-1.5 text-xs font-bold bg-gray-50">
+                    <option value={5}>5 ★ - Excellent</option>
+                    <option value={4}>4 ★ - Very Good</option>
+                    <option value={3}>3 ★ - Good</option>
+                    <option value={2}>2 ★ - Average</option>
+                    <option value={1}>1 ★ - Poor</option>
+                  </select>
+                  <input 
+                    type="text" 
+                    value={newComment}
+                    onChange={e => setNewComment(e.target.value)}
+                    placeholder="Share your experience..." 
+                    className="flex-1 border rounded p-1.5 text-xs outline-none focus:border-[#23bb75]"
+                  />
+                  <button type="submit" className="bg-[#23bb75] hover:bg-emerald-600 text-white font-bold px-3 py-1.5 rounded text-xs transition">Submit</button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

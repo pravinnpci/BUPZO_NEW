@@ -2507,43 +2507,62 @@ export default function AdminMainPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-                    {messages.filter((m: any) => {
+                    {(() => {
                       const s = msgSearchTerm.toLowerCase();
-                      return (m.sender_name || '').toLowerCase().includes(s) || 
-                             (m.receiver_name || '').toLowerCase().includes(s) || 
-                             (m.subject || '').toLowerCase().includes(s) || 
-                             (m.content || '').toLowerCase().includes(s);
-                    }).length === 0 ? (
-                      <tr><td colSpan={6} className="px-4 py-8 text-center text-zinc-500 font-medium">No messages found.</td></tr>
-                    ) : messages.filter((m: any) => {
-                      const s = msgSearchTerm.toLowerCase();
-                      return (m.sender_name || '').toLowerCase().includes(s) || (m.receiver_name || '').toLowerCase().includes(s) || (m.subject || '').toLowerCase().includes(s) || (m.content || '').toLowerCase().includes(s);
-                    }).map((m: any) => (
-                      <tr key={m.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40">
-                        <td className="px-4 py-3 font-bold">{m.sender_name || 'System User'}</td>
-                        <td className="px-4 py-3 font-bold">{m.receiver_name || 'Bupzo Patron'}</td>
-                        <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300 font-bold">{m.subject || 'Message Notice'}</td>
-                        <td className="px-4 py-3 max-w-xs text-zinc-600 dark:text-zinc-400 font-medium truncate">{m.content}</td>
-                        <td className="px-4 py-3 font-mono text-zinc-500 text-[11px] whitespace-nowrap">{m.created_at ? new Date(m.created_at).toLocaleString() : new Date().toLocaleString()}</td>
-                        <td className="px-4 py-3 text-right">
-                          <button 
-                            onClick={async () => {
-                              if (!confirm("Are you sure you want to delete this message log?")) return;
-                              try {
-                                const resp = await fetch(`${API_URL}/api/messages/${m.id}`, { method: 'DELETE' });
-                                if (resp.ok) {
-                                  alert("Message log deleted successfully!");
-                                  setMessages(prev => prev.filter(item => item.id !== m.id));
-                                }
-                              } catch(e) { alert("Failed to delete message."); }
-                            }}
-                            className="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1 rounded text-xs font-bold transition shadow-sm"
-                          >
-                            Delete Log
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                      const filtered = messages.filter((m: any) => {
+                        return (m.sender_name || '').toLowerCase().includes(s) || 
+                               (m.receiver_name || '').toLowerCase().includes(s) || 
+                               (m.subject || '').toLowerCase().includes(s) || 
+                               (m.content || '').toLowerCase().includes(s);
+                      });
+                      const sorted = [...filtered].sort((a: any, b: any) => {
+                        if (!msgSortKey) return 0;
+                        let aVal = a[msgSortKey];
+                        let bVal = b[msgSortKey];
+                        if (msgSortKey === 'created_at' || msgSortKey === 'date') {
+                          aVal = new Date(a.created_at || a.date || Date.now()).getTime();
+                          bVal = new Date(b.created_at || b.date || Date.now()).getTime();
+                        } else {
+                          aVal = String(aVal || '').toLowerCase();
+                          bVal = String(bVal || '').toLowerCase();
+                        }
+                        if (aVal === bVal) return 0;
+                        return aVal < bVal ? (msgSortOrder === 'asc' ? -1 : 1) : (msgSortOrder === 'asc' ? 1 : -1);
+                      });
+
+                      if (sorted.length === 0) {
+                        return (
+                          <tr><td colSpan={6} className="px-4 py-8 text-center text-zinc-500 font-medium">No messages found matching criteria.</td></tr>
+                        );
+                      }
+
+                      return sorted.map((m: any) => (
+                        <tr key={m.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40">
+                          <td className="px-4 py-3 font-bold">{m.sender_name || 'System User'}</td>
+                          <td className="px-4 py-3 font-bold">{m.receiver_name || 'Bupzo Patron'}</td>
+                          <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300 font-bold">{m.subject || 'Message Notice'}</td>
+                          <td className="px-4 py-3 max-w-xs text-zinc-600 dark:text-zinc-400 font-medium truncate">{m.content}</td>
+                          <td className="px-4 py-3 font-mono text-zinc-500 text-[11px] whitespace-nowrap">{m.created_at ? new Date(m.created_at).toLocaleString() : new Date().toLocaleString()}</td>
+                          <td className="px-4 py-3 text-right">
+                            <button 
+                              onClick={async () => {
+                                if (!confirm("Are you sure you want to delete this message log?")) return;
+                                try {
+                                  const resp = await fetch(`${API_URL}/api/messages/${m.id}`, { method: 'DELETE' });
+                                  if (resp.ok) {
+                                    showAdminToast("🗑️ Message log deleted successfully!");
+                                    setMessages(prev => prev.filter(item => item.id !== m.id));
+                                  }
+                                } catch(e) { showAdminToast("Failed to delete message.", "error"); }
+                              }}
+                              className="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1 rounded text-xs font-bold transition shadow-sm"
+                            >
+                              Delete Log
+                            </button>
+                          </td>
+                        </tr>
+                      ));
+                    })()}
                   </tbody>
                 </table>
               </div>
