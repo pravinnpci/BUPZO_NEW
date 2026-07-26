@@ -245,6 +245,8 @@ async def startup_event():
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT 'India';")
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS address_lat DECIMAL(10,8);")
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS address_lng DECIMAL(11,8);")
+        await conn.execute("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_signup_platform_check;")
+        await conn.execute("ALTER TABLE users ADD CONSTRAINT users_signup_platform_check CHECK (UPPER(signup_platform) IN ('WEB', 'APP'));")
         await conn.execute("ALTER TABLE coupons ADD COLUMN IF NOT EXISTS created_by_seller_id UUID REFERENCES sellers(id) ON DELETE CASCADE;")
         await conn.execute("ALTER TABLE coupons ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'PENDING';")
         await conn.execute("UPDATE coupons SET status = 'APPROVED' WHERE status IS NULL;")
@@ -954,9 +956,10 @@ async def auth_register(payload: AuthRegisterRequest):
         (id, name, phone, email, is_premium, signup_platform, referred_by, privacy_accepted, password_hash, phone_verified, email_verified)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         """
+        platform_val = (payload.signup_platform or "WEB").upper()
         await execute_query_none(
             query, user_id, user_name, formatted_phone, user_email, payload.is_premium or False,
-            payload.signup_platform or "web", payload.referred_by, payload.privacy_accepted or True, password_hash,
+            platform_val, payload.referred_by, payload.privacy_accepted or True, password_hash,
             phone_verified, email_verified
         )
         full_user = await get_user_by_id(user_id)
