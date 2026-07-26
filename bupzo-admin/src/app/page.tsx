@@ -1971,50 +1971,82 @@ export default function AdminMainPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {users.filter((u: any) => 
-                        u.name?.toLowerCase().includes(walletAccountSearchTerm.toLowerCase()) ||
-                        u.email?.toLowerCase().includes(walletAccountSearchTerm.toLowerCase()) ||
-                        u.phone?.toLowerCase().includes(walletAccountSearchTerm.toLowerCase())
-                      ).slice(0, 10).map((u: any) => (
-                        <tr key={u.id} className="border-b border-zinc-150 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
-                          <td className="py-3 font-mono">{u.id ? `${u.id.substring(0, 8)}...` : ''}</td>
-                          <td className="py-3 font-bold text-[#3874ff] cursor-pointer hover:underline" onClick={() => setPreviewUser(u)}>{u.name}</td>
-                          <td className="py-3">{u.phone}</td>
-                          <td className="py-3">
-                            <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${u.isSeller ? 'bg-amber-100/10 text-amber-500' : 'bg-zinc-100/10 text-zinc-400 dark:text-zinc-500'}`}>
-                              {u.isSeller ? 'Seller' : 'Customer'}
-                            </span>
-                          </td>
-                          <td className="py-3 font-mono text-[10px] text-zinc-500 whitespace-nowrap">{u.created_at ? new Date(u.created_at).toLocaleString() : '2026-07-25 20:45'}</td>
-                          <td className="py-3 font-mono font-bold text-right text-green-600 dark:text-green-400">₹{u.wallet}</td>
-                          <td className="py-3 text-center">
-                            <div className="flex justify-center gap-1.5">
-                              <button 
-                                onClick={() => setPreviewUser(u)}
-                                className="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded-md text-[10px] font-bold transition-colors"
-                              >
-                                Preview
-                              </button>
-                              <button 
-                                onClick={() => {
-                                  setSelectedWalletAccountUser(u);
-                                  setNewWalletBalance(u.wallet);
-                                  setShowWalletAccountEditModal(true);
-                                }}
-                                className="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 px-2 py-1 rounded-md text-[10px] font-bold transition-colors"
-                              >
-                                Edit
-                              </button>
-                              <button 
-                                onClick={() => setUserToDelete(u)}
-                                className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded-md text-[10px] font-bold transition-colors"
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                      {(() => {
+                        const s = walletAccountSearchTerm.toLowerCase();
+                        const filtered = users.filter((u: any) => 
+                          (u.name || '').toLowerCase().includes(s) ||
+                          (u.email || '').toLowerCase().includes(s) ||
+                          (u.phone || '').toLowerCase().includes(s) ||
+                          (u.id || '').toLowerCase().includes(s)
+                        );
+                        const sorted = [...filtered].sort((a: any, b: any) => {
+                          if (!walletSortKey) return 0;
+                          let aVal = a[walletSortKey];
+                          let bVal = b[walletSortKey];
+                          if (walletSortKey === 'amount' || walletSortKey === 'wallet') {
+                            aVal = Number(a.wallet || 0);
+                            bVal = Number(b.wallet || 0);
+                          } else if (walletSortKey === 'type') {
+                            aVal = a.isSeller ? 'Seller' : 'Customer';
+                            bVal = b.isSeller ? 'Seller' : 'Customer';
+                          } else if (walletSortKey === 'created_at' || walletSortKey === 'date') {
+                            aVal = new Date(a.created_at || Date.now()).getTime();
+                            bVal = new Date(b.created_at || Date.now()).getTime();
+                          } else {
+                            aVal = String(aVal || '').toLowerCase();
+                            bVal = String(bVal || '').toLowerCase();
+                          }
+                          if (aVal === bVal) return 0;
+                          return aVal < bVal ? (walletSortOrder === 'asc' ? -1 : 1) : (walletSortOrder === 'asc' ? 1 : -1);
+                        });
+
+                        if (sorted.length === 0) {
+                          return (
+                            <tr><td colSpan={7} className="py-8 text-center text-zinc-500 font-medium">No user wallet accounts found matching criteria.</td></tr>
+                          );
+                        }
+
+                        return sorted.slice(0, 15).map((u: any) => (
+                          <tr key={u.id} className="border-b border-zinc-150 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
+                            <td className="py-3 font-mono">{u.id ? `${u.id.substring(0, 8)}...` : ''}</td>
+                            <td className="py-3 font-bold text-[#3874ff] cursor-pointer hover:underline" onClick={() => setPreviewUser(u)}>{u.name}</td>
+                            <td className="py-3">{u.phone}</td>
+                            <td className="py-3">
+                              <span className={`px-2 py-0.5 rounded font-bold text-[10px] ${u.isSeller ? 'bg-amber-100/10 text-amber-500' : 'bg-zinc-100/10 text-zinc-400 dark:text-zinc-500'}`}>
+                                {u.isSeller ? 'Seller' : 'Customer'}
+                              </span>
+                            </td>
+                            <td className="py-3 font-mono text-[10px] text-zinc-500 whitespace-nowrap">{u.created_at ? new Date(u.created_at).toLocaleString() : '2026-07-25 20:45'}</td>
+                            <td className="py-3 font-mono font-bold text-right text-green-600 dark:text-green-400">₹{u.wallet}</td>
+                            <td className="py-3 text-center">
+                              <div className="flex justify-center gap-1.5">
+                                <button 
+                                  onClick={() => setPreviewUser(u)}
+                                  className="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded-md text-[10px] font-bold transition-colors"
+                                >
+                                  Preview
+                                </button>
+                                <button 
+                                  onClick={() => {
+                                    setSelectedWalletAccountUser(u);
+                                    setNewWalletBalance(u.wallet);
+                                    setShowWalletAccountEditModal(true);
+                                  }}
+                                  className="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 px-2 py-1 rounded-md text-[10px] font-bold transition-colors"
+                                >
+                                  Edit
+                                </button>
+                                <button 
+                                  onClick={() => setUserToDelete(u)}
+                                  className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded-md text-[10px] font-bold transition-colors"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ));
+                      })()}
                     </tbody>
                   </table>
                 </div>

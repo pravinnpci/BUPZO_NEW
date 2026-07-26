@@ -89,6 +89,16 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
         setIsLoading(false);
       }
 
+      try {
+        let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+        apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
+        fetch(`${apiUrl}/api/auth/send-whatsapp-otp`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: cleanPhone })
+        }).catch(err => console.warn("WhatsApp OTP dispatch:", err));
+      } catch (err) {}
+
       setMode('verify-otp');
       return;
     }
@@ -209,7 +219,7 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
   );
 
   return (
-    <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || 'dummy-client-id.apps.googleusercontent.com'}>
+    <GoogleOAuthProvider clientId={process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '110313675568-6eoovlbd5871e5v48qn7p3f1e8vhs0vc.apps.googleusercontent.com'}>
       {/* Materialize Split-Screen Cover Layout Modal */}
       <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
         
