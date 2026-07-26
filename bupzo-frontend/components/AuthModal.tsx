@@ -145,7 +145,7 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
 
   const handleForgotPassword = async () => {
     if (!username.trim()) {
-      setMessage('⚠️ Please enter your registered email address to reset password.');
+      setMessage('⚠️ Please enter your registered email address or phone number.');
       return;
     }
     setIsLoading(true);
@@ -155,17 +155,21 @@ export default function AuthModal({ onClose }: { onClose: () => void }) {
       const response = await fetch(`${apiUrl}/api/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: username.trim() })
+        body: JSON.stringify({
+          email: username.trim(),
+          phone: username.trim(),
+          identifier: username.trim()
+        })
       });
       const data = await response.json();
       if (!response.ok) {
-         const errorMsg = typeof data.detail === 'string' ? data.detail : 'Error sending reset link.';
+         const errorMsg = typeof data.detail === 'string' ? data.detail : (data.message || 'Error sending reset link.');
          throw new Error(errorMsg);
       }
-      setMessage(data.message || `✨ Reset link sent successfully to ${username.trim()}!`);
-      setTimeout(() => setMode('login'), 2500);
+      setMessage(data.message || `✨ Reset OTP & link sent successfully to ${username.trim()}!`);
+      setTimeout(() => setMode('login'), 3000);
     } catch (err: any) {
-      setMessage('Error sending reset link.');
+      setMessage(err.message || 'Error sending reset link.');
     } finally {
       setIsLoading(false);
     }
