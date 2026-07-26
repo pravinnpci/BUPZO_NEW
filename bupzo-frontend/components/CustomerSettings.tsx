@@ -78,7 +78,7 @@ export function CustomerSettings({ user }: { user: any }) {
   const [otpInput, setOtpInput] = useState('');
   const [serverOtp, setServerOtp] = useState('');
   const [isPhoneVerifiedState, setIsPhoneVerifiedState] = useState(
-    Boolean(user?.phone_verified) && user?.phone && !user.phone.startsWith('GOOG-')
+    Boolean(user?.phone_verified) || (Boolean(user?.phone) && !user?.phone?.startsWith('GOOG-'))
   );
 
   const [organization, setOrganization] = useState((user?.is_seller || user?.isSeller || user?.seller_status === 'APPROVED') ? 'Bupzo Verified Merchant' : 'Bupzo Patron');
@@ -118,7 +118,7 @@ export function CustomerSettings({ user }: { user: any }) {
       setEmail(user.email || '');
       const realP = user.phone?.startsWith('GOOG-') ? '' : (user.phone || '');
       setPhone(realP);
-      setIsPhoneVerifiedState(Boolean(user.phone_verified) && realP !== '');
+      setIsPhoneVerifiedState(Boolean(user.phone_verified) || (realP !== '' && !user.phone?.startsWith('GOOG-')));
       setAddress(user.address || '');
       setZipCode(user.pincode || '');
       setUserState(user.state || 'Tamil Nadu');

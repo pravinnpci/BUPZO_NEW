@@ -247,6 +247,7 @@ async def startup_event():
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS address_lng DECIMAL(11,8);")
         await conn.execute("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_signup_platform_check;")
         await conn.execute("ALTER TABLE users ADD CONSTRAINT users_signup_platform_check CHECK (UPPER(signup_platform) IN ('WEB', 'APP'));")
+        await conn.execute("UPDATE users SET phone_verified = TRUE WHERE phone IS NOT NULL AND phone NOT LIKE 'GOOG-%';")
         await conn.execute("ALTER TABLE coupons ADD COLUMN IF NOT EXISTS created_by_seller_id UUID REFERENCES sellers(id) ON DELETE CASCADE;")
         await conn.execute("ALTER TABLE coupons ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'PENDING';")
         await conn.execute("UPDATE coupons SET status = 'APPROVED' WHERE status IS NULL;")
@@ -1616,7 +1617,7 @@ async def forgot_password(payload: ForgotPasswordPayload):
     # If user has a mobile number, send password reset OTP via WhatsApp
     user_phone = (user.get('phone') if user else formatted_input) or ""
     if user_phone and not user_phone.startswith('GOOG-'):
-        clean_phone = user_phone.replace("+", "").replace("-", "").replace(" ", "")
+        clean_phone = user_phone.replace("+", "").replace("-", "").replace(" ", "").replace("(", "").replace(")", "")
         if not clean_phone.startswith("91") and len(clean_phone) == 10:
             clean_phone = "91" + clean_phone
         
@@ -1626,15 +1627,18 @@ async def forgot_password(payload: ForgotPasswordPayload):
         try:
             import urllib.parse
             import urllib.request
-            msg = f"🔐 *BUPZO Password Reset*\n\nYour password reset verification code is: *{reset_otp}*\n\nUse this code to reset your Bupzo password safely."
+            msg = f"🔐 *BUPZO Password Reset Verification*\n\nYour password reset 5-digit verification code is: *{reset_otp}*\n\nUse this code to reset your Bupzo password safely."
             params = {
                 "token": token,
                 "to": f"+{clean_phone}",
                 "body": msg
             }
-            data = urllib.parse.urlencode(params).encode("utf-[#e52e06]".replace("[#e52e06]", "utf-8"))
-            req = urllib.request.Request(f"https://api.ultramsg.com/{instance_id}/messages/chat", data=data)
-            urllib.request.urlopen(req, timeout=5)
+            url = f"https://api.ultramsg.com/{instance_id}/messages/chat"
+            data = urllib.parse.urlencode(params).encode("utf-8")
+            req = urllib.request.Request(url, data=data, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                resp_text = resp.read().decode('utf-8')
+                print("UltraMsg WhatsApp Password Reset Sent:", resp_text)
         except Exception as e:
             print("WhatsApp Reset OTP send notice:", e)
 
