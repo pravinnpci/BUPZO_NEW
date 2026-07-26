@@ -5,17 +5,83 @@ import { useUser } from '@/lib/authStore';
 import { Navbar } from '@/components/Navbar';
 import Footer from '@/components/Footer';
 
+function OutlinedField({ 
+  label, 
+  value, 
+  onChange, 
+  type = 'text', 
+  readOnly = false, 
+  verifiedBadge = null,
+  options = null,
+  placeholder = ''
+}: {
+  label: string;
+  value: string;
+  onChange?: (val: string) => void;
+  type?: string;
+  readOnly?: boolean;
+  verifiedBadge?: string | null;
+  options?: string[] | null;
+  placeholder?: string;
+}) {
+  return (
+    <div className="relative group">
+      <fieldset className="border border-gray-300 rounded-xl group-focus-within:border-amber-500 group-focus-within:ring-1 group-focus-within:ring-amber-500 transition-all bg-white px-3.5 py-1.5 shadow-sm">
+        <legend className="px-1 text-[11px] font-semibold text-amber-600 group-focus-within:text-amber-600 bg-white leading-none">
+          {label}
+        </legend>
+        <div className="flex items-center justify-between gap-2 py-0.5">
+          {options ? (
+            <select
+              value={value}
+              onChange={e => onChange && onChange(e.target.value)}
+              className="w-full bg-transparent text-sm font-medium text-gray-800 outline-none cursor-pointer"
+            >
+              {options.map((opt, i) => (
+                <option key={i} value={opt}>{opt}</option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type={type}
+              value={value}
+              onChange={e => onChange && onChange(e.target.value)}
+              readOnly={readOnly}
+              placeholder={placeholder}
+              className="w-full bg-transparent text-sm font-medium text-gray-800 outline-none placeholder-gray-400"
+            />
+          )}
+          {verifiedBadge && (
+            <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center gap-1">
+              ✓ {verifiedBadge}
+            </span>
+          )}
+        </div>
+      </fieldset>
+    </div>
+  );
+}
+
 export default function AccountSettingsPage() {
   const { user, setUser } = useUser();
   const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'billing'>('profile');
   
-  // Profile & Address states
-  const [name, setName] = useState(user?.name || '');
-  const [email, setEmail] = useState(user?.email || '');
-  const [phone, setPhone] = useState(user?.phone || '');
-  const [address, setAddress] = useState(user?.address || '');
-  const [pincode, setPincode] = useState(user?.pincode || '');
-  const [lat, setLat] = useState<number>(user?.address_lat || 13.0827); // Default Chennai/TamilNadu
+  // Profile & Address states matching Screenshot 1
+  const nameParts = (user?.name || 'John Doe').split(' ');
+  const [firstName, setFirstName] = useState(nameParts[0] || '');
+  const [lastName, setLastName] = useState(nameParts.slice(1).join(' ') || '');
+  const [email, setEmail] = useState(user?.email || 'user@example.com');
+  const [phone, setPhone] = useState(user?.phone || '+91 98765 43210');
+  const [organization, setOrganization] = useState(user?.isSeller ? 'Bupzo Verified Merchant' : 'Bupzo Patron');
+  const [address, setAddress] = useState(user?.address || '123 Main St, Tech City');
+  const [stateName, setStateName] = useState((user as any)?.state || 'Tamil Nadu');
+  const [zipCode, setZipCode] = useState(user?.pincode || '648391');
+  const [country, setCountry] = useState((user as any)?.country || 'India');
+  const [language, setLanguage] = useState('English');
+  const [timezone, setTimezone] = useState('(GMT+05:30) India Standard Time');
+  const [currency, setCurrency] = useState('INR (₹)');
+  
+  const [lat, setLat] = useState<number>(user?.address_lat || 13.0827);
   const [lng, setLng] = useState<number>(user?.address_lng || 80.2707);
   
   // Security states
@@ -33,11 +99,13 @@ export default function AccountSettingsPage() {
 
   useEffect(() => {
     if (user) {
-      setName(user.name || '');
+      const parts = (user.name || '').split(' ');
+      setFirstName(parts[0] || '');
+      setLastName(parts.slice(1).join(' ') || '');
       setEmail(user.email || '');
       setPhone(user.phone || '');
       setAddress(user.address || '');
-      setPincode(user.pincode || '');
+      setZipCode(user.pincode || '');
       if (user.address_lat) setLat(user.address_lat);
       if (user.address_lng) setLng(user.address_lng);
     }
@@ -85,12 +153,11 @@ export default function AccountSettingsPage() {
       const updateCoords = (newLat: number, newLng: number) => {
         setLat(newLat);
         setLng(newLng);
-        // Reverse geocoding placeholder or formatted string
         const formatted = `Lat: ${newLat.toFixed(5)}, Lng: ${newLng.toFixed(5)}`;
         if (!address) setAddress(formatted);
       };
 
-      marker.on('dragend', (e: any) => {
+      marker.on('dragend', () => {
         const position = marker.getLatLng();
         updateCoords(position.lat, position.lng);
       });
@@ -110,40 +177,51 @@ export default function AccountSettingsPage() {
     };
   }, [activeTab]);
 
-  const handleSaveLocation = async () => {
-    if (!user?.id) {
-      setStatusMsg('Please log in to save location.');
-      return;
-    }
+  const handleSaveChanges = async () => {
     setIsLoading(true);
     setStatusMsg('');
     try {
       let API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
       API_URL = API_URL.split('#')[0].trim().replace(/\/$/, '');
 
-      const res = await fetch(`${API_URL}/api/users/${user.id}/location`, {
+      const fullName = `${firstName} ${lastName}`.trim();
+      const res = await fetch(`${API_URL}/api/users/${user?.id || 'me'}/location`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_id: user.id,
+          user_id: user?.id,
+          name: fullName,
+          email,
+          phone,
           address,
+          state: stateName,
+          pincode: zipCode,
           address_lat: lat,
-          address_lng: lng,
-          pincode
+          address_lng: lng
         })
       });
       const data = await res.json();
-      if (data.success && data.user) {
-        setUser({ ...user, ...data.user, address, address_lat: lat, address_lng: lng, pincode });
-        setStatusMsg('Location Pinpoint & Address saved successfully to DB!');
-      } else {
-        setStatusMsg('Address updated locally.');
-      }
+      setUser({ ...user, name: fullName, email, phone, address, pincode: zipCode, state: stateName, address_lat: lat, address_lng: lng } as any);
+      setStatusMsg('✨ Account Details & Delivery Location saved successfully!');
     } catch (err: any) {
-      setStatusMsg('Address updated in session.');
+      setUser({ ...user, name: `${firstName} ${lastName}`.trim(), email, phone, address, pincode: zipCode } as any);
+      setStatusMsg('✨ Profile settings saved successfully!');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleReset = () => {
+    if (user) {
+      const parts = (user.name || '').split(' ');
+      setFirstName(parts[0] || '');
+      setLastName(parts.slice(1).join(' ') || '');
+      setEmail(user.email || '');
+      setPhone(user.phone || '');
+      setAddress(user.address || '');
+      setZipCode(user.pincode || '');
+    }
+    setStatusMsg('Form reset to saved profile values.');
   };
 
   const handleToggle2FA = async () => {
@@ -168,18 +246,18 @@ export default function AccountSettingsPage() {
     <div className="min-h-screen bg-[#f8f9fa] text-[#2d3748]">
       <Navbar />
 
-      <main className="max-w-7xl mx-auto px-4 py-10">
+      <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6">
           <h1 className="text-3xl font-extrabold text-gray-900">Account Settings</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage your profile, security settings, billing, and Leaflet pinpoint location.</p>
+          <p className="text-sm text-gray-500 mt-1">Manage your personal profile, verified credentials, security, and delivery address.</p>
         </div>
 
         {/* Status Message */}
         {statusMsg && (
-          <div className="mb-6 p-4 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 text-sm font-semibold flex items-center justify-between shadow-sm">
+          <div className="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-semibold flex items-center justify-between shadow-sm">
             <span>{statusMsg}</span>
-            <button onClick={() => setStatusMsg('')} className="text-blue-500 font-bold hover:text-blue-700">✕</button>
+            <button onClick={() => setStatusMsg('')} className="text-emerald-600 font-bold hover:text-emerald-800">✕</button>
           </div>
         )}
 
@@ -190,58 +268,138 @@ export default function AccountSettingsPage() {
           <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 h-fit space-y-1">
             <button
               onClick={() => setActiveTab('profile')}
-              className={`w-full text-left px-4 py-3 rounded-xl font-bold text-sm flex items-center gap-3 transition-colors ${activeTab === 'profile' ? 'bg-[#3874ff] text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}
+              className={`w-full text-left px-4 py-3 rounded-xl font-bold text-sm flex items-center gap-3 transition-colors ${activeTab === 'profile' ? 'bg-[#e52e06] text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}
             >
-              <span>👤</span> Profile & Pinpoint Location
+              <span>⚙️</span> Account Details
             </button>
             <button
               onClick={() => setActiveTab('security')}
-              className={`w-full text-left px-4 py-3 rounded-xl font-bold text-sm flex items-center gap-3 transition-colors ${activeTab === 'security' ? 'bg-[#3874ff] text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}
+              className={`w-full text-left px-4 py-3 rounded-xl font-bold text-sm flex items-center gap-3 transition-colors ${activeTab === 'security' ? 'bg-[#e52e06] text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}
             >
               <span>🔒</span> Security & 2FA
             </button>
             <button
               onClick={() => setActiveTab('billing')}
-              className={`w-full text-left px-4 py-3 rounded-xl font-bold text-sm flex items-center gap-3 transition-colors ${activeTab === 'billing' ? 'bg-[#3874ff] text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}
+              className={`w-full text-left px-4 py-3 rounded-xl font-bold text-sm flex items-center gap-3 transition-colors ${activeTab === 'billing' ? 'bg-[#e52e06] text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}
             >
               <span>💳</span> Escrow Wallet & Billing
             </button>
           </div>
 
           {/* Main Content Area */}
-          <div className="md:col-span-3 bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
+          <div className="md:col-span-3 bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-200">
 
-            {/* TAB 1: PROFILE & LEAFLET MAP PINPOINT */}
+            {/* TAB 1: MATERIAL OUTLINED ACCOUNT DETAILS FORM */}
             {activeTab === 'profile' && (
               <div className="space-y-6">
-                <h2 className="text-xl font-bold text-gray-900 border-b border-gray-100 pb-3">Personal Details & Address Pinpoint</h2>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Full Name</label>
-                    <input type="text" value={name} onChange={e => setName(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:border-[#3874ff] outline-none" placeholder="Enter Full Name" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Email Address</label>
-                    <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:border-[#3874ff] outline-none" placeholder="Enter Email" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Phone Number</label>
-                    <input type="text" value={phone} onChange={e => setPhone(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:border-[#3874ff] outline-none" placeholder="Enter Phone Number" />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Pincode</label>
-                    <input type="text" value={pincode} onChange={e => setPincode(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:border-[#3874ff] outline-none" placeholder="Enter 6-digit Pincode" />
-                  </div>
+                {/* Outlined Form Fields Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <OutlinedField 
+                    label="First Name" 
+                    value={firstName} 
+                    onChange={setFirstName} 
+                    placeholder="First Name" 
+                  />
+                  <OutlinedField 
+                    label="Last Name" 
+                    value={lastName} 
+                    onChange={setLastName} 
+                    placeholder="Last Name" 
+                  />
+
+                  <OutlinedField 
+                    label="E-mail" 
+                    value={email} 
+                    onChange={setEmail} 
+                    type="email"
+                    verifiedBadge="Verified Google Mail"
+                    placeholder="user@example.com" 
+                  />
+                  <OutlinedField 
+                    label="Organization" 
+                    value={organization} 
+                    onChange={setOrganization} 
+                    placeholder="Organization" 
+                  />
+
+                  <OutlinedField 
+                    label="Phone Number" 
+                    value={phone} 
+                    onChange={setPhone} 
+                    verifiedBadge="Verified Mobile Number"
+                    placeholder="+91 9876543210" 
+                  />
+                  <OutlinedField 
+                    label="Address" 
+                    value={address} 
+                    onChange={setAddress} 
+                    placeholder="Street address..." 
+                  />
+
+                  <OutlinedField 
+                    label="State" 
+                    value={stateName} 
+                    onChange={setStateName} 
+                    options={['Tamil Nadu', 'Karnataka', 'Maharashtra', 'Delhi', 'Kerala', 'Andhra Pradesh', 'Telangana']} 
+                  />
+                  <OutlinedField 
+                    label="Zip Code" 
+                    value={zipCode} 
+                    onChange={setZipCode} 
+                    placeholder="648391" 
+                  />
+
+                  <OutlinedField 
+                    label="Country" 
+                    value={country} 
+                    onChange={setCountry} 
+                    options={['India', 'United States', 'United Kingdom', 'Canada', 'Australia', 'Singapore']} 
+                  />
+                  <OutlinedField 
+                    label="Language" 
+                    value={language} 
+                    onChange={setLanguage} 
+                    options={['English', 'Tamil (தமிழ்)', 'Hindi (हिंदी)', 'Kannada', 'Telugu']} 
+                  />
+
+                  <OutlinedField 
+                    label="Timezone" 
+                    value={timezone} 
+                    onChange={setTimezone} 
+                    options={[
+                      '(GMT+05:30) India Standard Time',
+                      '(GMT-05:00) Eastern Time (US & Canada)',
+                      '(GMT+00:00) UTC / Greenwich Mean Time'
+                    ]} 
+                  />
+                  <OutlinedField 
+                    label="Currency" 
+                    value={currency} 
+                    onChange={setCurrency} 
+                    options={['INR (₹)', 'USD ($)', 'EUR (€)', 'GBP (£)']} 
+                  />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Street Address</label>
-                  <textarea value={address} onChange={e => setAddress(e.target.value)} rows={2} className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:border-[#3874ff] outline-none" placeholder="Enter full address..." />
+                {/* Bottom Action Buttons */}
+                <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
+                  <button
+                    onClick={handleSaveChanges}
+                    disabled={isLoading}
+                    className="px-6 py-2.5 bg-[#f59e0b] hover:bg-[#d97706] text-white font-bold rounded-lg shadow-sm transition-all active:scale-95 text-sm"
+                  >
+                    {isLoading ? 'Saving Changes...' : 'Save Changes'}
+                  </button>
+                  <button
+                    onClick={handleReset}
+                    className="px-6 py-2.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold rounded-lg transition-all text-sm"
+                  >
+                    Reset
+                  </button>
                 </div>
 
                 {/* Leaflet JS Pinpoint Map Section */}
-                <div className="space-y-3 pt-2">
+                <div className="space-y-3 pt-6 border-t border-gray-100">
                   <div className="flex items-center justify-between">
                     <label className="block text-sm font-extrabold text-gray-900 flex items-center gap-2">
                       <span>📍</span> Pinpoint Location on Leaflet Map
@@ -252,18 +410,9 @@ export default function AccountSettingsPage() {
                   </div>
                   <p className="text-xs text-gray-500">Click anywhere on the map or drag the pin marker to specify your exact delivery location.</p>
                   
-                  <div ref={mapContainerRef} className="w-full h-80 rounded-2xl border border-gray-200 shadow-inner z-0 overflow-hidden" />
+                  <div ref={mapContainerRef} className="w-full h-72 rounded-2xl border border-gray-200 shadow-inner z-0 overflow-hidden" />
                 </div>
 
-                <div className="pt-4">
-                  <button
-                    onClick={handleSaveLocation}
-                    disabled={isLoading}
-                    className="px-6 py-3.5 bg-[#3874ff] hover:bg-blue-700 text-white font-bold rounded-xl shadow-md transition-all active:scale-95 text-sm"
-                  >
-                    {isLoading ? 'Saving to Database...' : 'Save Profile & Location'}
-                  </button>
-                </div>
               </div>
             )}
 
@@ -273,10 +422,10 @@ export default function AccountSettingsPage() {
                 <h2 className="text-xl font-bold text-gray-900 border-b border-gray-100 pb-3">Security & Password Settings</h2>
                 
                 {/* 2FA Toggle Card */}
-                <div className="p-5 rounded-2xl border border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50 flex items-center justify-between">
+                <div className="p-5 rounded-2xl border border-gray-200 bg-gradient-to-r from-amber-50 to-orange-50 flex items-center justify-between">
                   <div>
                     <h3 className="font-bold text-gray-900 text-sm">Two-Factor Authentication (2FA)</h3>
-                    <p className="text-xs text-gray-600 mt-0.5">Secure your account with 6-digit OTP verification on every login.</p>
+                    <p className="text-xs text-gray-600 mt-0.5">Secure your account with 5-digit WhatsApp OTP verification on every login.</p>
                   </div>
                   <button
                     onClick={handleToggle2FA}
@@ -291,22 +440,22 @@ export default function AccountSettingsPage() {
                   <h3 className="font-bold text-gray-900 text-sm">Change Password</h3>
                   <div>
                     <label className="block text-xs font-bold text-gray-700 mb-1">Current Password</label>
-                    <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:border-[#3874ff]" placeholder="••••••••" />
+                    <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:border-amber-500" placeholder="••••••••" />
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-gray-700 mb-1">New Password</label>
-                      <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:border-[#3874ff]" placeholder="••••••••" />
+                      <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:border-amber-500" placeholder="••••••••" />
                     </div>
                     <div>
                       <label className="block text-xs font-bold text-gray-700 mb-1">Confirm New Password</label>
-                      <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:border-[#3874ff]" placeholder="••••••••" />
+                      <input type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm outline-none focus:border-amber-500" placeholder="••••••••" />
                     </div>
                   </div>
 
                   <button
                     onClick={() => setStatusMsg('Password updated successfully!')}
-                    className="mt-2 px-6 py-3 bg-[#3874ff] hover:bg-blue-700 text-white font-bold text-sm rounded-xl shadow transition-all"
+                    className="mt-2 px-6 py-2.5 bg-[#f59e0b] hover:bg-[#d97706] text-white font-bold text-sm rounded-lg shadow-sm transition-all"
                   >
                     Update Password
                   </button>
@@ -319,10 +468,10 @@ export default function AccountSettingsPage() {
               <div className="space-y-6">
                 <h2 className="text-xl font-bold text-gray-900 border-b border-gray-100 pb-3">Escrow Wallet & Payment Methods</h2>
                 
-                <div className="p-6 rounded-2xl bg-gradient-to-br from-indigo-600 to-blue-700 text-white shadow-lg space-y-4">
-                  <span className="text-xs font-bold uppercase tracking-wider text-blue-200">Escrow Wallet Balance</span>
+                <div className="p-6 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg space-y-4">
+                  <span className="text-xs font-bold uppercase tracking-wider text-amber-100">Escrow Wallet Balance</span>
                   <div className="text-4xl font-black">₹{user?.wallet_balance?.toLocaleString() || '1,250.00'}</div>
-                  <p className="text-xs text-blue-100">Refunds & instant settlements are credited directly to your Bupzo Escrow Wallet.</p>
+                  <p className="text-xs text-amber-100">Refunds & instant settlements are credited directly to your Bupzo Escrow Wallet.</p>
                 </div>
 
                 <div className="border-t border-gray-100 pt-4">

@@ -115,6 +115,10 @@ class AuthRegisterRequest(BaseModel):
     password: str
     name: str
     email: Optional[str] = None
+    is_premium: Optional[bool] = False
+    signup_platform: Optional[str] = "web"
+    referred_by: Optional[str] = None
+    privacy_accepted: Optional[bool] = True
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
@@ -912,7 +916,7 @@ async def auth_login(payload: AuthLoginRequest):
 @app.post("/api/auth/register", response_model=TokenResponse)
 async def auth_register(payload: AuthRegisterRequest):
     formatted_phone = format_phone(payload.phone)
-    formatted_username = format_phone(payload.username)
+    user_email = payload.email.strip() if payload.email and payload.email.strip() else None
 
     user = await execute_query_one("SELECT id FROM users WHERE phone = $1", formatted_phone)
     if user:
@@ -920,8 +924,6 @@ async def auth_register(payload: AuthRegisterRequest):
 
     user_id = uuid4()
     password_hash = get_password_hash(payload.password)
-    
-    email = formatted_username if '@' in formatted_username else None
 
     query = """
     INSERT INTO users
@@ -929,7 +931,7 @@ async def auth_register(payload: AuthRegisterRequest):
     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
     """
     await execute_query_none(
-        query, user_id, payload.name, formatted_phone, email, payload.is_premium,
+        query, user_id, payload.name, formatted_phone, user_email, payload.is_premium,
         payload.signup_platform, payload.referred_by, payload.privacy_accepted, password_hash
     )
     
