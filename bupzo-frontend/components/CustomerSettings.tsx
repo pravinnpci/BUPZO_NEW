@@ -91,8 +91,9 @@ export function CustomerSettings({ user }: { user: any }) {
   const [currency, setCurrency] = useState('INR (₹)');
   
   // Leaflet Pinpoint Coordinates
-  const [lat, setLat] = useState<number>(user?.address_lat || 13.0827);
-  const [lng, setLng] = useState<number>(user?.address_lng || 80.2707);
+  const [lat, setLat] = useState(user?.address_lat ? Number(user.address_lat) : 13.0827);
+  const [lng, setLng] = useState(user?.address_lng ? Number(user.address_lng) : 80.2707);
+  const [selectedAddrTitle, setSelectedAddrTitle] = useState('Pinpoint Location Map');
 
   // Addresses
   const [addresses, setAddresses] = useState<any[]>([]);
@@ -518,12 +519,34 @@ export function CustomerSettings({ user }: { user: any }) {
                 </div>
               ) : (
                 addresses.map((addr) => (
-                  <div key={addr.id} className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 space-y-1 relative group">
+                  <div 
+                    key={addr.id} 
+                    onClick={() => {
+                      const aLat = addr.address_lat ? Number(addr.address_lat) : 13.0827;
+                      const aLng = addr.address_lng ? Number(addr.address_lng) : 80.2707;
+                      setLat(aLat);
+                      setLng(aLng);
+                      setSelectedAddrTitle(`📍 Pinpoint: ${addr.name}`);
+                      if (mapInstanceRef.current) {
+                        mapInstanceRef.current.setView([aLat, aLng], 15);
+                        if (markerInstanceRef.current) {
+                          markerInstanceRef.current.setLatLng([aLat, aLng]);
+                          markerInstanceRef.current.bindPopup(`<b>${addr.name}</b><br/>${addr.street}, ${addr.city}<br/>Lat: ${aLat.toFixed(4)}, Lng: ${aLng.toFixed(4)}`).openPopup();
+                        }
+                      }
+                    }}
+                    className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 space-y-1 relative group cursor-pointer hover:border-amber-400 hover:bg-amber-50/40 transition-all shadow-sm"
+                  >
                     <div className="flex justify-between items-start">
                       <span className="font-bold text-xs text-gray-900">{addr.name}</span>
-                      <button onClick={() => handleDeleteAddress(addr.id)} className="text-[10px] font-bold text-red-600 hover:underline">
-                        Delete
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded">
+                          📍 View on Map
+                        </span>
+                        <button onClick={(e) => { e.stopPropagation(); handleDeleteAddress(addr.id); }} className="text-[10px] font-bold text-red-600 hover:underline">
+                          Delete
+                        </button>
+                      </div>
                     </div>
                     <p className="text-xs text-gray-600 leading-snug">{addr.street}, {addr.city}</p>
                     <p className="text-xs text-gray-500 font-mono">{addr.state} - {addr.zip_code}</p>
@@ -540,13 +563,13 @@ export function CustomerSettings({ user }: { user: any }) {
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 space-y-3">
             <div className="flex items-center justify-between">
               <label className="block text-sm font-extrabold text-gray-900 flex items-center gap-2">
-                <span>📍</span> Pinpoint Location Map
+                <span>📍</span> {selectedAddrTitle}
               </label>
-              <span className="text-[10px] font-bold text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">
+              <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full">
                 Lat: {lat.toFixed(4)}, Lng: {lng.toFixed(4)}
               </span>
             </div>
-            <p className="text-xs text-gray-500">Drag marker to specify delivery location.</p>
+            <p className="text-xs text-gray-500">Click any address card above to view its pinpoint marker, or drag marker to update position.</p>
             <div ref={mapContainerRef} className="w-full h-56 rounded-xl border border-gray-200 shadow-inner z-0 overflow-hidden" />
           </div>
 

@@ -18,8 +18,8 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
 
-  // OTP State
-  const [otp, setOtp] = useState(['', '', '', '', '']);
+  // 6-Digit OTP State
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [cleanPhone, setCleanPhone] = useState('');
   const [serverOtp, setServerOtp] = useState('');
 
@@ -35,7 +35,7 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
     setOtp(newOtp);
 
     // Auto-focus next input
-    if (value && index < 4) {
+    if (value && index < 5) {
       const nextInput = document.getElementById(`otp-input-${index + 1}`);
       if (nextInput) nextInput.focus();
     }
@@ -86,9 +86,9 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
 
   const handleVerifyOtpAndRegister = async () => {
     const fullOtp = otp.join('');
-    if (fullOtp.length < 5) return setMessage('⚠️ Please enter the 5-digit OTP code');
-    if (serverOtp && fullOtp !== '12345' && fullOtp !== serverOtp) {
-      return setMessage('❌ Invalid OTP verification code. Please check your WhatsApp or try 12345.');
+    if (fullOtp.length < 6) return setMessage('⚠️ Please enter the complete 6-digit OTP code');
+    if (serverOtp && fullOtp !== '123456' && fullOtp !== '12345' && fullOtp !== serverOtp) {
+      return setMessage('❌ Invalid OTP verification code. Please check your WhatsApp or try 123456.');
     }
 
     setIsLoading(true);
@@ -179,9 +179,9 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
       
       if (forgotMethod === 'whatsapp') {
         setForgotStep(2);
-        setMessage(`✨ Password Reset OTP dispatched via WhatsApp to ${username.trim()}! Please enter the 5-digit OTP and new password below.`);
+        setMessage(`✨ Password Reset 6-Digit OTP dispatched via WhatsApp to ${username.trim()}! Please enter the 6-digit OTP and new password below.`);
       } else {
-        setMessage(data.message || `✨ Password reset link sent to ${username.trim()}!`);
+        setMessage(`✨ Password reset link & instructions dispatched successfully to ${username.trim()}! Check your inbox.`);
         setTimeout(() => setMode('login'), 3000);
       }
     } catch (err: any) {
@@ -193,10 +193,10 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
 
   const handleResetPasswordSubmit = async () => {
     const fullOtp = otp.join('');
-    if (fullOtp.length < 5) return setMessage('⚠️ Please enter the 5-digit reset OTP code');
+    if (fullOtp.length < 6) return setMessage('⚠️ Please enter the complete 6-digit reset OTP code');
     if (!newPassword || newPassword.trim().length < 4) return setMessage('⚠️ Please enter a new password');
-    if (serverOtp && fullOtp !== '12345' && fullOtp !== serverOtp) {
-      return setMessage('❌ Invalid OTP code. Please check your WhatsApp or try 12345.');
+    if (serverOtp && fullOtp !== '123456' && fullOtp !== '12345' && fullOtp !== serverOtp) {
+      return setMessage('❌ Invalid OTP code. Please check your WhatsApp or try 123456.');
     }
 
     setIsLoading(true);
@@ -413,8 +413,8 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
                     /* Step 2: Enter Reset OTP & New Password */
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Enter 5-Digit WhatsApp Reset OTP</label>
-                        <div className="flex justify-between gap-2">
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Enter 6-Digit WhatsApp Reset OTP</label>
+                        <div className="flex justify-between gap-1.5">
                           {otp.map((digit, idx) => (
                             <input
                               key={idx}
@@ -424,7 +424,7 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
                               value={digit}
                               onChange={e => handleOtpChange(idx, e.target.value)}
                               onKeyDown={e => handleOtpKeyDown(idx, e)}
-                              className="w-12 h-12 text-center text-lg font-bold border border-gray-300 dark:border-gray-700 rounded-xl outline-none focus:border-indigo-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                              className="w-10 h-12 text-center text-lg font-bold border border-gray-300 dark:border-gray-700 rounded-xl outline-none focus:border-indigo-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                             />
                           ))}
                         </div>

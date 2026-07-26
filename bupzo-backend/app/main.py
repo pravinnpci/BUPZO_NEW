@@ -1613,7 +1613,8 @@ async def forgot_password(payload: ForgotPasswordPayload):
         target_input, formatted_input, target_input
     )
     
-    reset_otp = str(uuid4().int)[:6]
+    import random
+    reset_otp = str(random.randint(100000, 999999))
     reset_token = uuid4().hex[:12]
 
     # If user has a mobile number, send password reset OTP via WhatsApp
@@ -1629,7 +1630,7 @@ async def forgot_password(payload: ForgotPasswordPayload):
         try:
             import urllib.parse
             import urllib.request
-            msg = f"🔐 *BUPZO Password Reset Verification*\n\nYour password reset 5-digit verification code is: *{reset_otp}*\n\nUse this code to reset your Bupzo password safely."
+            msg = f"🔐 *BUPZO Password Reset Verification*\n\nYour password reset 6-digit verification code is: *{reset_otp}*\n\nUse this code to reset your Bupzo password safely."
             params = {
                 "token": token,
                 "to": f"+{clean_phone}",
@@ -1665,8 +1666,8 @@ async def send_whatsapp_otp(payload: WhatsAppOTPRequest):
     if not clean_phone.startswith("91") and len(clean_phone) == 10:
         clean_phone = "91" + clean_phone
     
-    # Generate REAL random 5-digit OTP code (e.g. 73920)
-    otp_code = str(random.randint(10000, 99999))
+    # Generate REAL random 6-digit OTP code (e.g. 739201)
+    otp_code = str(random.randint(100000, 999999))
     whatsapp_otps[clean_phone] = otp_code
     whatsapp_otps[clean_phone[-10:]] = otp_code
     
@@ -1674,7 +1675,7 @@ async def send_whatsapp_otp(payload: WhatsAppOTPRequest):
     token = os.getenv("ULTRAMSG_TOKEN", "wdqy9hp9g3lfubio")
     
     try:
-        msg = f"🎉 *BUPZO Marketplace Two-Step Verification*\n\nYour 5-digit verification code is: *{otp_code}*\n\nDo not share this OTP with anyone."
+        msg = f"🎉 *BUPZO Marketplace Two-Step Verification*\n\nYour 6-digit verification code is: *{otp_code}*\n\nDo not share this OTP with anyone."
         params = {
             "token": token,
             "to": f"+{clean_phone}",
