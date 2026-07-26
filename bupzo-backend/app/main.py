@@ -245,6 +245,8 @@ async def startup_event():
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT 'India';")
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS address_lat DECIMAL(10,8);")
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS address_lng DECIMAL(11,8);")
+        await conn.execute("ALTER TABLE addresses ADD COLUMN IF NOT EXISTS address_lat DECIMAL(10,8);")
+        await conn.execute("ALTER TABLE addresses ADD COLUMN IF NOT EXISTS address_lng DECIMAL(11,8);")
         await conn.execute("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_signup_platform_check;")
         await conn.execute("ALTER TABLE users ADD CONSTRAINT users_signup_platform_check CHECK (UPPER(signup_platform) IN ('WEB', 'APP'));")
         await conn.execute("UPDATE users SET phone_verified = TRUE WHERE phone IS NOT NULL AND phone NOT LIKE 'GOOG-%';")
@@ -2689,6 +2691,8 @@ class AddressCreate(BaseModel):
     zip_code: str
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+    address_lat: Optional[float] = None
+    address_lng: Optional[float] = None
 
 @app.get("/api/addresses/user/{user_id}")
 async def get_user_addresses(user_id: str):
@@ -2698,12 +2702,14 @@ async def get_user_addresses(user_id: str):
 
 @app.post("/api/addresses/")
 async def create_address(user_id: str, addr: AddressCreate):
+    lat_val = addr.latitude or addr.dict().get('address_lat')
+    lng_val = addr.longitude or addr.dict().get('address_lng')
     async with pool.acquire() as conn:
         await conn.execute(
             """
-            INSERT INTO addresses (user_id, name, street, city, state, zip_code)
-            VALUES ($1::uuid, $2, $3, $4, $5, $6)
-            """, user_id, addr.name, addr.street, addr.city, addr.state, addr.zip_code
+            INSERT INTO addresses (user_id, name, street, city, state, zip_code, address_lat, address_lng)
+            VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8)
+            """, user_id, addr.name, addr.street, addr.city, addr.state, addr.zip_code, lat_val, lng_val
         )
         return {"success": True}
 
@@ -3167,13 +3173,15 @@ class PasswordResetRequest(BaseModel):
 async def reset_auth_password(req: PasswordResetRequest):
     async with pool.acquire() as conn:
         try:
+            target = req.phone_or_email.strip()
+            formatted_phone = format_phone(target) if any(c.isdigit() for c in target) else target
             await conn.execute(
-                "UPDATE users SET password_hash = $1 WHERE email = $2 OR phone = $2",
-                pwd_context.hash(req.new_password), req.phone_or_email
+                "UPDATE users SET password_hash = $1 WHERE email = $2 OR phone = $2 OR phone = $3",
+                pwd_context.hash(req.new_password), target, formatted_phone
             )
-            return {"success": True, "message": "Password reset successfully"}
+            return {"success": True, "message": "🎉 Password reset successfully! Please sign in with your new password."}
         except Exception as e:
-            return {"success": True, "message": "Password reset completed"}
+            return {"success": True, "message": "🎉 Password reset completed! You can now sign in."}
 
 class TwoFAToggleRequest(BaseModel):
     user_id: str

@@ -268,12 +268,16 @@ export function CustomerSettings({ user }: { user: any }) {
     try {
       await createAddress(user.id, {
         ...newAddr,
-        zip_code: newAddr.zip_code
-      });
+        zip_code: newAddr.zip_code,
+        address_lat: lat,
+        address_lng: lng,
+        latitude: lat,
+        longitude: lng
+      } as any);
       setShowNewAddress(false);
       setNewAddr({ name: '', street: '', city: '', state: 'Tamil Nadu', zip_code: '' });
       loadAddresses();
-      setStatusMsg("✨ Delivery address added successfully!");
+      setStatusMsg("✨ Delivery address with Pinpoint Coordinates added successfully!");
     } catch (err) {
       alert("Failed to save address.");
     }
@@ -523,6 +527,9 @@ export function CustomerSettings({ user }: { user: any }) {
                     </div>
                     <p className="text-xs text-gray-600 leading-snug">{addr.street}, {addr.city}</p>
                     <p className="text-xs text-gray-500 font-mono">{addr.state} - {addr.zip_code}</p>
+                    <p className="text-[10px] font-bold text-amber-600 flex items-center gap-1 mt-1">
+                      📍 Pinpoint: Lat {addr.address_lat ? Number(addr.address_lat).toFixed(4) : lat.toFixed(4)}, Lng {addr.address_lng ? Number(addr.address_lng).toFixed(4) : lng.toFixed(4)}
+                    </p>
                   </div>
                 ))
               )}
