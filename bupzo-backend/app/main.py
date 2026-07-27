@@ -1645,62 +1645,80 @@ class ForgotPasswordPayload(BaseModel):
     phone: Optional[str] = None
     identifier: Optional[str] = None
     phone_or_email: Optional[str] = None
+    method: Optional[str] = "whatsapp"
 
 @app.post("/api/auth/forgot-password")
 async def forgot_password(payload: ForgotPasswordPayload):
     target_input = (payload.email or payload.phone or payload.identifier or payload.phone_or_email or "").strip()
     if not target_input:
-        raise HTTPException(status_code=400, detail="Email or phone number is required.")
+        raise HTTPException(status_code=400, detail="⚠️ Email ID or Mobile Number is required.")
 
+    req_method = (payload.method or "").lower()
+    is_email = req_method == "email" or "@" in target_input
+    
     formatted_input = format_phone(target_input) if any(c.isdigit() for c in target_input) else target_input.lower()
     
+    # 1. Pre-send Account Existence Check
     user = await execute_query_one(
         "SELECT id, name, email, phone FROM users WHERE email = $1 OR phone = $2 OR phone = $3",
         target_input, formatted_input, target_input
     )
+    if not user:
+        if is_email:
+            raise HTTPException(status_code=404, detail=f"⚠️ No account registered with email '{target_input}'. Please sign up first.")
+        else:
+            raise HTTPException(status_code=404, detail=f"⚠️ No account registered with mobile number '{target_input}'. Please sign up first.")
     
     import random
     reset_otp = str(random.randint(100000, 999999))
     reset_token = uuid4().hex[:12]
 
-    # If user has a mobile number, send password reset OTP via WhatsApp
-    user_phone = (user.get('phone') if user else formatted_input) or ""
-    if user_phone and not user_phone.startswith('GOOG-'):
-        clean_phone = user_phone.replace("+", "").replace("-", "").replace(" ", "").replace("(", "").replace(")", "")
-        if not clean_phone.startswith("91") and len(clean_phone) == 10:
-            clean_phone = "91" + clean_phone
-        
-        instance_id = os.getenv("ULTRAMSG_INSTANCE_ID", "instance186236")
-        token = os.getenv("ULTRAMSG_TOKEN", "wdqy9hp9g3lfubio")
-        
-        try:
-            import urllib.parse
-            import urllib.request
-            msg = f"🔐 *BUPZO Password Reset Verification*\n\nYour password reset 6-digit verification code is: *{reset_otp}*\n\nUse this code to reset your Bupzo password safely."
-            params = {
-                "token": token,
-                "to": f"+{clean_phone}",
-                "body": msg
-            }
-            url = f"https://api.ultramsg.com/{instance_id}/messages/chat"
-            data = urllib.parse.urlencode(params).encode("utf-8")
-            req = urllib.request.Request(url, data=data, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=8) as resp:
-                resp_text = resp.read().decode('utf-8')
-                print("UltraMsg WhatsApp Password Reset Sent:", resp_text)
-        except Exception as e:
-            print("WhatsApp Reset OTP send notice:", e)
+    # 2. Strict Channel Isolation: Dispatch to ONLY ONE channel
+    if is_email:
+        # Send ONLY via Real Email (SMTP)
+        user_email = user.get('email') or target_input
+        send_real_email_otp(user_email, reset_otp, subject="BUPZO Password Reset 6-Digit OTP")
+        return {
+            "status": "success",
+            "message": f"✨ Password Reset 6-Digit Verification OTP sent to your Email ({user_email})! Please enter code below.",
+            "reset_token": reset_token,
+            "reset_otp": reset_otp
+        }
+    else:
+        # Send ONLY via WhatsApp (UltraMsg)
+        user_phone = (user.get('phone') if user else formatted_input) or ""
+        if user_phone and not user_phone.startswith('GOOG-'):
+            clean_phone = user_phone.replace("+", "").replace("-", "").replace(" ", "").replace("(", "").replace(")", "")
+            if not clean_phone.startswith("91") and len(clean_phone) == 10:
+                clean_phone = "91" + clean_phone
+            
+            instance_id = os.getenv("ULTRAMSG_INSTANCE_ID", "instance186236")
+            token = os.getenv("ULTRAMSG_TOKEN", "wdqy9hp9g3lfubio")
+            
+            try:
+                import urllib.parse
+                import urllib.request
+                msg = f"🔐 *BUPZO Password Reset Verification*\n\nYour password reset 6-digit verification code is: *{reset_otp}*\n\nUse this code to reset your Bupzo password safely."
+                params = {
+                    "token": token,
+                    "to": f"+{clean_phone}",
+                    "body": msg
+                }
+                url = f"https://api.ultramsg.com/{instance_id}/messages/chat"
+                data = urllib.parse.urlencode(params).encode("utf-8")
+                req = urllib.request.Request(url, data=data, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req, timeout=8) as resp:
+                    resp_text = resp.read().decode('utf-8')
+                    print("UltraMsg WhatsApp Password Reset Sent:", resp_text)
+            except Exception as e:
+                print("WhatsApp Reset OTP send notice:", e)
 
-    # If target is an email address, send real email via smtplib
-    if "@" in target_input:
-        send_real_email_otp(target_input, reset_otp, subject="BUPZO Password Reset 6-Digit OTP")
-
-    return {
-        "status": "success",
-        "message": f"✨ Password reset OTP & link dispatched successfully for {target_input}!",
-        "reset_token": reset_token,
-        "reset_otp": reset_otp
-    }
+        return {
+            "status": "success",
+            "message": f"✨ Password Reset 6-Digit OTP dispatched via WhatsApp to +91 {target_input}! Please enter code below.",
+            "reset_token": reset_token,
+            "reset_otp": reset_otp
+        }
 
 class EmailOTPRequest(BaseModel):
     email: str

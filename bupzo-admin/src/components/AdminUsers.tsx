@@ -206,8 +206,8 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
                   </td>
                   <td className="py-3">{u.email}</td>
                   <td className="py-3">
-                    <span className={`px-1.5 py-0.5 rounded font-bold text-[9px] ${(u as any).email_verified || (u as any).google_verified || u.email?.includes('@') ? 'bg-emerald-100/20 text-emerald-500 border border-emerald-500/30' : 'bg-amber-100/10 text-amber-500 border border-amber-500/30'}`}>
-                      {(u as any).email_verified || (u as any).google_verified || u.email?.includes('@') ? '✓ Verified' : '✕ Pending'}
+                    <span className={`px-1.5 py-0.5 rounded font-bold text-[9px] ${Boolean((u as any).email_verified) || Boolean((u as any).google_verified) ? 'bg-emerald-100/20 text-emerald-500 border border-emerald-500/30' : 'bg-amber-100/10 text-amber-500 border border-amber-500/30'}`}>
+                      {Boolean((u as any).email_verified) || Boolean((u as any).google_verified) ? '✓ Verified' : '✕ Pending'}
                     </span>
                   </td>
                   <td className="py-3 font-mono text-[10px] text-zinc-500 whitespace-nowrap">{u.created_at ? new Date(u.created_at).toLocaleString() : '2026-07-25 20:45'}</td>

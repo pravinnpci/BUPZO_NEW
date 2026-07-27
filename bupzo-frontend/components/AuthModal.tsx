@@ -175,6 +175,18 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
 
   const handleForgotPasswordRequest = async () => {
     if (!username.trim()) return setMessage('⚠️ Please enter your registered Email ID or Phone Number');
+
+    if (forgotMethod === 'email') {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(username.trim())) {
+        return setMessage('⚠️ Please enter a valid Email Address (e.g. name@example.com)');
+      }
+    } else {
+      const phoneDigits = username.trim().replace(/\D/g, '');
+      if (phoneDigits.length < 10) {
+        return setMessage('⚠️ Please enter a valid 10-digit Mobile Number (e.g. 9245464648)');
+      }
+    }
     
     setIsLoading(true);
     setMessage('');
@@ -182,32 +194,30 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
       let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
       apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
 
-      if (forgotMethod === 'whatsapp') {
-        const resp = await fetch(`${apiUrl}/api/auth/send-whatsapp-otp`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone: username.trim() })
-        });
-        const data = await resp.json();
-        if (data?.otp) setServerOtp(String(data.otp));
-      } else {
-        const resp = await fetch(`${apiUrl}/api/auth/forgot-password`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone_or_email: username.trim() })
-        });
-        const data = await resp.json();
-        if (data?.reset_otp) setServerOtp(String(data.reset_otp));
+      const targetVal = forgotMethod === 'whatsapp' ? username.trim().replace(/\D/g, '') : username.trim();
+
+      const resp = await fetch(`${apiUrl}/api/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          phone_or_email: targetVal,
+          method: forgotMethod
+        })
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        throw new Error(data.detail || 'Failed to send reset code. Please check credentials.');
       }
 
+      if (data?.reset_otp) setServerOtp(String(data.reset_otp));
+
       setForgotStep(2);
-      if (forgotMethod === 'whatsapp') {
-        setMessage(`✨ Password Reset 6-Digit OTP dispatched via WhatsApp to ${username.trim()}! Please enter code and new password below.`);
-      } else {
-        setMessage(`✨ Password Reset 6-Digit Verification OTP sent to your Email (${username.trim()})! Please enter code and new password below.`);
-      }
+      setMessage(data.message || (forgotMethod === 'whatsapp' 
+        ? `✨ Password Reset 6-Digit OTP dispatched via WhatsApp to +91 ${targetVal}! Please enter code below.`
+        : `✨ Password Reset 6-Digit Verification OTP sent to your Email (${targetVal})! Please enter code below.`
+      ));
     } catch (err: any) {
-      setMessage(err.message || 'Error sending reset link.');
+      setMessage(err.message || 'Error sending reset code.');
     } finally {
       setIsLoading(false);
     }
