@@ -49,20 +49,42 @@ export default function SellerKYCModal({ onClose }: { onClose: () => void }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!businessName) {
-      setError('Business Name is required.');
+    setError('');
+
+    if (!businessName.trim()) {
+      setError('⚠️ Business Name is required.');
       return;
     }
-    if (!gstin || gstin.length < 15) {
-      setError('Valid GSTIN is required (15 characters).');
+    if (gstin.trim()) {
+      const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/i;
+      if (!gstinRegex.test(gstin.trim())) {
+        setError('⚠️ Invalid GSTIN format. Example: 33AAAAA0000A1Z5 (15 alphanumeric characters).');
+        return;
+      }
+    }
+    if (pan.trim()) {
+      const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i;
+      if (!panRegex.test(pan.trim())) {
+        setError('⚠️ Invalid PAN Card format. Example: ABCDE1234F (10 alphanumeric characters).');
+        return;
+      }
+    }
+    if (fssai.trim() && fssai.trim().length < 14) {
+      setError('⚠️ Valid FSSAI is required (14 characters) if provided.');
       return;
     }
-    if (fssai && fssai.length < 14) {
-      setError('Valid FSSAI is required (14 characters) if provided.');
+    if (!bankName.trim()) {
+      setError('⚠️ Bank Name is required.');
       return;
     }
-    if (!bankName || !accountNumber || !ifsc) {
-      setError('All bank account details are required.');
+    const cleanAccountNo = accountNumber.trim().replace(/\s+/g, '');
+    if (!cleanAccountNo || !/^\d{9,18}$/.test(cleanAccountNo)) {
+      setError('⚠️ Account Number must be strictly numeric (9 to 18 digits).');
+      return;
+    }
+    const ifscRegex = /^[A-Z]{4}0[A-Z0-9]{6}$/i;
+    if (!ifsc.trim() || !ifscRegex.test(ifsc.trim())) {
+      setError('⚠️ Invalid IFSC Code format. Example: SBIN0001234 (11 characters).');
       return;
     }
     if (!user) return;
@@ -73,8 +95,17 @@ export default function SellerKYCModal({ onClose }: { onClose: () => void }) {
       const payload = {
         phone: user.phone || `MOCK-${user.id.substring(0, 8)}`,
         email: user.email || undefined,
-        business_name: businessName,
-        kyc_details: { gstin, pan, fssai, documents, status: 'submitted_by_customer', bankName: bankName, accountNumber: accountNumber, ifsc }
+        business_name: businessName.trim(),
+        kyc_details: { 
+          gstin: gstin.trim().toUpperCase(), 
+          pan: pan.trim().toUpperCase(), 
+          fssai: fssai.trim(), 
+          documents, 
+          status: 'submitted_by_customer', 
+          bankName: bankName.trim(), 
+          accountNumber: cleanAccountNo, 
+          ifsc: ifsc.trim().toUpperCase() 
+        }
       };
 
       const response = await fetch(`${apiUrl}/api/sellers/`, {
@@ -86,8 +117,7 @@ export default function SellerKYCModal({ onClose }: { onClose: () => void }) {
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || 'Failed to submit KYC.');
       
-      alert('KYC Submitted Successfully! You are now a Seller.');
-      // Upgrade local user state
+      alert('🎉 KYC Submitted Successfully! You are now a Seller.');
       setUser({ ...user, isSeller: true });
       onClose();
     } catch (err: any) {
@@ -139,26 +169,29 @@ export default function SellerKYCModal({ onClose }: { onClose: () => void }) {
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">GSTIN (Optional)</label>
               <input 
                 type="text" 
+                maxLength={15}
                 value={gstin} 
-                onChange={(e) => setGstin(e.target.value)} 
-                placeholder="22AAAAA0000A1Z5"
-                className="w-full p-3 text-sm bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl outline-none focus:border-blue-500"
+                onChange={(e) => setGstin(e.target.value.toUpperCase())} 
+                placeholder="33AAAAA0000A1Z5"
+                className="w-full p-3 text-sm bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl outline-none focus:border-blue-500 font-mono"
               />
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">PAN Card Number (Optional)</label>
               <input 
                 type="text" 
+                maxLength={10}
                 value={pan} 
-                onChange={(e) => setPan(e.target.value)} 
+                onChange={(e) => setPan(e.target.value.toUpperCase())} 
                 placeholder="ABCDE1234F"
-                className="w-full p-3 text-sm bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl outline-none focus:border-blue-500"
+                className="w-full p-3 text-sm bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl outline-none focus:border-blue-500 font-mono"
               />
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">FSSAI License (If Food)</label>
               <input 
                 type="text" 
+                maxLength={14}
                 value={fssai} 
                 onChange={(e) => setFssai(e.target.value)} 
                 placeholder="10020000000000"
@@ -198,10 +231,11 @@ export default function SellerKYCModal({ onClose }: { onClose: () => void }) {
                   <label className="block text-xs font-bold text-zinc-500 mb-1">Account Number *</label>
                   <input 
                     type="text" 
+                    maxLength={18}
                     value={accountNumber}
-                    onChange={e => setAccountNumber(e.target.value)}
-                    className="w-full px-4 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl outline-none focus:border-[#3874ff]"
-                    placeholder="Enter Account Number"
+                    onChange={e => setAccountNumber(e.target.value.replace(/\D/g, ''))}
+                    className="w-full px-4 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl outline-none focus:border-[#3874ff] font-mono"
+                    placeholder="Numeric Account Number (e.g. 98765432101)"
                     required
                   />
                 </div>
@@ -209,9 +243,10 @@ export default function SellerKYCModal({ onClose }: { onClose: () => void }) {
                   <label className="block text-xs font-bold text-zinc-500 mb-1">IFSC Code *</label>
                   <input 
                     type="text" 
+                    maxLength={11}
                     value={ifsc}
-                    onChange={e => setIfsc(e.target.value)}
-                    className="w-full px-4 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl outline-none focus:border-[#3874ff]"
+                    onChange={e => setIfsc(e.target.value.toUpperCase())}
+                    className="w-full px-4 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl outline-none focus:border-[#3874ff] font-mono"
                     placeholder="e.g. SBIN0001234"
                     required
                   />

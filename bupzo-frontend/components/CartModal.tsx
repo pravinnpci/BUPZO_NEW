@@ -15,22 +15,42 @@ type CartModalProps = {
   handleApplyPromo: (e: any, cartTotal: number) => void;
 };
 
+// Haversine Distance Calculation Formula in Kilometers
+function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.max(1, Math.round(R * c * 10) / 10);
+}
+
 export default function CartModal({
   isOpen, onClose, cart, updateQuantity, user, onCheckout,
   promoCode, setPromoCode, appliedPromo, handleApplyPromo
 }: CartModalProps) {
   const [cartTotal, setCartTotal] = useState(0);
   const [deliveryAddress, setDeliveryAddress] = useState<string>('');
+  const [selectedAddrId, setSelectedAddrId] = useState<string>('personal');
   const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
   const [useWallet, setUseWallet] = useState<boolean>(false);
-  const [shippingPartners, setShippingPartners] = useState<{name: string, cost: number, estimated_delivery_days?: string}[]>([
-    { name: 'Standard Delivery', cost: 50, estimated_delivery_days: '3-5' }
-  ]);
-  const [loadingShipping, setLoadingShipping] = useState(false);
   
-  // Auto-select cheapest
-  const bestShipping = shippingPartners.reduce((prev, curr) => prev.cost < curr.cost ? prev : curr);
-  const [selectedShipping, setSelectedShipping] = useState(bestShipping.name);
+  // Coordinates
+  const [sellerLat] = useState<number>(13.0827); // Bupzo Central Seller Origin
+  const [sellerLng] = useState<number>(80.2707);
+  const [customerLat, setCustomerLat] = useState<number>(user?.address_lat ? Number(user.address_lat) : 13.0827);
+  const [customerLng, setCustomerLng] = useState<number>(user?.address_lng ? Number(user.address_lng) : 80.2707);
+  const [distanceKm, setDistanceKm] = useState<number>(5.2);
+
+  const [shippingPartners, setShippingPartners] = useState<{name: string, cost: number, estimated_delivery_days?: string}[]>([
+    { name: '📦 Shiprocket Standard (Delhivery / BlueDart)', cost: 50, estimated_delivery_days: '3-5 Days' },
+    { name: '⚡ Bupzo Express Hyperlocal', cost: 90, estimated_delivery_days: 'Same Day' },
+    { name: '🚚 Dunzo / Porter Local Courier', cost: 40, estimated_delivery_days: '2 Hours' }
+  ]);
+  const [selectedShipping, setSelectedShipping] = useState('📦 Shiprocket Standard (Delhivery / BlueDart)');
 
   useEffect(() => {
     let total = 0;
@@ -40,6 +60,23 @@ export default function CartModal({
     setCartTotal(total);
   }, [cart]);
 
+  // Recalculate distance and live partner rates whenever customer coordinates update
+  useEffect(() => {
+    const dist = calculateDistanceKm(sellerLat, sellerLng, customerLat, customerLng);
+    setDistanceKm(dist);
+
+    const shiprocketRate = Math.max(40, Math.round(40 + dist * 2.5));
+    const expressRate = Math.max(70, Math.round(60 + dist * 5.0));
+    const dunzoRate = Math.max(30, Math.round(30 + dist * 3.5));
+
+    const updatedRates = [
+      { name: '📦 Shiprocket Standard (Delhivery / BlueDart)', cost: shiprocketRate, estimated_delivery_days: '3-5 Days' },
+      { name: '⚡ Bupzo Express Hyperlocal', cost: expressRate, estimated_delivery_days: 'Same Day Delivery' },
+      { name: '🚚 Dunzo / Porter Local Courier', cost: dunzoRate, estimated_delivery_days: 'Within 2 Hours' }
+    ];
+    setShippingPartners(updatedRates);
+  }, [sellerLat, sellerLng, customerLat, customerLng]);
+
   const handleSaveAddress = async () => {
     if (!user || !deliveryAddress) return;
     try {
@@ -48,15 +85,17 @@ export default function CartModal({
         name: "Cart Address",
         street: parts[0] || deliveryAddress,
         city: parts[1]?.trim() || "City",
-        state: "State",
-        zip_code: user.pincode || "000000"
+        state: "Tamil Nadu",
+        zip_code: user.pincode || "600001",
+        address_lat: customerLat,
+        address_lng: customerLng
       };
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004'}/api/addresses/?user_id=${user.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(addr)
       });
-      if (res.ok) alert('Address saved successfully!');
+      if (res.ok) alert('✨ Address saved successfully with Pinpoint Coordinates!');
     } catch (e) {
       console.error(e);
     }
@@ -69,39 +108,17 @@ export default function CartModal({
         .then(data => {
           if (Array.isArray(data)) {
             setSavedAddresses(data);
-            if (data.length > 0 && !deliveryAddress) {
-              const first = data[0];
-              setDeliveryAddress(`${first.name}, ${first.street}, ${first.city}, ${first.state} - ${first.zip_code}`);
-            }
           }
         })
         .catch(() => {});
         
       if (!deliveryAddress && user?.address) {
         setDeliveryAddress(`${user.address}, ${user.pincode || ''}`);
+        if (user.address_lat) setCustomerLat(Number(user.address_lat));
+        if (user.address_lng) setCustomerLng(Number(user.address_lng));
       }
     }
   }, [user, isOpen]);
-
-  useEffect(() => {
-    if (isOpen && user?.pincode) {
-      setLoadingShipping(true);
-      // Calculate total weight (assuming 1kg per item for now if not available)
-      const totalWeight = cart.reduce((sum, item) => sum + ((item.product as any).weight_grams ? (item.product as any).weight_grams/1000 : 1) * item.quantity, 0);
-      const uniqueSellers = new Set(cart.map(item => item.product.seller_id)).size || 1;
-      fetchShippingRates(user.pincode, totalWeight)
-        .then(rates => {
-          if (rates && rates.length > 0) {
-            const multiSellerRates = rates.map(r => ({ ...r, cost: r.cost * uniqueSellers }));
-            setShippingPartners(multiSellerRates);
-            const bestShipping = multiSellerRates.reduce((prev: any, curr: any) => prev.cost < curr.cost ? prev : curr);
-            setSelectedShipping(bestShipping.name);
-          }
-        })
-        .catch(err => console.error("Error fetching shipping rates:", err))
-        .finally(() => setLoadingShipping(false));
-    }
-  }, [isOpen, user?.pincode, cart.length]);
 
   const [addDonation, setAddDonation] = useState<boolean>(true);
   const donationAmount = addDonation ? 2 : 0;
@@ -111,7 +128,7 @@ export default function CartModal({
   const discount = appliedPromo?.discount_amount || 0;
   const totalAfterDiscount = Math.max(0, cartTotal - discount);
   
-  const currentShippingCost = shippingPartners.find(p => p.name === selectedShipping)?.cost || 0;
+  const currentShippingCost = shippingPartners.find(p => p.name === selectedShipping)?.cost || shippingPartners[0].cost;
   const totalWithDonation = totalAfterDiscount + currentShippingCost + donationAmount;
   
   const maxWalletUsable = user?.wallet_balance ? Math.min(totalWithDonation, parseFloat(user.wallet_balance)) : 0;
@@ -222,16 +239,25 @@ export default function CartModal({
                     </div>
                   )}
                   
-                  <div className="flex justify-between items-center text-xs font-medium border-t border-gray-100 pt-2">
-                    <span className="text-gray-600">Shipping Partner</span>
+                  {/* Distance-Based Multi-Partner Shipping Aggregator Selection */}
+                  <div className="space-y-2 border-t border-gray-100 pt-2">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-gray-700 font-bold flex items-center gap-1">
+                        🚚 Shipping Partner Aggregator
+                      </span>
+                      <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                        📍 {distanceKm} km from Seller
+                      </span>
+                    </div>
+
                     <select 
                        value={selectedShipping}
                        onChange={(e) => setSelectedShipping(e.target.value)}
-                       className="text-xs p-1 border rounded bg-gray-50 outline-none cursor-pointer font-bold"
+                       className="w-full text-xs p-2.5 border border-gray-300 rounded-lg bg-gray-50 outline-none cursor-pointer font-bold text-gray-800"
                     >
                       {shippingPartners.map(p => (
                         <option key={p.name} value={p.name}>
-                          {p.name} {p.name === bestShipping.name ? '(Best)' : ''} - ₹{p.cost}
+                          {p.name} ({p.estimated_delivery_days}) - ₹{p.cost}
                         </option>
                       ))}
                     </select>
@@ -278,38 +304,56 @@ export default function CartModal({
                    </div>
                 )}
 
+                {/* Saved Delivery Address Selector */}
                 {user && (
-                  <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 text-xs space-y-2">
-                    <h4 className="font-bold text-gray-800 flex items-center gap-1"><span className="material-symbols-outlined text-[16px] text-gray-500">local_shipping</span> Delivery Address</h4>
-                    
-                    {savedAddresses.length > 0 && (
-                      <select 
-                        className="w-full border border-gray-300 rounded p-2 outline-none text-xs bg-white font-medium"
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            setDeliveryAddress(e.target.value);
+                  <div className="bg-gray-50 p-3.5 rounded-xl border border-gray-200 text-xs space-y-2.5">
+                    <div className="flex justify-between items-center">
+                      <h4 className="font-bold text-gray-800 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[16px] text-amber-600">location_on</span> Delivery Address & Pinpoint
+                      </h4>
+                      <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">
+                        Lat: {customerLat.toFixed(4)}, Lng: {customerLng.toFixed(4)}
+                      </span>
+                    </div>
+
+                    <select 
+                      value={selectedAddrId}
+                      className="w-full border border-gray-300 rounded-lg p-2.5 outline-none text-xs bg-white font-semibold text-gray-800 shadow-sm"
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setSelectedAddrId(val);
+                        if (val === 'personal') {
+                          setDeliveryAddress(`${user.address || ''}, ${user.pincode || ''}`);
+                          if (user.address_lat) setCustomerLat(Number(user.address_lat));
+                          if (user.address_lng) setCustomerLng(Number(user.address_lng));
+                        } else {
+                          const found = savedAddresses.find(a => String(a.id) === val);
+                          if (found) {
+                            setDeliveryAddress(`${found.name}, ${found.street}, ${found.city}, ${found.state} - ${found.zip_code}`);
+                            if (found.address_lat) setCustomerLat(Number(found.address_lat));
+                            if (found.address_lng) setCustomerLng(Number(found.address_lng));
                           }
-                        }}
-                      >
-                        <option value="">Select a saved address...</option>
-                        {savedAddresses.map((a, i) => (
-                          <option key={i} value={`${a.name}, ${a.street}, ${a.city}, ${a.state} - ${a.zip_code}`}>
-                            {a.name} - {a.street}, {a.city}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                    
+                        }
+                      }}
+                    >
+                      <option value="personal">📍 Personal Info Address ({user?.address ? `${user.address.substring(0, 30)}...` : 'Default Profile Address'})</option>
+                      {savedAddresses.map((a, i) => (
+                        <option key={i} value={String(a.id)}>
+                          🏢 {a.name} - {a.street}, {a.city} (Lat: {a.address_lat ? Number(a.address_lat).toFixed(2) : customerLat.toFixed(2)}, Lng: {a.address_lng ? Number(a.address_lng).toFixed(2) : customerLng.toFixed(2)})
+                        </option>
+                      ))}
+                    </select>
+
                     <textarea 
                       value={deliveryAddress}
                       onChange={(e) => setDeliveryAddress(e.target.value)}
                       placeholder="Enter your full delivery address here..."
-                      className="w-full border border-gray-300 rounded p-2 outline-none text-xs text-gray-700 bg-white"
+                      className="w-full border border-gray-300 rounded-lg p-2.5 outline-none text-xs text-gray-700 bg-white font-medium shadow-sm"
                       rows={2}
                     />
                     <button 
                       onClick={handleSaveAddress}
-                      className="text-xs bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1 rounded font-medium transition"
+                      className="text-xs bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1.5 rounded-lg font-bold transition shadow-sm"
                     >
                       Save Address for Later
                     </button>

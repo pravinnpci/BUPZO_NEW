@@ -87,11 +87,11 @@ export function CustomerSettings({ user }: { user: any }) {
   const [lastName, setLastName] = useState(nameParts.slice(1).join(' ') || '');
   const [email, setEmail] = useState(user?.email || '');
   
-  // Real phone state (strip GOOG- placeholder for Google logins)
+  // Real phone state (strip GOOG- placeholder)
   const initialPhone = user?.phone?.startsWith('GOOG-') ? '' : (user?.phone || '');
   const [phone, setPhone] = useState(initialPhone);
   
-  // Strict Verification States based on DB
+  // Strict Verification States permanently initialized from DB user object
   const [isPhoneVerifiedState, setIsPhoneVerifiedState] = useState(Boolean(user?.phone_verified));
   const [isEmailVerifiedState, setIsEmailVerifiedState] = useState(Boolean(user?.email_verified) || Boolean(user?.google_verified));
 
@@ -162,6 +162,8 @@ export function CustomerSettings({ user }: { user: any }) {
       setZipCode(user.pincode || '');
       setUserState(user.state || 'Tamil Nadu');
       setCountry(user.country || 'India');
+      if (user.address_lat) setLat(Number(user.address_lat));
+      if (user.address_lng) setLng(Number(user.address_lng));
     }
   }, [user]);
 
@@ -178,7 +180,7 @@ export function CustomerSettings({ user }: { user: any }) {
   // Initialize Leaflet JS Map dynamically
   useEffect(() => {
     if (!mapContainerRef.current) return;
-    if (mapInstanceRef.current || (mapContainerRef.current as any)?._leaflet_id) return; // Prevent double init exception
+    if (mapInstanceRef.current || (mapContainerRef.current as any)?._leaflet_id) return;
 
     const leafletCss = document.createElement('link');
     leafletCss.rel = 'stylesheet';
@@ -214,8 +216,6 @@ export function CustomerSettings({ user }: { user: any }) {
       const updateCoords = (newLat: number, newLng: number) => {
         setLat(newLat);
         setLng(newLng);
-        const formatted = `Lat: ${newLat.toFixed(5)}, Lng: ${newLng.toFixed(5)}`;
-        if (!address) setAddress(formatted);
       };
 
       marker.on('dragend', () => {
@@ -281,7 +281,7 @@ export function CustomerSettings({ user }: { user: any }) {
     try {
       let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
       apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
-      await fetch(`${apiUrl}/api/users/profile`, {
+      const resp = await fetch(`${apiUrl}/api/users/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -293,14 +293,14 @@ export function CustomerSettings({ user }: { user: any }) {
         })
       });
 
+      const data = await resp.json();
       setIsPhoneVerifiedState(true);
       setShowOtpBox(false);
-      if (user) {
-        const updatedUser = { ...user, phone: phone.trim(), phone_verified: true };
-        setUser(updatedUser);
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-        localStorage.setItem('bupzo_user', JSON.stringify(updatedUser));
-      }
+      
+      const updatedUser = data?.user || { ...user, phone: phone.trim(), phone_verified: true };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      localStorage.setItem('bupzo_user', JSON.stringify(updatedUser));
       setStatusMsg("🎉 Mobile number verified & saved to Database successfully!");
     } catch (err) {
       setIsPhoneVerifiedState(true);
@@ -352,7 +352,7 @@ export function CustomerSettings({ user }: { user: any }) {
     try {
       let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
       apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
-      await fetch(`${apiUrl}/api/users/profile`, {
+      const resp = await fetch(`${apiUrl}/api/users/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -363,14 +363,15 @@ export function CustomerSettings({ user }: { user: any }) {
           email_verified: true
         })
       });
+
+      const data = await resp.json();
       setIsEmailVerifiedState(true);
       setShowEmailOtpBox(false);
-      if (user) {
-        const updatedUser = { ...user, email: email.trim(), email_verified: true };
-        setUser(updatedUser);
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-        localStorage.setItem('bupzo_user', JSON.stringify(updatedUser));
-      }
+
+      const updatedUser = data?.user || { ...user, email: email.trim(), email_verified: true };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      localStorage.setItem('bupzo_user', JSON.stringify(updatedUser));
       setStatusMsg("🎉 Email address verified & saved to Database successfully!");
     } catch (err) {
       setIsEmailVerifiedState(true);
@@ -651,6 +652,14 @@ export function CustomerSettings({ user }: { user: any }) {
 
             <OutlinedField label="Address" value={address} onChange={setAddress} placeholder="Street address..." />
 
+            {/* Dedicated Pinpoint Coordinates Field */}
+            <OutlinedField 
+              label="Pinpoint Coordinates (Latitude & Longitude)" 
+              value={`Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}`} 
+              readOnly={true}
+              verifiedBadge="GPS Pinpoint Location"
+            />
+
             <div className="grid grid-cols-2 gap-4">
               <OutlinedField 
                 label="State" 
@@ -722,12 +731,12 @@ export function CustomerSettings({ user }: { user: any }) {
               />
             </div>
 
-            {/* Password Requirements Checklist with Live Ticks */}
+            {/* Password Requirements Checklist */}
             <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-200 text-xs space-y-1.5 text-gray-600">
               <div className="font-bold text-gray-800">Password Requirements:</div>
               <ul className="space-y-1 pl-1">
                 <li className={`flex items-center gap-1.5 ${hasMinLength ? 'text-emerald-600 font-bold' : 'text-gray-500'}`}>
-                  <span>{hasMinLength ? '✓' : '•'}</span> Minimum 8 characters long - the more, the better
+                  <span>{hasMinLength ? '✓' : '•'}</span> Minimum 8 characters long
                 </li>
                 <li className={`flex items-center gap-1.5 ${hasLowercase ? 'text-emerald-600 font-bold' : 'text-gray-500'}`}>
                   <span>{hasLowercase ? '✓' : '•'}</span> At least one lowercase character
@@ -790,7 +799,7 @@ export function CustomerSettings({ user }: { user: any }) {
                 <div className="p-3 bg-amber-50/80 rounded-lg border border-amber-200 space-y-1">
                   <div className="flex justify-between items-center text-[11px] font-bold text-gray-800">
                     <span>📍 Address Pinpoint Map Location</span>
-                    <span className="text-amber-700 font-mono">Lat: {lat.toFixed(4)}, Lng: {lng.toFixed(4)}</span>
+                    <span className="text-amber-700 font-mono">Lat: {lat.toFixed(5)}, Lng: {lng.toFixed(5)}</span>
                   </div>
                   <p className="text-[10px] text-amber-800/80">
                     Drag marker on the Leaflet map below to pick the exact pinpoint delivery location for this address.
@@ -858,7 +867,7 @@ export function CustomerSettings({ user }: { user: any }) {
                 <span>📍</span> {selectedAddrTitle}
               </label>
               <span className="text-[10px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full">
-                Lat: {lat.toFixed(4)}, Lng: {lng.toFixed(4)}
+                Lat: {lat.toFixed(5)}, Lng: {lng.toFixed(5)}
               </span>
             </div>
             <p className="text-xs text-gray-500">Click any address card above to view its pinpoint marker, or drag marker to update position.</p>
