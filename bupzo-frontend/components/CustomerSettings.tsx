@@ -142,6 +142,7 @@ export function CustomerSettings({ user }: { user: any }) {
   // Addresses
   const [addresses, setAddresses] = useState<any[]>([]);
   const [showNewAddress, setShowNewAddress] = useState(false);
+  const [editingAddrId, setEditingAddrId] = useState<string | null>(null);
   const [newAddr, setNewAddr] = useState({ name: '', street: '', city: '', state: 'Tamil Nadu', zip_code: '' });
 
   const [statusMsg, setStatusMsg] = useState('');
@@ -309,6 +310,7 @@ export function CustomerSettings({ user }: { user: any }) {
           'Authorization': `Bearer ${getAuthToken()}`
         },
         body: JSON.stringify({
+          user_id: user?.id,
           phone: phone.trim(),
           phone_verified: true
         })
@@ -394,6 +396,7 @@ export function CustomerSettings({ user }: { user: any }) {
           'Authorization': `Bearer ${getAuthToken()}`
         },
         body: JSON.stringify({
+          user_id: user?.id,
           email: email.trim(),
           email_verified: true
         })
@@ -535,6 +538,9 @@ export function CustomerSettings({ user }: { user: any }) {
       return;
     }
     try {
+      if (editingAddrId) {
+        await deleteAddress(editingAddrId as any).catch(() => {});
+      }
       await createAddress(user.id, {
         ...newAddr,
         zip_code: newAddr.zip_code.trim(),
@@ -544,9 +550,10 @@ export function CustomerSettings({ user }: { user: any }) {
         longitude: lng
       } as any);
       setShowNewAddress(false);
+      setEditingAddrId(null);
       setNewAddr({ name: '', street: '', city: '', state: 'Tamil Nadu', zip_code: '' });
       loadAddresses();
-      setStatusMsg("✨ Delivery address with Pinpoint Coordinates added successfully!");
+      setStatusMsg(editingAddrId ? "✨ Address updated successfully!" : "✨ Delivery address with Pinpoint Coordinates added successfully!");
     } catch (err) {
       alert("Failed to save address.");
     }
@@ -882,6 +889,21 @@ export function CustomerSettings({ user }: { user: any }) {
                         <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded">
                           📍 View on Map
                         </span>
+                        <button 
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            setEditingAddrId(addr.id);
+                            setNewAddr({ name: addr.name, street: addr.street, city: addr.city, state: addr.state || 'Tamil Nadu', zip_code: addr.zip_code || '' });
+                            if (addr.address_lat && addr.address_lng) {
+                              setLat(Number(addr.address_lat));
+                              setLng(Number(addr.address_lng));
+                            }
+                            setShowNewAddress(true);
+                          }} 
+                          className="text-[10px] font-bold text-amber-600 hover:underline"
+                        >
+                          Edit
+                        </button>
                         <button onClick={(e) => { e.stopPropagation(); handleDeleteAddress(addr.id); }} className="text-[10px] font-bold text-red-600 hover:underline">
                           Delete
                         </button>

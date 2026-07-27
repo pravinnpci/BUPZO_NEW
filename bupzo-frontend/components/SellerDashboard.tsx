@@ -221,8 +221,25 @@ export function SellerDashboard({ onSwitchToCustomer }: { onSwitchToCustomer?: (
     }
   };
 
-  if (!user) {
-    return <div className="p-8 text-center text-red-500">Access Denied. Please log in.</div>;
+  let effectiveUser = user;
+  if (!effectiveUser && typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem('bupzo_user') || localStorage.getItem('user');
+      if (stored) effectiveUser = JSON.parse(stored);
+    } catch(e) {}
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+        <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        <p className="text-sm font-bold text-gray-600">Loading Seller Dashboard & Escrow Metrics...</p>
+      </div>
+    );
+  }
+
+  if (!effectiveUser) {
+    return <div className="p-8 text-center text-red-500 font-bold">Access Denied. Please log in as a seller.</div>;
   }
 
   if (mySellerStatus === '' && mySellerId === null) {
