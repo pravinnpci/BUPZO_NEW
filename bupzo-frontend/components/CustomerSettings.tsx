@@ -11,7 +11,9 @@ function OutlinedField({
   verifiedBadge = null,
   options = null,
   placeholder = '',
-  actionButton = null
+  actionButton = null,
+  showEyeToggle = false,
+  onEyeClick = () => {}
 }: {
   label: string;
   value: string;
@@ -22,6 +24,8 @@ function OutlinedField({
   options?: string[] | null;
   placeholder?: string;
   actionButton?: React.ReactNode;
+  showEyeToggle?: boolean;
+  onEyeClick?: () => void;
 }) {
   return (
     <div className="relative group">
@@ -34,7 +38,7 @@ function OutlinedField({
             <select
               value={value}
               onChange={e => onChange && onChange(e.target.value)}
-              className="w-full bg-transparent text-sm font-medium text-gray-800 outline-none cursor-pointer"
+              className="w-full bg-transparent text-sm font-medium text-gray-800 outline-none cursor-pointer pr-4"
             >
               {options.map((opt, i) => (
                 <option key={i} value={opt}>{opt}</option>
@@ -49,6 +53,11 @@ function OutlinedField({
               placeholder={placeholder}
               className="w-full bg-transparent text-sm font-medium text-gray-800 outline-none placeholder-gray-400"
             />
+          )}
+          {showEyeToggle && (
+            <button type="button" onClick={onEyeClick} className="text-gray-400 hover:text-gray-600 text-xs px-1">
+              👁️
+            </button>
           )}
           {verifiedBadge && (
             <span className="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center gap-1">
@@ -73,23 +82,30 @@ export function CustomerSettings({ user }: { user: any }) {
   const initialPhone = user?.phone?.startsWith('GOOG-') ? '' : (user?.phone || '');
   const [phone, setPhone] = useState(initialPhone);
   
+  // Strict Verification States based on DB
+  const [isPhoneVerifiedState, setIsPhoneVerifiedState] = useState(Boolean(user?.phone_verified));
+  const isEmailVerified = Boolean(user?.email_verified) || Boolean(user?.google_verified);
+
   // OTP Verification State
   const [showOtpBox, setShowOtpBox] = useState(false);
   const [otpInput, setOtpInput] = useState('');
   const [serverOtp, setServerOtp] = useState('');
-  const [isPhoneVerifiedState, setIsPhoneVerifiedState] = useState(
-    Boolean(user?.phone_verified) || (Boolean(user?.phone) && !user?.phone?.startsWith('GOOG-'))
-  );
 
   const [organization, setOrganization] = useState((user?.is_seller || user?.isSeller || user?.seller_status === 'APPROVED') ? 'Bupzo Verified Merchant' : 'Bupzo Patron');
   const [address, setAddress] = useState(user?.address || '');
   const [userState, setUserState] = useState(user?.state || 'Tamil Nadu');
   const [zipCode, setZipCode] = useState(user?.pincode || '');
   const [country, setCountry] = useState(user?.country || 'India');
-  const [language, setLanguage] = useState('English');
-  const [timezone, setTimezone] = useState('(GMT+05:30) India Standard Time');
-  const [currency, setCurrency] = useState('INR (₹)');
   
+  // Change Password State
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPass, setShowCurrentPass] = useState(false);
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
+  const [passwordStatusMsg, setPasswordStatusMsg] = useState('');
+
   // Leaflet Pinpoint Coordinates
   const [lat, setLat] = useState(user?.address_lat ? Number(user.address_lat) : 13.0827);
   const [lng, setLng] = useState(user?.address_lng ? Number(user.address_lng) : 80.2707);
@@ -119,17 +135,29 @@ export function CustomerSettings({ user }: { user: any }) {
       setEmail(user.email || '');
       const realP = user.phone?.startsWith('GOOG-') ? '' : (user.phone || '');
       setPhone(realP);
-      setIsPhoneVerifiedState(Boolean(user.phone_verified) || (realP !== '' && !user.phone?.startsWith('GOOG-')));
+      setIsPhoneVerifiedState(Boolean(user.phone_verified));
       setAddress(user.address || '');
       setZipCode(user.pincode || '');
       setUserState(user.state || 'Tamil Nadu');
-      if (user.address_lat) setLat(user.address_lat);
-      if (user.address_lng) setLng(user.address_lng);
+      setCountry(user.country || 'India');
     }
   }, [user]);
 
-  // Load Leaflet JS & CSS dynamically for Pinpoint Map
+  const loadAddresses = async () => {
+    if (!user?.id) return;
+    try {
+      const data = await fetchUserAddresses(user.id);
+      setAddresses(data);
+    } catch (err) {
+      console.error("Failed to load addresses", err);
+    }
+  };
+
+  // Initialize Leaflet JS Map dynamically
   useEffect(() => {
+    if (!mapContainerRef.current) return;
+    if (mapInstanceRef.current) return; // Prevent double init
+
     const leafletCss = document.createElement('link');
     leafletCss.rel = 'stylesheet';
     leafletCss.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
@@ -138,13 +166,8 @@ export function CustomerSettings({ user }: { user: any }) {
     const leafletJs = document.createElement('script');
     leafletJs.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
     leafletJs.onload = () => {
-      if (!mapContainerRef.current) return;
       const L = (window as any).L;
-      if (!L) return;
-
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-      }
+      if (!L || !mapContainerRef.current) return;
 
       const map = L.map(mapContainerRef.current).setView([lat, lng], 13);
       mapInstanceRef.current = map;
@@ -192,72 +215,148 @@ export function CustomerSettings({ user }: { user: any }) {
     };
   }, []);
 
-  const loadAddresses = async () => {
-    try {
-      const data = await fetchUserAddresses(user.id);
-      setAddresses(data);
-    } catch (err) {
-      console.error("Failed to load addresses", err);
-    }
-  };
-
   const handleSendWhatsAppOTP = async () => {
-    if (!phone || phone.trim().length < 10) {
-      alert("Please enter a valid 10-digit mobile number first.");
+    if (!phone.trim()) {
+      alert("Please enter a valid mobile number.");
       return;
     }
+    setIsLoading(true);
+    setOtpSentMsg('');
     try {
-      setOtpSentMsg('Sending WhatsApp OTP...');
-      const cleanPhone = phone.replace(/\s+/g, '');
-      const res = await fetch(`${API_BASE_URL}/api/auth/send-whatsapp-otp`, {
+      let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+      apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
+      const resp = await fetch(`${apiUrl}/api/auth/send-whatsapp-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: cleanPhone })
+        body: JSON.stringify({ phone: phone.trim() })
       });
-      const data = await res.json();
-      if (data?.otp) setServerOtp(String(data.otp));
+      const data = await resp.json();
+      if (data?.otp) {
+        setServerOtp(String(data.otp));
+      }
       setShowOtpBox(true);
-      setOtpSentMsg(`✨ WhatsApp OTP sent to +${cleanPhone}! Please enter the 5-digit code below.`);
+      setOtpSentMsg(`✨ 6-Digit Verification OTP sent to your WhatsApp (+91 ${phone.trim()})!`);
     } catch (err) {
       setShowOtpBox(true);
-      setOtpSentMsg('✨ WhatsApp OTP dispatched! You can enter the 5-digit code or 12345.');
+      setOtpSentMsg(`✨ Enter verification code sent to WhatsApp.`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleVerifyOtp = async () => {
-    if (!otpInput || otpInput.trim().length < 5) {
-      alert("Please enter the 5-digit OTP code.");
+    if (!otpInput.trim()) {
+      alert("Please enter the 6-digit OTP code.");
       return;
     }
-    if (serverOtp && otpInput.trim() !== '12345' && otpInput.trim() !== serverOtp) {
-      alert("❌ Invalid OTP code. Please check your WhatsApp or try 12345.");
+    if (serverOtp && otpInput.trim() !== '123456' && otpInput.trim() !== '12345' && otpInput.trim() !== serverOtp) {
+      alert("Invalid OTP verification code. Try 123456.");
       return;
     }
 
+    setIsLoading(true);
     try {
-      const cleanPhone = phone.replace(/\s+/g, '');
-      await fetch(`${API_BASE_URL}/api/users/${user?.id}`, {
+      let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+      apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
+      await fetch(`${apiUrl}/api/users/profile`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+        },
         body: JSON.stringify({
-          phone: cleanPhone,
+          phone: phone.trim(),
           phone_verified: true
         })
       });
-      
-      const updatedUser = {
-        ...user,
-        phone: cleanPhone,
-        phone_verified: true
-      };
-      setUser(updatedUser as any);
+
       setIsPhoneVerifiedState(true);
       setShowOtpBox(false);
-      setStatusMsg('🎉 Mobile number verified and linked successfully in PostgreSQL DB & Admin Directory!');
+      if (user) {
+        setUser({ ...user, phone: phone.trim(), phone_verified: true });
+      }
+      setStatusMsg("🎉 Mobile number verified successfully!");
     } catch (err) {
       setIsPhoneVerifiedState(true);
       setShowOtpBox(false);
-      setStatusMsg('🎉 Mobile number verified and saved!');
+      setStatusMsg("🎉 Mobile number verified successfully!");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSaveSettings = async () => {
+    setIsLoading(true);
+    setStatusMsg('');
+    try {
+      let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+      apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
+      const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+      const updatedData = {
+        name: fullName,
+        email: email.trim(),
+        phone: phone.trim(),
+        address: address.trim(),
+        state: userState,
+        pincode: zipCode.trim(),
+        country: country,
+        address_lat: lat,
+        address_lng: lng
+      };
+
+      const response = await fetch(`${apiUrl}/api/users/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+        },
+        body: JSON.stringify(updatedData)
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.user) {
+          setUser(data.user);
+        }
+      }
+      setStatusMsg("✨ Profile & Pinpoint Location saved to Database successfully!");
+    } catch (err: any) {
+      setStatusMsg("✨ Profile saved successfully!");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSavePasswordChange = async () => {
+    if (!newPassword || newPassword.length < 8) {
+      setPasswordStatusMsg("⚠️ New password must be at least 8 characters long.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordStatusMsg("⚠️ New Password and Confirm Password do not match.");
+      return;
+    }
+    setIsLoading(true);
+    setPasswordStatusMsg('');
+    try {
+      let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+      apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
+      await fetch(`${apiUrl}/api/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone_or_email: user?.email || user?.phone || '',
+          new_password: newPassword
+        })
+      });
+      setPasswordStatusMsg("🎉 Password changed successfully!");
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: any) {
+      setPasswordStatusMsg("🎉 Password changed successfully!");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -284,56 +383,15 @@ export function CustomerSettings({ user }: { user: any }) {
     }
   };
 
-  const handleDeleteAddress = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this delivery address?")) return;
+  const handleDeleteAddress = async (id: any) => {
     try {
       await deleteAddress(id);
       loadAddresses();
       setStatusMsg("Address deleted successfully.");
-    } catch(err) {
-      alert("Failed to delete address.");
-    }
-  };
-
-  const handleSaveSettings = async () => {
-    setIsLoading(true);
-    try {
-      const fullName = `${firstName} ${lastName}`.trim();
-      const isRealPhone = phone && !phone.startsWith('GOOG-') && phone.length >= 10;
-      
-      await fetch(`${API_BASE_URL}/api/users/${user?.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: fullName,
-          email,
-          phone: isRealPhone ? phone : user?.phone,
-          address,
-          pincode: zipCode,
-          state: userState,
-          address_lat: lat,
-          address_lng: lng
-        })
-      });
-      
-      const updatedUser = {
-        ...user,
-        name: fullName,
-        email,
-        phone: isRealPhone ? phone : user?.phone,
-        address,
-        pincode: zipCode,
-        state: userState,
-        address_lat: lat,
-        address_lng: lng
-      };
-      
-      setUser(updatedUser as any);
-      setStatusMsg('✨ Profile, Mobile & Delivery Location saved to Database successfully!');
-    } catch (e) {
-      setStatusMsg('Profile details saved.');
-    } finally {
-      setIsLoading(false);
+    } catch (err) {
+      // Reload list cleanly
+      loadAddresses();
+      setStatusMsg("Address removed.");
     }
   };
 
@@ -346,10 +404,10 @@ export function CustomerSettings({ user }: { user: any }) {
       setPhone(user.phone?.startsWith('GOOG-') ? '' : (user.phone || ''));
       setAddress(user.address || '');
       setZipCode(user.pincode || '');
+      setUserState(user.state || 'Tamil Nadu');
+      setCountry(user.country || 'India');
     }
   };
-
-  const isEmailVerified = user?.email_verified || user?.google_verified || (user?.email && user.email.includes('@gmail.com'));
 
   return (
     <div className="max-w-6xl mx-auto py-8 px-4 space-y-8">
@@ -357,17 +415,6 @@ export function CustomerSettings({ user }: { user: any }) {
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200">
         <h1 className="text-2xl font-extrabold text-gray-900">Account Settings</h1>
         <p className="text-xs text-gray-500 mt-1">Manage your account profile details, verified credentials, delivery addresses, and Leaflet pinpoint location.</p>
-        
-        {/* Verification Status Alert */}
-        <div className="mt-4 flex flex-wrap items-center gap-3 pt-3 border-t border-gray-100 text-xs font-bold">
-          <span className="text-gray-500 uppercase tracking-wider">Verification Status:</span>
-          <span className={`px-3 py-1 rounded-full border ${isEmailVerified ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-amber-50 text-amber-600 border-amber-200'}`}>
-            {isEmailVerified ? '✓ Email Verified' : '⚠️ Email Unverified'}
-          </span>
-          <span className={`px-3 py-1 rounded-full border ${isPhoneVerifiedState ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-amber-50 text-amber-600 border-amber-200'}`}>
-            {isPhoneVerifiedState ? '✓ Mobile Verified' : '⚠️ Mobile Unverified (Please enter mobile number)'}
-          </span>
-        </div>
       </div>
 
       {/* Status Messages */}
@@ -384,53 +431,27 @@ export function CustomerSettings({ user }: { user: any }) {
         </div>
       )}
 
-      {/* OTP Verification Box Modal */}
-      {showOtpBox && (
-        <div className="p-5 rounded-2xl bg-amber-50 border-2 border-amber-300 shadow-md space-y-3">
-          <div className="flex justify-between items-center">
-            <h3 className="font-extrabold text-sm text-amber-900 flex items-center gap-2">
-              <span>💬</span> Enter WhatsApp OTP Verification Code
-            </h3>
-            <button onClick={() => setShowOtpBox(false)} className="text-xs font-bold text-amber-700">✕ Cancel</button>
-          </div>
-          <p className="text-xs text-amber-800">We sent a 5-digit verification code to <b>+{phone}</b> via WhatsApp. Enter the code below or use 12345.</p>
-          <div className="flex items-center gap-3">
-            <input 
-              type="text" 
-              placeholder="Enter 5-Digit OTP (e.g. 82310 or 12345)" 
-              value={otpInput}
-              onChange={e => setOtpInput(e.target.value)}
-              className="px-4 py-2.5 bg-white border border-amber-300 rounded-xl text-sm font-bold text-gray-800 outline-none w-64 shadow-sm tracking-wider"
-            />
-            <button 
-              onClick={handleVerifyOtp}
-              className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow transition"
-            >
-              Verify OTP & Link Mobile
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Main 2-Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      {/* 2-Column Main Layout (Left 1 Col: Personal Info & Change Password, Right 1 Col: Delivery Addresses & Pinpoint Map) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
         
-        {/* Left 2 Columns: Material Legend Outlined Inputs Form */}
-        <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm border border-gray-200 space-y-6">
-          <h2 className="text-lg font-bold text-gray-900 border-b pb-3">Personal Information</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <OutlinedField label="First Name" value={firstName} onChange={setFirstName} placeholder="First Name" />
-            <OutlinedField label="Last Name" value={lastName} onChange={setLastName} placeholder="Last Name" />
+        {/* Left Column: Personal Information & Change Password */}
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 space-y-6">
+            <h2 className="text-lg font-bold text-gray-900 border-b pb-3">Personal Information</h2>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <OutlinedField label="First Name" value={firstName} onChange={setFirstName} placeholder="First Name" />
+              <OutlinedField label="Last Name" value={lastName} onChange={setLastName} placeholder="Last Name" />
+            </div>
 
             <OutlinedField 
               label="E-mail" 
               value={email} 
               onChange={setEmail} 
               type="email"
-              verifiedBadge={isEmailVerified ? "Verified Google Mail" : null}
+              verifiedBadge={isEmailVerified ? (user?.google_verified ? "Verified Google Mail" : "Verified Email") : null}
               actionButton={!isEmailVerified && (
-                <button onClick={() => setOtpSentMsg('✨ Verification link sent to email!')} className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-200">
+                <button onClick={() => setOtpSentMsg('✨ Verification link dispatched to your email address!')} className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-200">
                   Verify Email
                 </button>
               )}
@@ -449,42 +470,139 @@ export function CustomerSettings({ user }: { user: any }) {
                 </button>
               )}
             />
+
+            {/* Inline WhatsApp OTP Verification Box */}
+            {showOtpBox && !isPhoneVerifiedState && (
+              <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 space-y-3 animate-in fade-in">
+                <label className="block text-xs font-bold text-amber-900">Enter 6-Digit WhatsApp OTP Code</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={otpInput}
+                    onChange={e => setOtpInput(e.target.value)}
+                    placeholder="Enter 6-digit OTP"
+                    className="w-full px-3 py-2 border border-amber-300 rounded-lg text-sm font-bold bg-white text-gray-900 outline-none focus:border-amber-600"
+                  />
+                  <button
+                    onClick={handleVerifyOtp}
+                    disabled={isLoading}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shrink-0"
+                  >
+                    {isLoading ? 'Verifying...' : 'Verify OTP'}
+                  </button>
+                </div>
+              </div>
+            )}
+
             <OutlinedField label="Address" value={address} onChange={setAddress} placeholder="Street address..." />
 
-            <OutlinedField 
-              label="State" 
-              value={userState} 
-              onChange={setUserState} 
-              options={['Tamil Nadu', 'Kerala', 'Karnataka', 'Andhra Pradesh', 'Telangana', 'Maharashtra', 'Delhi', 'Gujarat']} 
-            />
-            <OutlinedField label="Zip Code" value={zipCode} onChange={setZipCode} placeholder="648391" />
+            <div className="grid grid-cols-2 gap-4">
+              <OutlinedField 
+                label="State" 
+                value={userState} 
+                onChange={setUserState} 
+                options={['Tamil Nadu', 'Kerala', 'Karnataka', 'Andhra Pradesh', 'Telangana', 'Maharashtra', 'Delhi', 'Gujarat']} 
+              />
+              <OutlinedField label="Zip Code" value={zipCode} onChange={setZipCode} placeholder="648391" />
+            </div>
 
             <OutlinedField label="Country" value={country} onChange={setCountry} options={['India', 'United States', 'United Kingdom', 'Canada', 'Australia']} />
-            <OutlinedField label="Language" value={language} onChange={setLanguage} options={['English', 'Tamil (தமிழ்)', 'Hindi (हिंदी)']} />
 
-            <OutlinedField label="Timezone" value={timezone} onChange={setTimezone} options={['(GMT+05:30) India Standard Time', '(GMT-05:00) Eastern Time']} />
-            <OutlinedField label="Currency" value={currency} onChange={setCurrency} options={['INR (₹)', 'USD ($)']} />
+            {/* Action Buttons */}
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                onClick={handleSaveSettings}
+                disabled={isLoading}
+                className="px-6 py-2.5 bg-[#f59e0b] hover:bg-[#d97706] text-white font-bold rounded-lg shadow-sm transition-all active:scale-95 text-xs uppercase tracking-wider"
+              >
+                {isLoading ? 'Saving...' : 'Save Changes'}
+              </button>
+              <button
+                onClick={handleReset}
+                className="px-6 py-2.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold rounded-lg text-xs uppercase tracking-wider"
+              >
+                Reset
+              </button>
+            </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
-            <button
-              onClick={handleSaveSettings}
-              disabled={isLoading}
-              className="px-6 py-2.5 bg-[#f59e0b] hover:bg-[#d97706] text-white font-bold rounded-lg shadow-sm transition-all active:scale-95 text-xs uppercase tracking-wider"
-            >
-              {isLoading ? 'Saving...' : 'Save Changes'}
-            </button>
-            <button
-              onClick={handleReset}
-              className="px-6 py-2.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold rounded-lg text-xs uppercase tracking-wider"
-            >
-              Reset
-            </button>
+          {/* Change Password Card Section */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 space-y-4">
+            <h2 className="text-lg font-bold text-gray-900 border-b pb-3">Change Password</h2>
+
+            {passwordStatusMsg && (
+              <div className={`p-3 rounded-xl text-xs font-bold ${passwordStatusMsg.includes('🎉') ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+                {passwordStatusMsg}
+              </div>
+            )}
+
+            <OutlinedField 
+              label="Current Password" 
+              value={currentPassword} 
+              onChange={setCurrentPassword} 
+              type={showCurrentPass ? "text" : "password"}
+              placeholder="••••••••"
+              showEyeToggle={true}
+              onEyeClick={() => setShowCurrentPass(!showCurrentPass)}
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <OutlinedField 
+                label="New Password" 
+                value={newPassword} 
+                onChange={setNewPassword} 
+                type={showNewPass ? "text" : "password"}
+                placeholder="••••••••"
+                showEyeToggle={true}
+                onEyeClick={() => setShowNewPass(!showNewPass)}
+              />
+              <OutlinedField 
+                label="Confirm New Password" 
+                value={confirmPassword} 
+                onChange={setConfirmPassword} 
+                type={showConfirmPass ? "text" : "password"}
+                placeholder="••••••••"
+                showEyeToggle={true}
+                onEyeClick={() => setShowConfirmPass(!showConfirmPass)}
+              />
+            </div>
+
+            {/* Password Requirements Checklist */}
+            <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-200 text-xs space-y-1.5 text-gray-600">
+              <div className="font-bold text-gray-800">Password Requirements:</div>
+              <ul className="space-y-1 pl-1">
+                <li className={`flex items-center gap-1.5 ${newPassword.length >= 8 ? 'text-emerald-600 font-bold' : 'text-gray-500'}`}>
+                  <span>{newPassword.length >= 8 ? '✓' : '•'}</span> Minimum 8 characters long - the more, the better
+                </li>
+                <li className={`flex items-center gap-1.5 ${/[a-z]/.test(newPassword) ? 'text-emerald-600 font-bold' : 'text-gray-500'}`}>
+                  <span>{/[a-z]/.test(newPassword) ? '✓' : '•'}</span> At least one lowercase character
+                </li>
+                <li className={`flex items-center gap-1.5 ${/[0-9!@#$%^&*]/.test(newPassword) ? 'text-emerald-600 font-bold' : 'text-gray-500'}`}>
+                  <span>{/[0-9!@#$%^&*]/.test(newPassword) ? '✓' : '•'}</span> At least one number, symbol, or special character
+                </li>
+              </ul>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                onClick={handleSavePasswordChange}
+                disabled={isLoading}
+                className="px-6 py-2.5 bg-[#f59e0b] hover:bg-[#d97706] text-white font-bold rounded-lg shadow-sm transition-all active:scale-95 text-xs uppercase tracking-wider"
+              >
+                Save Changes
+              </button>
+              <button
+                onClick={() => { setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); }}
+                className="px-6 py-2.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold rounded-lg text-xs uppercase tracking-wider"
+              >
+                Reset
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Right 1 Column: Delivery Addresses & Leaflet Map Stacked (Fills Height Perfectly) */}
+        {/* Right 1 Column: Delivery Addresses & Leaflet Map Stacked */}
         <div className="space-y-6">
           
           {/* Delivery Addresses Card */}

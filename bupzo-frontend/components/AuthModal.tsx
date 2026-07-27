@@ -420,7 +420,9 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
                     /* Step 2: Enter Reset OTP & New Password */
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">Enter 6-Digit WhatsApp Reset OTP</label>
+                        <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">
+                          {forgotMethod === 'whatsapp' ? 'Enter 6-Digit WhatsApp Reset OTP' : 'Enter 6-Digit Email Reset OTP'}
+                        </label>
                         <div className="flex justify-between gap-1.5">
                           {otp.map((digit, idx) => (
                             <input
@@ -439,13 +441,34 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
 
                       <div>
                         <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 mb-1">New Password</label>
-                        <input 
-                          type="password"
-                          value={newPassword}
-                          onChange={e => setNewPassword(e.target.value)}
-                          placeholder="Enter new password"
-                          className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 outline-none focus:border-indigo-600 bg-gray-50 dark:bg-gray-900 text-sm font-medium"
-                        />
+                        <div className="relative">
+                          <input 
+                            type={showPassword ? "text" : "password"}
+                            value={newPassword}
+                            onChange={e => setNewPassword(e.target.value)}
+                            placeholder="••••••••"
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 outline-none focus:border-indigo-600 bg-gray-50 dark:bg-gray-900 text-sm font-medium"
+                          />
+                          <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                            👁️
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Password Requirements Checklist */}
+                      <div className="p-3 bg-gray-50 dark:bg-gray-800/60 rounded-xl border border-gray-200 dark:border-gray-700 text-xs space-y-1 text-gray-600 dark:text-gray-300">
+                        <div className="font-bold text-gray-800 dark:text-white">Password Requirements:</div>
+                        <ul className="space-y-0.5 text-[11px] pl-1">
+                          <li className={newPassword.length >= 8 ? 'text-emerald-600 font-bold' : 'text-gray-500'}>
+                            {newPassword.length >= 8 ? '✓' : '•'} Minimum 8 characters long
+                          </li>
+                          <li className={/[a-z]/.test(newPassword) ? 'text-emerald-600 font-bold' : 'text-gray-500'}>
+                            {/[a-z]/.test(newPassword) ? '✓' : '•'} At least one lowercase character
+                          </li>
+                          <li className={/[0-9!@#$%^&*]/.test(newPassword) ? 'text-emerald-600 font-bold' : 'text-gray-500'}>
+                            {/[0-9!@#$%^&*]/.test(newPassword) ? '✓' : '•'} At least one number or special symbol
+                          </li>
+                        </ul>
                       </div>
                     </div>
                   ) : (

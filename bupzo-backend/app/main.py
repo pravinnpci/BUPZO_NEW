@@ -2714,6 +2714,12 @@ async def create_address(user_id: str, addr: AddressCreate):
         )
         return {"success": True}
 
+@app.delete("/api/addresses/{address_id}")
+async def delete_address(address_id: str):
+    async with pool.acquire() as conn:
+        await conn.execute("DELETE FROM addresses WHERE id = $1::uuid OR id::text = $1", address_id)
+        return {"success": True, "message": "Address deleted successfully"}
+
 class MessageCreate(BaseModel):
     receiver_id: str
     order_id: Optional[str] = None
