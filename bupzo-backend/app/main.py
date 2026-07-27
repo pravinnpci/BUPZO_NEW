@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, status, UploadFile, File, Request, Query, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Depends, status, UploadFile, File, Request, Query, WebSocket, WebSocketDisconnect, Header
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
@@ -1030,25 +1030,6 @@ async def auth_google(payload: AuthGoogleRequest):
         "user": full_user
     }
 
-class UserProfileUpdateRequest(BaseModel):
-    name: Optional[str] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    address: Optional[str] = None
-    state: Optional[str] = None
-    pincode: Optional[str] = None
-    country: Optional[str] = None
-    organization: Optional[str] = None
-    address_lat: Optional[Any] = None
-    address_lng: Optional[Any] = None
-    phone_verified: Optional[bool] = None
-    email_verified: Optional[bool] = None
-
-    class Config:
-        extra = "ignore"
-
 @app.get("/api/stats/platform-summary")
 async def get_platform_summary():
     async with pool.acquire() as conn:
@@ -1089,43 +1070,26 @@ async def check_availability(payload: CheckAvailabilityPayload):
                 return {"available": False, "message": f"⚠️ Mobile number '{val}' is already registered with another account."}
     return {"available": True, "message": "Available"}
 
-class UserProfileUpdateRequest(BaseModel):
-    name: Optional[str] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    address: Optional[str] = None
-    state: Optional[str] = None
-    pincode: Optional[str] = None
-    country: Optional[str] = None
-    organization: Optional[str] = None
-    address_lat: Optional[Any] = None
-    address_lng: Optional[Any] = None
-    phone_verified: Optional[bool] = None
-    email_verified: Optional[bool] = None
-    user_id: Optional[str] = None
-
-    class Config:
-        extra = "ignore"
-
 @app.put("/api/users/profile")
 async def update_user_profile(
-    payload: UserProfileUpdateRequest, 
+    request: Request,
     user_id: Optional[str] = None, 
     authorization: Optional[str] = Header(None)
 ):
-    target_user_id = None
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+
+    target_user_id = body.get('user_id') or user_id
     if authorization and "Bearer " in authorization:
         token = authorization.split("Bearer ")[1].strip()
         try:
             p_data = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-            target_user_id = p_data.get("user_id")
+            if p_data.get("user_id"):
+                target_user_id = p_data.get("user_id")
         except Exception:
             pass
-
-    if not target_user_id:
-        target_user_id = user_id or payload.user_id
 
     if not target_user_id:
         async with pool.acquire() as conn:
@@ -1140,42 +1104,52 @@ async def update_user_profile(
         except Exception:
             uid = str(target_user_id)
 
-        if payload.name is not None and payload.name.strip():
-            await conn.execute("UPDATE users SET name = $1 WHERE id::text = $2::text", payload.name.strip(), str(uid))
-        if payload.email is not None and payload.email.strip():
-            await conn.execute("UPDATE users SET email = $1 WHERE id::text = $2::text", payload.email.strip(), str(uid))
-        if payload.phone is not None and payload.phone.strip():
-            await conn.execute("UPDATE users SET phone = $1 WHERE id::text = $2::text", payload.phone.strip(), str(uid))
-        if payload.address is not None:
-            await conn.execute("UPDATE users SET address = $1 WHERE id::text = $2::text", payload.address, str(uid))
-        if payload.state is not None:
-            await conn.execute("UPDATE users SET state = $1 WHERE id::text = $2::text", payload.state, str(uid))
-        if payload.pincode is not None:
-            await conn.execute("UPDATE users SET pincode = $1 WHERE id::text = $2::text", payload.pincode, str(uid))
-        if payload.country is not None:
-            await conn.execute("UPDATE users SET country = $1 WHERE id::text = $2::text", payload.country, str(uid))
-        
-        if payload.address_lat is not None:
+        name_val = body.get('name') or (f"{body.get('first_name', '')} {body.get('last_name', '')}".strip() if body.get('first_name') else None)
+        if name_val and str(name_val).strip():
+            await conn.execute("UPDATE users SET name = $1 WHERE id::text = $2::text", str(name_val).strip(), str(uid))
+
+        if 'email' in body and body['email'] and str(body['email']).strip():
+            await conn.execute("UPDATE users SET email = $1 WHERE id::text = $2::text", str(body['email']).strip(), str(uid))
+
+        if 'phone' in body and body['phone'] and str(body['phone']).strip():
+            clean_phone = str(body['phone']).strip()
+            await conn.execute("UPDATE users SET phone = $1 WHERE id::text = $2::text", clean_phone, str(uid))
+
+        if 'address' in body and body['address'] is not None:
+            await conn.execute("UPDATE users SET address = $1 WHERE id::text = $2::text", str(body['address']), str(uid))
+
+        if 'state' in body and body['state'] is not None:
+            await conn.execute("UPDATE users SET state = $1 WHERE id::text = $2::text", str(body['state']), str(uid))
+
+        if 'pincode' in body and body['pincode'] is not None:
+            await conn.execute("UPDATE users SET pincode = $1 WHERE id::text = $2::text", str(body['pincode']), str(uid))
+
+        if 'country' in body and body['country'] is not None:
+            await conn.execute("UPDATE users SET country = $1 WHERE id::text = $2::text", str(body['country']), str(uid))
+
+        if 'address_lat' in body and body['address_lat'] is not None:
             try:
-                await conn.execute("UPDATE users SET address_lat = $1::text WHERE id::text = $2::text", str(payload.address_lat), str(uid))
+                await conn.execute("UPDATE users SET address_lat = $1::text WHERE id::text = $2::text", str(body['address_lat']), str(uid))
             except Exception:
                 pass
 
-        if payload.address_lng is not None:
+        if 'address_lng' in body and body['address_lng'] is not None:
             try:
-                await conn.execute("UPDATE users SET address_lng = $1::text WHERE id::text = $2::text", str(payload.address_lng), str(uid))
+                await conn.execute("UPDATE users SET address_lng = $1::text WHERE id::text = $2::text", str(body['address_lng']), str(uid))
             except Exception:
                 pass
 
-        if payload.phone_verified is not None:
+        if 'phone_verified' in body and body['phone_verified'] is not None:
             try:
-                await conn.execute("UPDATE users SET phone_verified = $1 WHERE id::text = $2::text", bool(payload.phone_verified), str(uid))
+                p_ver = bool(body['phone_verified'])
+                await conn.execute("UPDATE users SET phone_verified = $1 WHERE id::text = $2::text", p_ver, str(uid))
             except Exception:
                 pass
 
-        if payload.email_verified is not None:
+        if 'email_verified' in body and body['email_verified'] is not None:
             try:
-                await conn.execute("UPDATE users SET email_verified = $1 WHERE id::text = $2::text", bool(payload.email_verified), str(uid))
+                e_ver = bool(body['email_verified'])
+                await conn.execute("UPDATE users SET email_verified = $1 WHERE id::text = $2::text", e_ver, str(uid))
             except Exception:
                 pass
         
