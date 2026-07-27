@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useUser } from '@/lib/authStore';
-import { fetchUserAddresses, createAddress, deleteAddress, API_BASE_URL } from '@/lib/api';
+import { fetchUserAddresses, createAddress, deleteAddress, updateAddress, API_BASE_URL } from '@/lib/api';
 
 const getAuthToken = () => {
   if (typeof window === 'undefined') return '';
@@ -95,7 +95,7 @@ export function CustomerSettings({ user }: { user: any }) {
   const [email, setEmail] = useState(user?.email || '');
   
   // Real phone state (strip GOOG- placeholder)
-  const initialPhone = user?.phone?.startsWith('GOOG-') ? '' : (user?.phone || '');
+  const initialPhone = user?.phone?.startsWith('GOOG-') ? '' : (user?.phone?.replace('+91', '') || ''); // Remove +91 for display
   const [phone, setPhone] = useState(initialPhone);
   
   // Strict Verification States permanently initialized from DB user object
@@ -143,7 +143,7 @@ export function CustomerSettings({ user }: { user: any }) {
   const [addresses, setAddresses] = useState<any[]>([]);
   const [showNewAddress, setShowNewAddress] = useState(false);
   const [editingAddrId, setEditingAddrId] = useState<string | null>(null);
-  const [newAddr, setNewAddr] = useState({ name: '', street: '', city: '', state: 'Tamil Nadu', zip_code: '' });
+  const [newAddr, setNewAddr] = useState({ name: '', street: '', city: '', state: 'Tamil Nadu', zip_code: '', address_lat: 0, address_lng: 0 });
 
   const [statusMsg, setStatusMsg] = useState('');
   const [otpSentMsg, setOtpSentMsg] = useState('');
@@ -304,7 +304,7 @@ export function CustomerSettings({ user }: { user: any }) {
       let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
       apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
       const resp = await fetch(`${apiUrl}/api/users/profile`, {
-        method: 'PUT',
+        method: 'PUT', // Use PUT for updates
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${getAuthToken()}`
@@ -312,7 +312,7 @@ export function CustomerSettings({ user }: { user: any }) {
         body: JSON.stringify({
           user_id: user?.id,
           phone: phone.trim(),
-          phone_verified: true
+          phone_verified: true // Explicitly set to true
         })
       });
 
@@ -390,7 +390,7 @@ export function CustomerSettings({ user }: { user: any }) {
       let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
       apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
       const resp = await fetch(`${apiUrl}/api/users/profile`, {
-        method: 'PUT',
+        method: 'PUT', // Use PUT for updates
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${getAuthToken()}`
@@ -398,7 +398,7 @@ export function CustomerSettings({ user }: { user: any }) {
         body: JSON.stringify({
           user_id: user?.id,
           email: email.trim(),
-          email_verified: true
+          email_verified: true // Explicitly set to true
         })
       });
 
@@ -428,6 +428,7 @@ export function CustomerSettings({ user }: { user: any }) {
       apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
       const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
       const updatedData = {
+        user_id: user?.id,
         name: fullName,
         email: email.trim(),
         phone: phone.trim(),
@@ -537,23 +538,29 @@ export function CustomerSettings({ user }: { user: any }) {
       alert("⚠️ Zip Code must be exactly 6 digits (e.g. 600001).");
       return;
     }
+    setIsLoading(true);
     try {
-      if (editingAddrId) {
-        await deleteAddress(editingAddrId as any).catch(() => {});
-      }
-      await createAddress(user.id, {
+      const addressData = {
         ...newAddr,
-        zip_code: newAddr.zip_code.trim(),
-        address_lat: lat,
-        address_lng: lng,
-        latitude: lat,
-        longitude: lng
-      } as any);
+        zip_code: newAddr.zip_code.trim(), // Ensure zip_code is trimmed
+        address_lat: lat, // Use current map lat
+        address_lng: lng, // Use current map lng
+        latitude: lat, // For backward compatibility if needed
+        longitude: lng // For backward compatibility if needed
+      };
+
+      if (editingAddrId) {
+        await updateAddress(editingAddrId as any, addressData as any); // Call updateAddress
+        setStatusMsg("✨ Address updated successfully!");
+      } else {
+        await createAddress(user.id, addressData as any); // Call createAddress for new
+        setStatusMsg("✨ Delivery address with Pinpoint Coordinates added successfully!");
+      }
+      
       setShowNewAddress(false);
       setEditingAddrId(null);
-      setNewAddr({ name: '', street: '', city: '', state: 'Tamil Nadu', zip_code: '' });
+      setNewAddr({ name: '', street: '', city: '', state: 'Tamil Nadu', zip_code: '', address_lat: 0, address_lng: 0 }); // Reset form
       loadAddresses();
-      setStatusMsg(editingAddrId ? "✨ Address updated successfully!" : "✨ Delivery address with Pinpoint Coordinates added successfully!");
     } catch (err) {
       alert("Failed to save address.");
     }
@@ -576,7 +583,7 @@ export function CustomerSettings({ user }: { user: any }) {
       setFirstName(parts[0] || '');
       setLastName(parts.slice(1).join(' ') || '');
       setEmail(user.email || '');
-      setPhone(user.phone?.startsWith('GOOG-') ? '' : (user.phone || ''));
+      setPhone(user.phone?.startsWith('GOOG-') ? '' : (user.phone?.replace('+91', '') || ''));
       setAddress(user.address || '');
       setZipCode(user.pincode || '');
       setUserState(user.state || 'Tamil Nadu');
@@ -870,8 +877,8 @@ export function CustomerSettings({ user }: { user: any }) {
                     onClick={() => {
                       const aLat = addr.address_lat ? Number(addr.address_lat) : 13.0827;
                       const aLng = addr.address_lng ? Number(addr.address_lng) : 80.2707;
-                      setLat(aLat);
-                      setLng(aLng);
+                      setLat(aLat); // Update map center
+                      setLng(aLng); // Update map center
                       setSelectedAddrTitle(`📍 Pinpoint: ${addr.name}`);
                       if (mapInstanceRef.current) {
                         mapInstanceRef.current.setView([aLat, aLng], 15);
@@ -892,8 +899,16 @@ export function CustomerSettings({ user }: { user: any }) {
                         <button 
                           onClick={(e) => { 
                             e.stopPropagation(); 
-                            setEditingAddrId(addr.id);
-                            setNewAddr({ name: addr.name, street: addr.street, city: addr.city, state: addr.state || 'Tamil Nadu', zip_code: addr.zip_code || '' });
+                            setEditingAddrId(addr.id); // Set editing ID
+                            setNewAddr({ 
+                              name: addr.name, 
+                              street: addr.street, 
+                              city: addr.city, 
+                              state: addr.state || 'Tamil Nadu', 
+                              zip_code: addr.zip_code || '', 
+                              address_lat: Number(addr.address_lat || 0), 
+                              address_lng: Number(addr.address_lng || 0) 
+                            });
                             if (addr.address_lat && addr.address_lng) {
                               setLat(Number(addr.address_lat));
                               setLng(Number(addr.address_lng));

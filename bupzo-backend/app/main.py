@@ -1008,7 +1008,7 @@ async def auth_google(payload: AuthGoogleRequest):
             payload.name,
             f"GOOG-{str(user_id)[:8]}",
             payload.email,
-            False,
+            False, # is_premium
             'WEB',
             True
         )
@@ -1016,7 +1016,7 @@ async def auth_google(payload: AuthGoogleRequest):
     else:
         await execute_query_none(
             "UPDATE users SET email_verified = TRUE, google_verified = TRUE WHERE id = $1",
-            user['id']
+            user['id'] # Update existing user
         )
         full_user = await get_user_by_id(user['id'])
         
@@ -1098,62 +1098,63 @@ async def update_user_profile(
     if not target_user_id:
         raise HTTPException(status_code=400, detail="User ID is required")
 
-    async with pool.acquire() as conn:
-        try:
-            uid = UUID(str(target_user_id))
-        except Exception:
-            uid = str(target_user_id)
+    uid_str = str(target_user_id).strip()
 
+    async with pool.acquire() as conn:
         name_val = body.get('name') or (f"{body.get('first_name', '')} {body.get('last_name', '')}".strip() if body.get('first_name') else None)
         if name_val and str(name_val).strip():
-            await conn.execute("UPDATE users SET name = $1 WHERE id::text = $2::text", str(name_val).strip(), str(uid))
+            await conn.execute("UPDATE users SET name = $1 WHERE id::text = $2::text", str(name_val).strip(), uid_str)
 
         if 'email' in body and body['email'] and str(body['email']).strip():
-            await conn.execute("UPDATE users SET email = $1 WHERE id::text = $2::text", str(body['email']).strip(), str(uid))
+            await conn.execute("UPDATE users SET email = $1 WHERE id::text = $2::text", str(body['email']).strip(), uid_str)
 
         if 'phone' in body and body['phone'] and str(body['phone']).strip():
             clean_phone = str(body['phone']).strip()
-            await conn.execute("UPDATE users SET phone = $1 WHERE id::text = $2::text", clean_phone, str(uid))
+            await conn.execute("UPDATE users SET phone = $1 WHERE id::text = $2::text", clean_phone, uid_str)
 
         if 'address' in body and body['address'] is not None:
-            await conn.execute("UPDATE users SET address = $1 WHERE id::text = $2::text", str(body['address']), str(uid))
+            await conn.execute("UPDATE users SET address = $1 WHERE id::text = $2::text", str(body['address']), uid_str)
 
         if 'state' in body and body['state'] is not None:
-            await conn.execute("UPDATE users SET state = $1 WHERE id::text = $2::text", str(body['state']), str(uid))
+            await conn.execute("UPDATE users SET state = $1 WHERE id::text = $2::text", str(body['state']), uid_str)
 
         if 'pincode' in body and body['pincode'] is not None:
-            await conn.execute("UPDATE users SET pincode = $1 WHERE id::text = $2::text", str(body['pincode']), str(uid))
+            await conn.execute("UPDATE users SET pincode = $1 WHERE id::text = $2::text", str(body['pincode']), uid_str)
 
         if 'country' in body and body['country'] is not None:
-            await conn.execute("UPDATE users SET country = $1 WHERE id::text = $2::text", str(body['country']), str(uid))
+            await conn.execute("UPDATE users SET country = $1 WHERE id::text = $2::text", str(body['country']), uid_str)
 
         if 'address_lat' in body and body['address_lat'] is not None:
             try:
-                await conn.execute("UPDATE users SET address_lat = $1::text WHERE id::text = $2::text", str(body['address_lat']), str(uid))
+                await conn.execute("UPDATE users SET address_lat = $1::text WHERE id::text = $2::text", str(body['address_lat']), uid_str)
             except Exception:
                 pass
 
         if 'address_lng' in body and body['address_lng'] is not None:
             try:
-                await conn.execute("UPDATE users SET address_lng = $1::text WHERE id::text = $2::text", str(body['address_lng']), str(uid))
+                await conn.execute("UPDATE users SET address_lng = $1::text WHERE id::text = $2::text", str(body['address_lng']), uid_str)
             except Exception:
                 pass
 
         if 'phone_verified' in body and body['phone_verified'] is not None:
             try:
                 p_ver = bool(body['phone_verified'])
-                await conn.execute("UPDATE users SET phone_verified = $1 WHERE id::text = $2::text", p_ver, str(uid))
+                await conn.execute("UPDATE users SET phone_verified = $1 WHERE id::text = $2::text", p_ver, uid_str)
             except Exception:
                 pass
 
         if 'email_verified' in body and body['email_verified'] is not None:
             try:
                 e_ver = bool(body['email_verified'])
-                await conn.execute("UPDATE users SET email_verified = $1 WHERE id::text = $2::text", e_ver, str(uid))
+                await conn.execute("UPDATE users SET email_verified = $1 WHERE id::text = $2::text", e_ver, uid_str)
             except Exception:
                 pass
         
-        updated_user = await get_user_by_id(uid)
+        try:
+            updated_user = await get_user_by_id(UUID(uid_str))
+        except Exception:
+            updated_user = await get_user_by_id(uid_str)
+
         return {"success": True, "user": updated_user}
 
 @app.post("/api/auth/refresh", response_model=TokenResponse)
@@ -1760,7 +1761,7 @@ async def forgot_password(payload: ForgotPasswordPayload):
             "status": "success",
             "message": f"✨ Password Reset 6-Digit Verification OTP sent to your Email ({user_email})! Please enter code below.",
             "reset_token": reset_token,
-            "reset_otp": reset_otp
+            # "reset_otp": reset_otp # Removed for security in production
         }
     else:
         # Send ONLY via WhatsApp (UltraMsg)
@@ -1795,7 +1796,7 @@ async def forgot_password(payload: ForgotPasswordPayload):
             "status": "success",
             "message": f"✨ Password Reset 6-Digit OTP dispatched via WhatsApp to +91 {target_input}! Please enter code below.",
             "reset_token": reset_token,
-            "reset_otp": reset_otp
+            # "reset_otp": reset_otp # Removed for security in production
         }
 
 class EmailOTPRequest(BaseModel):
@@ -2920,6 +2921,31 @@ async def create_address(user_id: str, addr: AddressCreate):
             "INSERT INTO addresses (user_id, name, street, city, state, zip_code, address_lat, address_lng) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *",
             uid, addr.name, addr.street, addr.city, addr.state, addr.zip_code, lat_val, lng_val
         )
+        return dict(row)
+
+class AddressUpdate(BaseModel):
+    name: Optional[str] = None
+    street: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zip_code: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    address_lat: Optional[float] = None
+    address_lng: Optional[float] = None
+
+@app.put("/api/addresses/{address_id}")
+async def update_address(address_id: UUID, addr: AddressUpdate):
+    async with pool.acquire() as conn:
+        # Dynamically build update query
+        fields = []
+        values = []
+        for k, v in addr.dict(exclude_unset=True).items():
+            fields.append(f"{k} = ${len(values) + 1}")
+            values.append(v)
+        if not fields: raise HTTPException(status_code=400, detail="No fields to update")
+        row = await conn.fetchrow(f"UPDATE addresses SET {', '.join(fields)} WHERE id = ${len(values) + 1} RETURNING *", *values, address_id)
+        if not row: raise HTTPException(status_code=404, detail="Address not found")
         return dict(row)
 
 @app.delete("/api/addresses/{address_id}")

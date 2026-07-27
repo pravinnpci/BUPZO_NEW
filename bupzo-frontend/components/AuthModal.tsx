@@ -254,10 +254,10 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
       const mockGoogleUser = {
         id: "GOOG-USER-" + Math.floor(Math.random() * 100000),
         name: "Pravinkumar Google User",
-        email: "pravinau26@gmail.com",
-        phone: "+919245464648",
+        email: "googleuser@example.com", // Use a generic email
+        phone: "+919876543210", // Use a valid test phone number for consistency
         google_verified: true,
-        email_verified: true,
+        email_verified: true, // Google verifies email
         phone_verified: true,
         isSeller: false
       };
@@ -270,12 +270,12 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
       });
       const data = await resp.json();
       const finalUser = data.user || mockGoogleUser;
-      const token = data.access_token || "google_mock_token_123";
+      const token = data.access_token || "google_mock_token_123"; // Mock token for local dev
 
       setTokens(token, token);
       setUser(finalUser);
-      localStorage.setItem('user', JSON.stringify(finalUser));
-      localStorage.setItem('bupzo_user', JSON.stringify(finalUser));
+      localStorage.setItem('user', JSON.stringify(finalUser)); // Persist user data
+      localStorage.setItem('bupzo_user', JSON.stringify(finalUser)); // Persist user data
       setMessage('🎉 Signed in with Google successfully!');
       setTimeout(() => onClose(), 1000);
     } catch (e) {
@@ -319,18 +319,26 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
       });
       const data = await resp.json();
       if (!resp.ok) {
-        throw new Error(data.detail || 'Failed to send reset code. Please check credentials.');
+        let errStr = 'Failed to send reset code. Please check credentials.';
+        if (typeof data.detail === 'string') {
+          errStr = data.detail;
+        } else if (Array.isArray(data.detail)) {
+          errStr = data.detail[0]?.msg || 'Validation error';
+        } else if (data.message && typeof data.message === 'string') {
+          errStr = data.message;
+        }
+        throw new Error(errStr);
       }
 
       if (data?.reset_otp) setServerOtp(String(data.reset_otp));
-
       setForgotStep(2);
-      const msgStr = typeof data.message === 'string' ? data.message : (forgotMethod === 'whatsapp' 
+      const msgStr = typeof data.message === 'string' ? data.message : (forgotMethod === 'whatsapp'
         ? `✨ Password Reset 6-Digit OTP dispatched via WhatsApp to +91 ${targetVal}! Please enter code below.`
         : `✨ Password Reset 6-Digit Verification OTP sent to your Email (${targetVal})! Please enter code below.`);
       setMessage(msgStr);
     } catch (err: any) {
-      setMessage(err.message || 'Error sending reset code.');
+      const errMsg = typeof err?.message === 'string' ? err.message : 'Error sending reset code.';
+      setMessage(errMsg.startsWith('[object') ? '⚠️ Failed to send reset code. Please check your credentials.' : errMsg);
     } finally {
       setIsLoading(false);
     }
