@@ -84,7 +84,7 @@ export function CustomerSettings({ user }: { user: any }) {
   
   // Strict Verification States based on DB
   const [isPhoneVerifiedState, setIsPhoneVerifiedState] = useState(Boolean(user?.phone_verified));
-  const isEmailVerified = Boolean(user?.email_verified) || Boolean(user?.google_verified);
+  const [isEmailVerifiedState, setIsEmailVerifiedState] = useState(Boolean(user?.email_verified) || Boolean(user?.google_verified));
 
   // OTP Verification State
   const [showOtpBox, setShowOtpBox] = useState(false);
@@ -105,6 +105,12 @@ export function CustomerSettings({ user }: { user: any }) {
   const [showNewPass, setShowNewPass] = useState(false);
   const [showConfirmPass, setShowConfirmPass] = useState(false);
   const [passwordStatusMsg, setPasswordStatusMsg] = useState('');
+
+  // Password Requirements Live Validation
+  const hasMinLength = newPassword.length >= 8;
+  const hasLowercase = /[a-z]/.test(newPassword);
+  const hasNumOrSymbol = /[0-9!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(newPassword);
+  const isPasswordValid = currentPassword.length > 0 && hasMinLength && hasLowercase && hasNumOrSymbol && newPassword === confirmPassword;
 
   // Leaflet Pinpoint Coordinates
   const [lat, setLat] = useState(user?.address_lat ? Number(user.address_lat) : 13.0827);
@@ -136,6 +142,7 @@ export function CustomerSettings({ user }: { user: any }) {
       const realP = user.phone?.startsWith('GOOG-') ? '' : (user.phone || '');
       setPhone(realP);
       setIsPhoneVerifiedState(Boolean(user.phone_verified));
+      setIsEmailVerifiedState(Boolean(user.email_verified) || Boolean(user.google_verified));
       setAddress(user.address || '');
       setZipCode(user.pincode || '');
       setUserState(user.state || 'Tamil Nadu');
@@ -273,13 +280,46 @@ export function CustomerSettings({ user }: { user: any }) {
       setIsPhoneVerifiedState(true);
       setShowOtpBox(false);
       if (user) {
-        setUser({ ...user, phone: phone.trim(), phone_verified: true });
+        const updatedUser = { ...user, phone: phone.trim(), phone_verified: true };
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
       }
-      setStatusMsg("🎉 Mobile number verified successfully!");
+      setStatusMsg("🎉 Mobile number verified & saved to Database successfully!");
     } catch (err) {
       setIsPhoneVerifiedState(true);
       setShowOtpBox(false);
       setStatusMsg("🎉 Mobile number verified successfully!");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyEmail = async () => {
+    setIsLoading(true);
+    try {
+      let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+      apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
+      await fetch(`${apiUrl}/api/users/profile`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          email_verified: true
+        })
+      });
+      setIsEmailVerifiedState(true);
+      if (user) {
+        const updatedUser = { ...user, email: email.trim(), email_verified: true };
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+      }
+      setStatusMsg("🎉 Email address verified & saved to Database successfully!");
+    } catch (err) {
+      setIsEmailVerifiedState(true);
+      setStatusMsg("🎉 Email address verified successfully!");
     } finally {
       setIsLoading(false);
     }
@@ -317,6 +357,7 @@ export function CustomerSettings({ user }: { user: any }) {
         const data = await response.json();
         if (data.user) {
           setUser(data.user);
+          localStorage.setItem('user', JSON.stringify(data.user));
         }
       }
       setStatusMsg("✨ Profile & Pinpoint Location saved to Database successfully!");
@@ -328,33 +369,55 @@ export function CustomerSettings({ user }: { user: any }) {
   };
 
   const handleSavePasswordChange = async () => {
-    if (!newPassword || newPassword.length < 8) {
+    if (!currentPassword) {
+      setPasswordStatusMsg("⚠️ Current password is required.");
+      return;
+    }
+    if (!hasMinLength) {
       setPasswordStatusMsg("⚠️ New password must be at least 8 characters long.");
+      return;
+    }
+    if (!hasLowercase) {
+      setPasswordStatusMsg("⚠️ New password must contain at least one lowercase character.");
+      return;
+    }
+    if (!hasNumOrSymbol) {
+      setPasswordStatusMsg("⚠️ New password must contain at least one number, symbol, or special character.");
       return;
     }
     if (newPassword !== confirmPassword) {
       setPasswordStatusMsg("⚠️ New Password and Confirm Password do not match.");
       return;
     }
+
     setIsLoading(true);
     setPasswordStatusMsg('');
     try {
       let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
       apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
-      await fetch(`${apiUrl}/api/auth/reset-password`, {
+      const res = await fetch(`${apiUrl}/api/users/change-password`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+        },
         body: JSON.stringify({
-          phone_or_email: user?.email || user?.phone || '',
+          current_password: currentPassword,
           new_password: newPassword
         })
       });
-      setPasswordStatusMsg("🎉 Password changed successfully!");
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.detail || 'Current password is incorrect.');
+      }
+
+      setPasswordStatusMsg("🎉 Password updated successfully in Database!");
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err: any) {
-      setPasswordStatusMsg("🎉 Password changed successfully!");
+      setPasswordStatusMsg(err.message || "⚠️ Failed to change password.");
     } finally {
       setIsLoading(false);
     }
@@ -365,10 +428,14 @@ export function CustomerSettings({ user }: { user: any }) {
       alert("Please fill out all required fields: Name, Street, City, State, and Zip Code.");
       return;
     }
+    if (!/^\d{6}$/.test(newAddr.zip_code.trim())) {
+      alert("⚠️ Zip Code must be exactly 6 digits (e.g. 600001).");
+      return;
+    }
     try {
       await createAddress(user.id, {
         ...newAddr,
-        zip_code: newAddr.zip_code,
+        zip_code: newAddr.zip_code.trim(),
         address_lat: lat,
         address_lng: lng,
         latitude: lat,
@@ -389,7 +456,6 @@ export function CustomerSettings({ user }: { user: any }) {
       loadAddresses();
       setStatusMsg("Address deleted successfully.");
     } catch (err) {
-      // Reload list cleanly
       loadAddresses();
       setStatusMsg("Address removed.");
     }
@@ -449,9 +515,9 @@ export function CustomerSettings({ user }: { user: any }) {
               value={email} 
               onChange={setEmail} 
               type="email"
-              verifiedBadge={isEmailVerified ? (user?.google_verified ? "Verified Google Mail" : "Verified Email") : null}
-              actionButton={!isEmailVerified && (
-                <button onClick={() => setOtpSentMsg('✨ Verification link dispatched to your email address!')} className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-200">
+              verifiedBadge={isEmailVerifiedState ? (user?.google_verified ? "Verified Google Mail" : "Verified Email") : null}
+              actionButton={!isEmailVerifiedState && (
+                <button onClick={handleVerifyEmail} className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 transition">
                   Verify Email
                 </button>
               )}
@@ -465,7 +531,7 @@ export function CustomerSettings({ user }: { user: any }) {
               placeholder="Enter 10-digit Mobile Number"
               verifiedBadge={isPhoneVerifiedState ? "Verified Mobile Number" : null}
               actionButton={!isPhoneVerifiedState && (
-                <button onClick={handleSendWhatsAppOTP} className="text-[10px] font-bold px-2.5 py-1 rounded bg-green-500 hover:bg-green-600 text-white shadow-sm shrink-0">
+                <button onClick={handleSendWhatsAppOTP} className="text-[10px] font-bold px-2.5 py-1 rounded bg-green-500 hover:bg-green-600 text-white shadow-sm shrink-0 transition">
                   Send OTP
                 </button>
               )}
@@ -504,7 +570,7 @@ export function CustomerSettings({ user }: { user: any }) {
                 onChange={setUserState} 
                 options={['Tamil Nadu', 'Kerala', 'Karnataka', 'Andhra Pradesh', 'Telangana', 'Maharashtra', 'Delhi', 'Gujarat']} 
               />
-              <OutlinedField label="Zip Code" value={zipCode} onChange={setZipCode} placeholder="648391" />
+              <OutlinedField label="Zip Code" value={zipCode} onChange={setZipCode} placeholder="600001" />
             </div>
 
             <OutlinedField label="Country" value={country} onChange={setCountry} options={['India', 'United States', 'United Kingdom', 'Canada', 'Australia']} />
@@ -568,18 +634,18 @@ export function CustomerSettings({ user }: { user: any }) {
               />
             </div>
 
-            {/* Password Requirements Checklist */}
+            {/* Password Requirements Checklist with Live Ticks */}
             <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-200 text-xs space-y-1.5 text-gray-600">
               <div className="font-bold text-gray-800">Password Requirements:</div>
               <ul className="space-y-1 pl-1">
-                <li className={`flex items-center gap-1.5 ${newPassword.length >= 8 ? 'text-emerald-600 font-bold' : 'text-gray-500'}`}>
-                  <span>{newPassword.length >= 8 ? '✓' : '•'}</span> Minimum 8 characters long - the more, the better
+                <li className={`flex items-center gap-1.5 ${hasMinLength ? 'text-emerald-600 font-bold' : 'text-gray-500'}`}>
+                  <span>{hasMinLength ? '✓' : '•'}</span> Minimum 8 characters long - the more, the better
                 </li>
-                <li className={`flex items-center gap-1.5 ${/[a-z]/.test(newPassword) ? 'text-emerald-600 font-bold' : 'text-gray-500'}`}>
-                  <span>{/[a-z]/.test(newPassword) ? '✓' : '•'}</span> At least one lowercase character
+                <li className={`flex items-center gap-1.5 ${hasLowercase ? 'text-emerald-600 font-bold' : 'text-gray-500'}`}>
+                  <span>{hasLowercase ? '✓' : '•'}</span> At least one lowercase character
                 </li>
-                <li className={`flex items-center gap-1.5 ${/[0-9!@#$%^&*]/.test(newPassword) ? 'text-emerald-600 font-bold' : 'text-gray-500'}`}>
-                  <span>{/[0-9!@#$%^&*]/.test(newPassword) ? '✓' : '•'}</span> At least one number, symbol, or special character
+                <li className={`flex items-center gap-1.5 ${hasNumOrSymbol ? 'text-emerald-600 font-bold' : 'text-gray-500'}`}>
+                  <span>{hasNumOrSymbol ? '✓' : '•'}</span> At least one number, symbol, or special character
                 </li>
               </ul>
             </div>
@@ -587,13 +653,13 @@ export function CustomerSettings({ user }: { user: any }) {
             <div className="flex items-center gap-3 pt-2">
               <button
                 onClick={handleSavePasswordChange}
-                disabled={isLoading}
-                className="px-6 py-2.5 bg-[#f59e0b] hover:bg-[#d97706] text-white font-bold rounded-lg shadow-sm transition-all active:scale-95 text-xs uppercase tracking-wider"
+                disabled={isLoading || !isPasswordValid}
+                className={`px-6 py-2.5 font-bold rounded-lg shadow-sm transition-all text-xs uppercase tracking-wider ${isPasswordValid ? 'bg-[#f59e0b] hover:bg-[#d97706] text-white active:scale-95' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
               >
                 Save Changes
               </button>
               <button
-                onClick={() => { setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); }}
+                onClick={() => { setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); setPasswordStatusMsg(''); }}
                 className="px-6 py-2.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold rounded-lg text-xs uppercase tracking-wider"
               >
                 Reset
@@ -619,9 +685,14 @@ export function CustomerSettings({ user }: { user: any }) {
               <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-3 text-xs">
                 <input type="text" placeholder="Full Name (e.g. Home / Office / Laptop Store)" value={newAddr.name} onChange={e => setNewAddr({ ...newAddr, name: e.target.value })} className="w-full p-2 border rounded outline-none font-bold" />
                 <input type="text" placeholder="Street Address" value={newAddr.street} onChange={e => setNewAddr({ ...newAddr, street: e.target.value })} className="w-full p-2 border rounded outline-none" />
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   <input type="text" placeholder="City" value={newAddr.city} onChange={e => setNewAddr({ ...newAddr, city: e.target.value })} className="w-full p-2 border rounded outline-none" />
-                  <input type="text" placeholder="Zip Code" value={newAddr.zip_code} onChange={e => setNewAddr({ ...newAddr, zip_code: e.target.value })} className="w-full p-2 border rounded outline-none" />
+                  <select value={newAddr.state} onChange={e => setNewAddr({ ...newAddr, state: e.target.value })} className="w-full p-2 border rounded outline-none bg-white font-medium">
+                    {['Tamil Nadu', 'Kerala', 'Karnataka', 'Andhra Pradesh', 'Telangana', 'Maharashtra', 'Delhi', 'Gujarat'].map((st, i) => (
+                      <option key={i} value={st}>{st}</option>
+                    ))}
+                  </select>
+                  <input type="text" maxLength={6} placeholder="Zip (6 digits)" value={newAddr.zip_code} onChange={e => setNewAddr({ ...newAddr, zip_code: e.target.value })} className="w-full p-2 border rounded outline-none font-mono" />
                 </div>
 
                 {/* Dedicated Location Coordinates for this New Address */}

@@ -3232,6 +3232,31 @@ async def reset_auth_password(req: PasswordResetRequest):
         except Exception as e:
             return {"success": True, "message": "🎉 Password reset completed! You can now sign in."}
 
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+@app.post("/api/users/change-password")
+async def change_user_password(req: ChangePasswordRequest, current_user: dict = Depends(get_current_user)):
+    user_id = current_user['id']
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT password_hash FROM users WHERE id = $1", user_id)
+        if not row or not row['password_hash']:
+            # First time setting password
+            pass
+        else:
+            if not pwd_context.verify(req.current_password, row['password_hash']):
+                raise HTTPException(status_code=400, detail="⚠️ Current password is incorrect.")
+        
+        # Verify new password rules
+        np = req.new_password
+        if len(np) < 8 or not any(c.islower() for c in np) or not any(c.isdigit() or c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in np):
+            raise HTTPException(status_code=400, detail="⚠️ New password does not meet requirements (Min 8 chars, 1 lowercase letter, 1 number/symbol).")
+        
+        hashed = pwd_context.hash(np)
+        await conn.execute("UPDATE users SET password_hash = $1 WHERE id = $2", hashed, user_id)
+        return {"success": True, "message": "🎉 Password updated successfully in Database!"}
+
 class TwoFAToggleRequest(BaseModel):
     user_id: str
     enabled: bool
