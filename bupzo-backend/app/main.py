@@ -182,7 +182,7 @@ async def get_user_by_id(user_id: UUID):
     query = """
     SELECT u.id, u.name, u.phone, u.email, u.is_premium, u.signup_platform, u.wallet_balance, u.privacy_accepted, u.created_at, u.address, u.pincode, u.state, u.address_lat, u.address_lng,
            COALESCE(u.email_verified, FALSE) as email_verified,
-           CASE WHEN u.phone LIKE 'GOOG-%' THEN FALSE ELSE COALESCE(u.phone_verified, TRUE) END as phone_verified,
+           COALESCE(u.phone_verified, FALSE) as phone_verified,
            COALESCE(u.google_verified, FALSE) as google_verified,
            CASE WHEN s.status = 'APPROVED' OR s.id IS NOT NULL THEN TRUE ELSE FALSE END AS is_seller,
            s.status as seller_status
@@ -249,7 +249,6 @@ async def startup_event():
         await conn.execute("ALTER TABLE addresses ADD COLUMN IF NOT EXISTS address_lng DECIMAL(11,8);")
         await conn.execute("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_signup_platform_check;")
         await conn.execute("ALTER TABLE users ADD CONSTRAINT users_signup_platform_check CHECK (UPPER(signup_platform) IN ('WEB', 'APP'));")
-        await conn.execute("UPDATE users SET phone_verified = TRUE WHERE phone IS NOT NULL AND phone NOT LIKE 'GOOG-%';")
         await conn.execute("ALTER TABLE coupons ADD COLUMN IF NOT EXISTS created_by_seller_id UUID REFERENCES sellers(id) ON DELETE CASCADE;")
         await conn.execute("ALTER TABLE coupons ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'PENDING';")
         await conn.execute("UPDATE coupons SET status = 'APPROVED' WHERE status IS NULL;")
@@ -1032,6 +1031,49 @@ async def auth_google(payload: AuthGoogleRequest):
         "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         "user": full_user
     }
+
+class UserProfileUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    state: Optional[str] = None
+    pincode: Optional[str] = None
+    country: Optional[str] = None
+    address_lat: Optional[float] = None
+    address_lng: Optional[float] = None
+    phone_verified: Optional[bool] = None
+    email_verified: Optional[bool] = None
+
+@app.put("/api/users/profile")
+async def update_user_profile(payload: UserProfileUpdateRequest, current_user: dict = Depends(get_current_user)):
+    user_id = current_user['id']
+    async with pool.acquire() as conn:
+        if payload.name is not None:
+            await conn.execute("UPDATE users SET name = $1 WHERE id = $2", payload.name, user_id)
+        if payload.email is not None:
+            await conn.execute("UPDATE users SET email = $1 WHERE id = $2", payload.email, user_id)
+        if payload.phone is not None:
+            await conn.execute("UPDATE users SET phone = $1 WHERE id = $2", payload.phone, user_id)
+        if payload.address is not None:
+            await conn.execute("UPDATE users SET address = $1 WHERE id = $2", payload.address, user_id)
+        if payload.state is not None:
+            await conn.execute("UPDATE users SET state = $1 WHERE id = $2", payload.state, user_id)
+        if payload.pincode is not None:
+            await conn.execute("UPDATE users SET pincode = $1 WHERE id = $2", payload.pincode, user_id)
+        if payload.country is not None:
+            await conn.execute("UPDATE users SET country = $1 WHERE id = $2", payload.country, user_id)
+        if payload.address_lat is not None:
+            await conn.execute("UPDATE users SET address_lat = $1 WHERE id = $2", payload.address_lat, user_id)
+        if payload.address_lng is not None:
+            await conn.execute("UPDATE users SET address_lng = $1 WHERE id = $2", payload.address_lng, user_id)
+        if payload.phone_verified is not None:
+            await conn.execute("UPDATE users SET phone_verified = $1 WHERE id = $2", payload.phone_verified, user_id)
+        if payload.email_verified is not None:
+            await conn.execute("UPDATE users SET email_verified = $1 WHERE id = $2", payload.email_verified, user_id)
+        
+        updated_user = await get_user_by_id(user_id)
+        return {"success": True, "user": updated_user}
 
 @app.post("/api/auth/refresh", response_model=TokenResponse)
 async def auth_refresh(payload: dict):
