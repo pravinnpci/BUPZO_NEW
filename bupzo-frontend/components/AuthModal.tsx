@@ -65,12 +65,28 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
   };
 
   const handleRegisterSubmit = async () => {
-    if (!name.trim()) return setMessage('⚠️ Please enter your full name');
-    if (!username.trim()) return setMessage('⚠️ Please enter your email address');
-    if (!phone.trim()) return setMessage('⚠️ Please enter your mobile number');
-    if (!isRegisterPasswordValid) return setMessage('⚠️ Password does not meet requirements (Min 8 chars, 1 lowercase, 1 number/symbol)');
+    const trimmedName = name.trim();
+    const trimmedEmail = username.trim();
+    const trimmedPhone = phone.trim().replace(/\D/g, '');
 
-    setCleanPhone(phone.replace(/\s+/g, ''));
+    if (!trimmedName || trimmedName.length < 2) {
+      return setMessage('⚠️ Please enter a valid full name (at least 2 characters)');
+    }
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      return setMessage('⚠️ Please enter a valid Email Address in the Email field (e.g. name@example.com)');
+    }
+
+    if (trimmedPhone.length < 10) {
+      return setMessage('⚠️ Please enter a valid 10-digit Mobile Number in the Phone Number field (e.g. 9245464648)');
+    }
+
+    if (!isRegisterPasswordValid) {
+      return setMessage('⚠️ Password does not meet requirements (Min 8 chars, 1 lowercase, 1 number/symbol)');
+    }
+
+    setCleanPhone(trimmedPhone);
     setMessage('');
     setMode('register-verify-method');
   };
@@ -93,7 +109,14 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
         if (otpData?.otp) setServerOtp(String(otpData.otp));
         setMessage(`✨ Verification OTP code sent to your WhatsApp (+91 ${cleanPhone})!`);
       } else {
-        // Email OTP
+        // Send real email OTP via /api/auth/send-email-otp
+        const otpResp = await fetch(`${apiUrl}/api/auth/send-email-otp`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: username.trim() })
+        });
+        const otpData = await otpResp.json();
+        if (otpData?.otp) setServerOtp(String(otpData.otp));
         setMessage(`✨ Verification OTP code sent to your Email (${username.trim()})!`);
       }
       setMode('verify-otp');

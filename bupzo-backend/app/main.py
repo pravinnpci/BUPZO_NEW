@@ -1052,12 +1052,12 @@ class UserProfileUpdateRequest(BaseModel):
 async def update_user_profile(payload: UserProfileUpdateRequest, current_user: dict = Depends(get_current_user)):
     user_id = current_user['id']
     async with pool.acquire() as conn:
-        if payload.name is not None:
-            await conn.execute("UPDATE users SET name = $1 WHERE id = $2", payload.name, user_id)
-        if payload.email is not None:
-            await conn.execute("UPDATE users SET email = $1 WHERE id = $2", payload.email, user_id)
-        if payload.phone is not None:
-            await conn.execute("UPDATE users SET phone = $1 WHERE id = $2", payload.phone, user_id)
+        if payload.name is not None and payload.name.strip():
+            await conn.execute("UPDATE users SET name = $1 WHERE id = $2", payload.name.strip(), user_id)
+        if payload.email is not None and payload.email.strip():
+            await conn.execute("UPDATE users SET email = $1 WHERE id = $2", payload.email.strip(), user_id)
+        if payload.phone is not None and payload.phone.strip():
+            await conn.execute("UPDATE users SET phone = $1 WHERE id = $2", payload.phone.strip(), user_id)
         if payload.address is not None:
             await conn.execute("UPDATE users SET address = $1 WHERE id = $2", payload.address, user_id)
         if payload.state is not None:
@@ -1066,14 +1066,30 @@ async def update_user_profile(payload: UserProfileUpdateRequest, current_user: d
             await conn.execute("UPDATE users SET pincode = $1 WHERE id = $2", payload.pincode, user_id)
         if payload.country is not None:
             await conn.execute("UPDATE users SET country = $1 WHERE id = $2", payload.country, user_id)
+        
         if payload.address_lat is not None:
-            await conn.execute("UPDATE users SET address_lat = $1 WHERE id = $2", payload.address_lat, user_id)
+            try:
+                await conn.execute("UPDATE users SET address_lat = $1::text WHERE id = $2", str(payload.address_lat), user_id)
+            except Exception:
+                pass
+
         if payload.address_lng is not None:
-            await conn.execute("UPDATE users SET address_lng = $1 WHERE id = $2", payload.address_lng, user_id)
+            try:
+                await conn.execute("UPDATE users SET address_lng = $1::text WHERE id = $2", str(payload.address_lng), user_id)
+            except Exception:
+                pass
+
         if payload.phone_verified is not None:
-            await conn.execute("UPDATE users SET phone_verified = $1 WHERE id = $2", payload.phone_verified, user_id)
+            try:
+                await conn.execute("UPDATE users SET phone_verified = $1 WHERE id = $2", bool(payload.phone_verified), user_id)
+            except Exception:
+                pass
+
         if payload.email_verified is not None:
-            await conn.execute("UPDATE users SET email_verified = $1 WHERE id = $2", payload.email_verified, user_id)
+            try:
+                await conn.execute("UPDATE users SET email_verified = $1 WHERE id = $2", bool(payload.email_verified), user_id)
+            except Exception:
+                pass
         
         updated_user = await get_user_by_id(user_id)
         return {"success": True, "user": updated_user}
@@ -2841,8 +2857,14 @@ async def create_address(user_id: str, addr: AddressCreate):
 
 @app.delete("/api/addresses/{address_id}")
 async def delete_address(address_id: str):
+    clean_id = address_id.strip()
     async with pool.acquire() as conn:
-        await conn.execute("DELETE FROM addresses WHERE id = $1::uuid OR id::text = $1", address_id)
+        try:
+            import uuid
+            uuid_obj = uuid.UUID(clean_id)
+            await conn.execute("DELETE FROM addresses WHERE id = $1", uuid_obj)
+        except Exception:
+            await conn.execute("DELETE FROM addresses WHERE id::text = $1", clean_id)
         return {"success": True, "message": "Address deleted successfully"}
 
 class MessageCreate(BaseModel):
