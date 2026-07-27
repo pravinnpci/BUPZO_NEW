@@ -325,10 +325,10 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
       if (data?.reset_otp) setServerOtp(String(data.reset_otp));
 
       setForgotStep(2);
-      setMessage(data.message || (forgotMethod === 'whatsapp' 
+      const msgStr = typeof data.message === 'string' ? data.message : (forgotMethod === 'whatsapp' 
         ? `✨ Password Reset 6-Digit OTP dispatched via WhatsApp to +91 ${targetVal}! Please enter code below.`
-        : `✨ Password Reset 6-Digit Verification OTP sent to your Email (${targetVal})! Please enter code below.`
-      ));
+        : `✨ Password Reset 6-Digit Verification OTP sent to your Email (${targetVal})! Please enter code below.`);
+      setMessage(msgStr);
     } catch (err: any) {
       setMessage(err.message || 'Error sending reset code.');
     } finally {

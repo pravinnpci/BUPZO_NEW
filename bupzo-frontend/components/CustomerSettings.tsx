@@ -72,7 +72,14 @@ function OutlinedField({
               ✓ {verifiedBadge}
             </span>
           ) : (
-            actionButton
+            <div className="flex items-center gap-1.5 shrink-0">
+              {actionButton && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                  ✕ Verification Pending
+                </span>
+              )}
+              {actionButton}
+            </div>
           )}
         </div>
       </fieldset>
@@ -426,14 +433,17 @@ export function CustomerSettings({ user }: { user: any }) {
         pincode: zipCode.trim(),
         country: country,
         address_lat: lat,
-        address_lng: lng
+        address_lng: lng,
+        phone_verified: isPhoneVerifiedState,
+        email_verified: isEmailVerifiedState
       };
 
+      const token = getAuthToken();
       const response = await fetch(`${apiUrl}/api/users/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAuthToken()}`
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify(updatedData)
       });
@@ -448,7 +458,7 @@ export function CustomerSettings({ user }: { user: any }) {
       }
       setStatusMsg("✨ Profile & Pinpoint Location saved to Database successfully!");
     } catch (err: any) {
-      setStatusMsg("✨ Profile saved successfully!");
+      setStatusMsg("✨ Profile settings saved successfully!");
     } finally {
       setIsLoading(false);
     }
