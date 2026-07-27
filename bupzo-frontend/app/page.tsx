@@ -843,8 +843,16 @@ export default function Home() {
               setIsAuthModalOpen(true);
               return;
             }
-            // Removed the isSeller block to allow switching to Seller Onboarding
-            setUserRole(prev => prev === 'customer' ? 'seller' : 'customer');
+            if (userRole === 'customer') {
+              if (user.isSeller || user.is_seller || user.seller_status === 'APPROVED') {
+                setUserRole('seller');
+              } else {
+                alert('ℹ️ You are currently logged in as a Customer. Please click "Become a Seller" to register as a Merchant!');
+                setCustomerTab('kyc');
+              }
+            } else {
+              setUserRole('customer');
+            }
           }}
           className="px-4 py-2 rounded-full bg-[#525b75] dark:bg-[#222834] text-white font-bold text-xs shadow-md hover:opacity-95 active:scale-95 transition-all"
         >

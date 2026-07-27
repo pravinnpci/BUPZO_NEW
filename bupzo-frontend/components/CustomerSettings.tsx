@@ -248,6 +248,20 @@ export function CustomerSettings({ user }: { user: any }) {
     try {
       let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
       apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
+
+      // Duplicate DB Pre-check
+      const checkResp = await fetch(`${apiUrl}/api/auth/check-availability`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: phone.trim(), user_id: user?.id })
+      }).then(r => r.json());
+
+      if (checkResp && checkResp.available === false) {
+        alert(checkResp.message || "⚠️ This mobile number is already registered with another account.");
+        setIsLoading(false);
+        return;
+      }
+
       const resp = await fetch(`${apiUrl}/api/auth/send-whatsapp-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -321,6 +335,20 @@ export function CustomerSettings({ user }: { user: any }) {
     try {
       let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
       apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
+
+      // Duplicate DB Pre-check
+      const checkResp = await fetch(`${apiUrl}/api/auth/check-availability`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: email.trim(), user_id: user?.id })
+      }).then(r => r.json());
+
+      if (checkResp && checkResp.available === false) {
+        alert(checkResp.message || "⚠️ This email address is already registered with another account.");
+        setIsLoading(false);
+        return;
+      }
+
       const resp = await fetch(`${apiUrl}/api/auth/send-email-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
