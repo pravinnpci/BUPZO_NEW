@@ -36,13 +36,20 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
   const isRegisterPasswordValid = hasMinLength && hasLowercase && hasNumOrSymbol;
 
   const handleOtpChange = (index: number, value: string) => {
-    if (value.length > 1) value = value[value.length - 1];
+    const numericValue = value.replace(/[^0-9]/g, '');
+    if (!numericValue) {
+      const newOtp = [...otp];
+      newOtp[index] = '';
+      setOtp(newOtp);
+      return;
+    }
+    const cleanDigit = numericValue.length > 1 ? numericValue[numericValue.length - 1] : numericValue;
     const newOtp = [...otp];
-    newOtp[index] = value;
+    newOtp[index] = cleanDigit;
     setOtp(newOtp);
 
     // Auto-focus next input
-    if (value && index < 5) {
+    if (cleanDigit && index < 5) {
       const nextInput = document.getElementById(`otp-input-${index + 1}`);
       if (nextInput) nextInput.focus();
     }

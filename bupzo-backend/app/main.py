@@ -1040,10 +1040,13 @@ class UserProfileUpdateRequest(BaseModel):
     state: Optional[str] = None
     pincode: Optional[str] = None
     country: Optional[str] = None
-    address_lat: Optional[float] = None
-    address_lng: Optional[float] = None
+    address_lat: Optional[Any] = None
+    address_lng: Optional[Any] = None
     phone_verified: Optional[bool] = None
     email_verified: Optional[bool] = None
+
+    class Config:
+        extra = "ignore"
 
 @app.put("/api/users/profile")
 async def update_user_profile(payload: UserProfileUpdateRequest, current_user: dict = Depends(get_current_user)):
@@ -1641,10 +1644,11 @@ class ForgotPasswordPayload(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     identifier: Optional[str] = None
+    phone_or_email: Optional[str] = None
 
 @app.post("/api/auth/forgot-password")
 async def forgot_password(payload: ForgotPasswordPayload):
-    target_input = (payload.email or payload.phone or payload.identifier or "").strip()
+    target_input = (payload.email or payload.phone or payload.identifier or payload.phone_or_email or "").strip()
     if not target_input:
         raise HTTPException(status_code=400, detail="Email or phone number is required.")
 

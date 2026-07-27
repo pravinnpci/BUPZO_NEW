@@ -163,7 +163,7 @@ export function CustomerSettings({ user }: { user: any }) {
   // Initialize Leaflet JS Map dynamically
   useEffect(() => {
     if (!mapContainerRef.current) return;
-    if (mapInstanceRef.current) return; // Prevent double init
+    if (mapInstanceRef.current || (mapContainerRef.current as any)?._leaflet_id) return; // Prevent double init exception
 
     const leafletCss = document.createElement('link');
     leafletCss.rel = 'stylesheet';
@@ -175,6 +175,7 @@ export function CustomerSettings({ user }: { user: any }) {
     leafletJs.onload = () => {
       const L = (window as any).L;
       if (!L || !mapContainerRef.current) return;
+      if ((mapContainerRef.current as any)?._leaflet_id) return;
 
       const map = L.map(mapContainerRef.current).setView([lat, lng], 13);
       mapInstanceRef.current = map;
