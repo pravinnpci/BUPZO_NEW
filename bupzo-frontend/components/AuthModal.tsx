@@ -29,11 +29,13 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
   const [forgotStep, setForgotStep] = useState<1 | 2>(1);
   const [newPassword, setNewPassword] = useState('');
 
-  // Registration Password Requirements Live Validation
+  // Registration & Forgot Password Live Validation
   const hasMinLength = password.length >= 8;
   const hasLowercase = /[a-z]/.test(password);
   const hasNumOrSymbol = /[0-9!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(password);
   const isRegisterPasswordValid = hasMinLength && hasLowercase && hasNumOrSymbol;
+
+  const isForgotNewPasswordValid = newPassword.length >= 8 && /[a-z]/.test(newPassword) && /[0-9!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(newPassword);
 
   const handleOtpChange = (index: number, value: string) => {
     const numericValue = value.replace(/[^0-9]/g, '');
@@ -629,8 +631,8 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
                 ) : (
                   <button 
                     onClick={handleResetPasswordSubmit} 
-                    disabled={isLoading}
-                    className="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-600/30 transition-all active:scale-[0.98]"
+                    disabled={isLoading || !isForgotNewPasswordValid}
+                    className={`w-full py-3.5 px-4 font-bold text-sm rounded-xl shadow-lg transition-all active:scale-[0.98] ${isForgotNewPasswordValid ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/30' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
                   >
                     {isLoading ? 'Resetting Password...' : 'Reset Password & Sign In'}
                   </button>

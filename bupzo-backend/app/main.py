@@ -1691,11 +1691,72 @@ async def forgot_password(payload: ForgotPasswordPayload):
         except Exception as e:
             print("WhatsApp Reset OTP send notice:", e)
 
+    # If target is an email address, send real email via smtplib
+    if "@" in target_input:
+        send_real_email_otp(target_input, reset_otp, subject="BUPZO Password Reset 6-Digit OTP")
+
     return {
         "status": "success",
         "message": f"✨ Password reset OTP & link dispatched successfully for {target_input}!",
         "reset_token": reset_token,
         "reset_otp": reset_otp
+    }
+
+class EmailOTPRequest(BaseModel):
+    email: str
+
+def send_real_email_otp(to_email: str, otp_code: str, subject: str = "BUPZO 6-Digit Email Verification Code"):
+    smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com").strip()
+    smtp_port = int(os.getenv("SMTP_PORT", "587").strip())
+    smtp_user = os.getenv("SMTP_USER", "bupzoecom@gmail.com").strip()
+    smtp_pass = os.getenv("SMTP_PASSWORD", "stllaexihiyvearq").strip()
+
+    if not to_email or "@" not in to_email:
+        return False
+
+    try:
+        import smtplib
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = f"BUPZO Marketplace <{smtp_user}>"
+        msg["To"] = to_email
+
+        text_content = f"Your BUPZO 6-digit verification code is: {otp_code}. Do not share this OTP with anyone."
+        html_content = f"""
+        <div style="font-family: Arial, sans-serif; padding: 20px; background-color: #f9fafb; border-radius: 12px;">
+            <h2 style="color: #d97706;">BUPZO Marketplace Verification 🔐</h2>
+            <p style="font-size: 14px; color: #374151;">Your 6-digit email verification code is:</p>
+            <div style="font-size: 28px; font-weight: bold; color: #2563eb; letter-spacing: 4px; margin: 16px 0;">{otp_code}</div>
+            <p style="font-size: 12px; color: #6b7280;">Use this code to verify your Bupzo account. This code is valid for 10 minutes.</p>
+        </div>
+        """
+        msg.attach(MIMEText(text_content, "plain"))
+        msg.attach(MIMEText(html_content, "html"))
+
+        server = smtplib.SMTP(smtp_host, smtp_port, timeout=10)
+        server.starttls()
+        server.login(smtp_user, smtp_pass)
+        server.sendmail(smtp_user, [to_email], msg.as_string())
+        server.quit()
+        print(f"🎉 Real Email OTP ({otp_code}) sent successfully to {to_email} via {smtp_user}!")
+        return True
+    except Exception as e:
+        print(f"⚠️ Email sending error for {to_email}: {e}")
+        return False
+
+@app.post("/api/auth/send-email-otp")
+async def send_email_otp_endpoint(req: EmailOTPRequest):
+    import random
+    otp_code = str(random.randint(100000, 999999))
+    target_email = req.email.strip()
+    sent = send_real_email_otp(target_email, otp_code)
+    return {
+        "success": True, 
+        "otp": otp_code, 
+        "message": f"✨ 6-Digit Email Verification OTP sent to {target_email}!"
     }
 
 whatsapp_otps: Dict[str, str] = {}

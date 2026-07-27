@@ -651,22 +651,22 @@ export const AdminSellers: React.FC<AdminSellersProps> = ({
               </div>
               <div>
                 <span className="font-bold text-zinc-400">GST / Tax Number:</span>
-                <p className="font-mono">{viewKycSeller.kyc_details?.gstin || 'Not Provided'}</p>
+                <p className="font-mono">{viewKycSeller.kyc_details?.gstin || viewKycSeller.kyc_details?.gst_number || viewKycSeller.kyc_details?.gstin_number || 'Not Provided'}</p>
               </div>
               <div>
                 <span className="font-bold text-zinc-400">PAN Card Number:</span>
-                <p className="font-mono">{viewKycSeller.kyc_details?.pan || 'Not Provided'}</p>
+                <p className="font-mono">{viewKycSeller.kyc_details?.pan || viewKycSeller.kyc_details?.pan_number || 'Not Provided'}</p>
               </div>
               <div>
                 <span className="font-bold text-zinc-400">FSSAI License:</span>
-                <p className="font-mono text-zinc-200 mt-1">{viewKycSeller.kyc_details?.fssai || 'Not Provided'}</p>
+                <p className="font-mono text-zinc-200 mt-1">{viewKycSeller.kyc_details?.fssai || viewKycSeller.kyc_details?.fssai_license || 'Not Provided'}</p>
               </div>
               <div>
                 <span className="font-bold text-zinc-400">Bank Account Details:</span>
                 <p className="bg-zinc-100 dark:bg-zinc-800 p-2 rounded text-zinc-800 dark:text-zinc-200 font-mono mt-1 border border-zinc-200 dark:border-zinc-700">
-                  Bank: {viewKycSeller.kyc_details?.bankName || 'N/A'}<br/>
-                  A/C: {viewKycSeller.kyc_details?.accountNumber || 'N/A'}<br/>
-                  IFSC: {viewKycSeller.kyc_details?.ifsc || 'N/A'}
+                  Bank: {viewKycSeller.kyc_details?.bankName || viewKycSeller.kyc_details?.bank_name || 'N/A'}<br/>
+                  A/C: {viewKycSeller.kyc_details?.accountNumber || viewKycSeller.kyc_details?.account_number || viewKycSeller.kyc_details?.accountNum || 'N/A'}<br/>
+                  IFSC: {viewKycSeller.kyc_details?.ifsc || viewKycSeller.kyc_details?.ifsc_code || 'N/A'}
                 </p>
               </div>
               <div>

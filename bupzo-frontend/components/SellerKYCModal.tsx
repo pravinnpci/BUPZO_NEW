@@ -7,6 +7,7 @@ export default function SellerKYCModal({ onClose }: { onClose: () => void }) {
   const { user, setUser } = useUser();
   const [businessName, setBusinessName] = useState(user?.name ? `${user.name}'s Store` : '');
   const [gstin, setGstin] = useState('');
+  const [pan, setPan] = useState('');
   const [fssai, setFssai] = useState('');
   const [documents, setDocuments] = useState<string[]>([]);
   const [bankName, setBankName] = useState('');
@@ -73,7 +74,7 @@ export default function SellerKYCModal({ onClose }: { onClose: () => void }) {
         phone: user.phone || `MOCK-${user.id.substring(0, 8)}`,
         email: user.email || undefined,
         business_name: businessName,
-        kyc_details: { gstin, fssai, documents, status: 'submitted_by_customer', bankName: bankName, accountNumber: accountNumber, ifsc }
+        kyc_details: { gstin, pan, fssai, documents, status: 'submitted_by_customer', bankName: bankName, accountNumber: accountNumber, ifsc }
       };
 
       const response = await fetch(`${apiUrl}/api/sellers/`, {
@@ -141,6 +142,16 @@ export default function SellerKYCModal({ onClose }: { onClose: () => void }) {
                 value={gstin} 
                 onChange={(e) => setGstin(e.target.value)} 
                 placeholder="22AAAAA0000A1Z5"
+                className="w-full p-3 text-sm bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl outline-none focus:border-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">PAN Card Number (Optional)</label>
+              <input 
+                type="text" 
+                value={pan} 
+                onChange={(e) => setPan(e.target.value)} 
+                placeholder="ABCDE1234F"
                 className="w-full p-3 text-sm bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl outline-none focus:border-blue-500"
               />
             </div>
