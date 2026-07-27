@@ -499,14 +499,26 @@ export function CustomerSettings({ user }: { user: any }) {
             {/* New Address Input Form */}
             {showNewAddress && (
               <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-3 text-xs">
-                <input type="text" placeholder="Full Name" value={newAddr.name} onChange={e => setNewAddr({ ...newAddr, name: e.target.value })} className="w-full p-2 border rounded outline-none" />
+                <input type="text" placeholder="Full Name (e.g. Home / Office / Laptop Store)" value={newAddr.name} onChange={e => setNewAddr({ ...newAddr, name: e.target.value })} className="w-full p-2 border rounded outline-none font-bold" />
                 <input type="text" placeholder="Street Address" value={newAddr.street} onChange={e => setNewAddr({ ...newAddr, street: e.target.value })} className="w-full p-2 border rounded outline-none" />
                 <div className="grid grid-cols-2 gap-2">
                   <input type="text" placeholder="City" value={newAddr.city} onChange={e => setNewAddr({ ...newAddr, city: e.target.value })} className="w-full p-2 border rounded outline-none" />
                   <input type="text" placeholder="Zip Code" value={newAddr.zip_code} onChange={e => setNewAddr({ ...newAddr, zip_code: e.target.value })} className="w-full p-2 border rounded outline-none" />
                 </div>
-                <button onClick={handleSaveAddress} className="w-full py-2 bg-[#e52e06] text-white font-bold rounded">
-                  Save Address
+
+                {/* Dedicated Location Coordinates for this New Address */}
+                <div className="p-3 bg-amber-50/80 rounded-lg border border-amber-200 space-y-1">
+                  <div className="flex justify-between items-center text-[11px] font-bold text-gray-800">
+                    <span>📍 Address Pinpoint Map Location</span>
+                    <span className="text-amber-700 font-mono">Lat: {lat.toFixed(4)}, Lng: {lng.toFixed(4)}</span>
+                  </div>
+                  <p className="text-[10px] text-amber-800/80">
+                    Drag marker on the Leaflet map below to pick the exact pinpoint delivery location for this address.
+                  </p>
+                </div>
+
+                <button onClick={handleSaveAddress} className="w-full py-2.5 bg-[#e52e06] hover:bg-red-700 text-white font-bold rounded-lg shadow-sm transition">
+                  Save Address with Dedicated Pinpoint
                 </button>
               </div>
             )}

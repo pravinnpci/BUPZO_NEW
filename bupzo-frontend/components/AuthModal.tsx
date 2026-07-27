@@ -177,12 +177,11 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
         setServerOtp(String(data.reset_otp));
       }
       
+      setForgotStep(2);
       if (forgotMethod === 'whatsapp') {
-        setForgotStep(2);
         setMessage(`✨ Password Reset 6-Digit OTP dispatched via WhatsApp to ${username.trim()}! Please enter the 6-digit OTP and new password below.`);
       } else {
-        setMessage(`✨ Password reset link & instructions dispatched successfully to ${username.trim()}! Check your inbox.`);
-        setTimeout(() => setMode('login'), 3000);
+        setMessage(`✨ Password Reset 6-Digit Verification OTP sent to your Email (${username.trim()})! Please enter the 6-digit OTP and new password below.`);
       }
     } catch (err: any) {
       setMessage(err.message || 'Error sending reset link.');
@@ -272,10 +271,18 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
             ✕
           </button>
 
-          {/* Left Decorative Banner */}
-          <div className="md:col-span-5 bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 p-8 text-white flex flex-col justify-between relative overflow-hidden hidden md:flex">
-            <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-white/10 blur-2xl pointer-events-none" />
-            <div className="relative z-10">
+          {/* Left Decorative Banner with Bupzo Looping Background Video */}
+          <div className="md:col-span-5 bg-black p-8 text-white flex flex-col justify-between relative overflow-hidden hidden md:flex">
+            <video
+              src="/Bupzo-gif.mp4"
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="absolute inset-0 w-full h-full object-cover opacity-75 pointer-events-none z-0"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-amber-900/30 z-10 pointer-events-none" />
+            <div className="relative z-20">
               <div className="flex items-center gap-2 mb-6">
                 <span className="font-extrabold text-2xl tracking-tight bg-white text-amber-600 px-3 py-1 rounded-xl shadow-sm">BUPZO</span>
               </div>
@@ -301,13 +308,13 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
                   <div className="text-2xl">🛡️</div>
                   <div>
                     <div className="text-lg font-bold">₹4.2M</div>
-                    <div className="text-[10px] text-white/80 uppercase font-semibold">Escrow Escrow Volume</div>
+                    <div className="text-[10px] text-white/80 uppercase font-semibold">Escrow Volume</div>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="relative z-10">
+            <div className="relative z-20">
               <h3 className="font-bold text-lg">Next-Gen AI Multi-Vendor Marketplace</h3>
               <p className="text-xs text-white/80 mt-1">Powered by PostgreSQL pgvector & Razorpay Escrow</p>
             </div>
