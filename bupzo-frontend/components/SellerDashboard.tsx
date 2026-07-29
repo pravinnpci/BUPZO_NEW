@@ -63,17 +63,19 @@ export function SellerDashboard({ onSwitchToCustomer }: { onSwitchToCustomer?: (
       const allSellers = await fetchSellers().catch(() => []);
       const activeUserId = user?.id || '';
       const activeUserName = user?.name || '';
-      const sId = (user as any)?.seller_id || activeUserId;
-      let mySeller = allSellers.find(s => 
-        (activeUserId && s.user_id && String(s.user_id) === String(activeUserId)) || 
-        (sId && String(s.id) === String(sId)) ||
-        (activeUserName && s.business_name && String(s.business_name).toLowerCase().includes(String(activeUserName).toLowerCase()))
-      );
-
-      if (!mySeller && allSellers.length > 0) {
-        mySeller = allSellers[0];
-      }
       
+      // Priority: match by user_id (most reliable)
+      let mySeller = allSellers.find(s => 
+        activeUserId && s.user_id && String(s.user_id) === String(activeUserId)
+      );
+      
+      // Fallback: match by name if user_id not matched
+      if (!mySeller && activeUserName) {
+        mySeller = allSellers.find(s =>
+          s.business_name && String(s.business_name).toLowerCase().includes(String(activeUserName).toLowerCase())
+        );
+      }
+
       const allCategories = await fetchCategories().catch(() => []);
       setCategories(allCategories);
 
@@ -85,9 +87,18 @@ export function SellerDashboard({ onSwitchToCustomer }: { onSwitchToCustomer?: (
         if(notifResp && notifResp.ok) notifResp.json().then(d => setNotifications(Array.isArray(d) ? d : []));
       }
 
-      const activeSellerId = mySeller?.id || (allSellers[0]?.id || '4b7a2edb-b4dd-4677-9d48-df90952297bf');
+      if (!mySeller) {
+        // No seller record found for this user — show "not a seller" state
+        setMySellerStatus('');
+        setMySellerId(null);
+        setIsLoading(false);
+        return;
+      }
+
+      const activeSellerId = mySeller.id;
       setMySellerId(activeSellerId);
-      setMySellerStatus('APPROVED');
+      // Use real status from DB ('APPROVED', 'PENDING', 'REJECTED')
+      setMySellerStatus(mySeller.status || 'PENDING');
       
       if (mySeller && typeof mySeller.kyc_details === 'string') {
         try { setMySellerKyc(JSON.parse(mySeller.kyc_details)); } catch(e) {}

@@ -427,27 +427,35 @@ export function CustomerSettings({ user }: { user: any }) {
       let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
       apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
       const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
-      const updatedData = {
-        user_id: user?.id,
+
+      const token = getAuthToken();
+      if (!token) {
+        setStatusMsg("⚠️ Session expired. Please log out and log in again to save settings.");
+        setIsLoading(false);
+        return;
+      }
+
+      const updatedData: any = {
         name: fullName,
-        email: email.trim(),
-        phone: phone.trim(),
-        address: address.trim(),
-        state: userState,
-        pincode: zipCode.trim(),
-        country: country,
-        address_lat: lat,
-        address_lng: lng,
         phone_verified: isPhoneVerifiedState,
         email_verified: isEmailVerifiedState
       };
 
-      const token = getAuthToken();
+      // Only include fields that are populated and valid
+      if (email.trim()) updatedData.email = email.trim();
+      if (phone.trim() && !phone.startsWith('GOOG-')) updatedData.phone = phone.trim();
+      if (address.trim()) updatedData.address = address.trim();
+      if (userState) updatedData.state = userState;
+      if (zipCode.trim()) updatedData.pincode = zipCode.trim();
+      if (country) updatedData.country = country;
+      if (lat) updatedData.address_lat = lat;
+      if (lng) updatedData.address_lng = lng;
+
       const response = await fetch(`${apiUrl}/api/users/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(updatedData)
       });
@@ -459,8 +467,12 @@ export function CustomerSettings({ user }: { user: any }) {
           localStorage.setItem('user', JSON.stringify(data.user));
           localStorage.setItem('bupzo_user', JSON.stringify(data.user));
         }
+        setStatusMsg("✨ Profile & Pinpoint Location saved to Database successfully!");
+      } else {
+        const errData = await response.json().catch(() => ({}));
+        const errMsg = typeof errData.detail === 'string' ? errData.detail : JSON.stringify(errData.detail || errData);
+        setStatusMsg(`⚠️ Save failed (${response.status}): ${errMsg}`);
       }
-      setStatusMsg("✨ Profile & Pinpoint Location saved to Database successfully!");
     } catch (err: any) {
       setStatusMsg("✨ Profile settings saved successfully!");
     } finally {

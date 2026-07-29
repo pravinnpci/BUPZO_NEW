@@ -435,8 +435,15 @@ class UserResponse(BaseModel):
     created_at: datetime
     address: Optional[str] = None
     pincode: Optional[str] = None
+    state: Optional[str] = None
+    country: Optional[str] = None
     is_seller: bool = False
     is_admin: bool = False
+    phone_verified: bool = False
+    email_verified: bool = False
+    google_verified: bool = False
+    address_lat: Optional[str] = None
+    address_lng: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -789,7 +796,12 @@ async def read_users():
     SELECT
         u.id, u.name, u.phone, u.email, u.is_premium, u.signup_platform,
         u.wallet_balance, u.privacy_accepted, u.created_at, u.address, u.pincode,
-        CASE WHEN s.id IS NOT NULL THEN TRUE ELSE FALSE END AS is_seller
+        u.state, u.country, u.address_lat, u.address_lng,
+        COALESCE(u.phone_verified, FALSE) as phone_verified,
+        COALESCE(u.email_verified, FALSE) as email_verified,
+        COALESCE(u.google_verified, FALSE) as google_verified,
+        CASE WHEN s.id IS NOT NULL THEN TRUE ELSE FALSE END AS is_seller,
+        s.status as seller_status
     FROM users u
     LEFT JOIN sellers s ON s.user_id = u.id
     ORDER BY u.created_at DESC
