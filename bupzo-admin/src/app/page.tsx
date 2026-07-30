@@ -1241,28 +1241,30 @@ export default function AdminMainPage() {
   };
 
   const handleAdminReplyMessage = async () => {
-    if (!adminReplyContent.trim()) return;
+    if (!adminReplyContent.trim() || !adminReplyTo) return;
     try {
-      const resp = await fetch(`${API_URL}/api/messages/?user_id=a01b1234-5678-abcd-ef01-1234567890aa`, {
+      const targetReceiverId = adminReplyTo.sender_id || adminReplyTo.user_id || adminReplyTo.from_id;
+      const resp = await fetch(`${API_URL}/api/messages/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sender_id: 'a01b1234-5678-abcd-ef01-1234567890aa',
-          receiver_id: adminReplyTo.sender_id,
-          subject: `Re: ${adminReplyTo.subject}`,
-          content: adminReplyContent
+          receiver_id: targetReceiverId,
+          subject: adminReplyTo.subject ? `Re: ${adminReplyTo.subject}` : 'Bupzo Admin Response',
+          content: adminReplyContent.trim()
         })
       });
       if (resp.ok) {
-        alert("Reply sent!");
+        showAdminToast("🎉 Reply sent to customer successfully!");
         setShowAdminReplyModal(false);
         setAdminReplyContent('');
         refreshAllAdminData();
       } else {
-        alert("Failed to send reply.");
+        const errData = await resp.json().catch(() => ({}));
+        showAdminToast(errData.detail || "Failed to send reply.", "error");
       }
-    } catch (e) {
-      alert("Error sending reply.");
+    } catch (e: any) {
+      showAdminToast(e.message || "Error sending reply.", "error");
     }
   };
 
@@ -2576,21 +2578,33 @@ export default function AdminMainPage() {
                           <td className="px-4 py-3 max-w-xs text-zinc-600 dark:text-zinc-400 font-medium truncate">{m.content}</td>
                           <td className="px-4 py-3 font-mono text-zinc-500 text-[11px] whitespace-nowrap">{m.created_at ? new Date(m.created_at).toLocaleString() : new Date().toLocaleString()}</td>
                           <td className="px-4 py-3 text-right">
-                            <button 
-                              onClick={async () => {
-                                if (!confirm("Are you sure you want to delete this message log?")) return;
-                                try {
-                                  const resp = await fetch(`${API_URL}/api/messages/${m.id}`, { method: 'DELETE' });
-                                  if (resp.ok) {
-                                    showAdminToast("🗑️ Message log deleted successfully!");
-                                    setMessages(prev => prev.filter(item => item.id !== m.id));
-                                  }
-                                } catch(e) { showAdminToast("Failed to delete message.", "error"); }
-                              }}
-                              className="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1 rounded text-xs font-bold transition shadow-sm"
-                            >
-                              Delete Log
-                            </button>
+                            <div className="flex justify-end gap-1.5">
+                              <button 
+                                onClick={() => {
+                                  setAdminReplyTo(m);
+                                  setAdminReplyContent('');
+                                  setShowAdminReplyModal(true);
+                                }}
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1 rounded text-xs font-bold transition shadow-sm flex items-center gap-1"
+                              >
+                                💬 Reply
+                              </button>
+                              <button 
+                                onClick={async () => {
+                                  if (!confirm("Are you sure you want to delete this message log?")) return;
+                                  try {
+                                    const resp = await fetch(`${API_URL}/api/messages/${m.id}`, { method: 'DELETE' });
+                                    if (resp.ok) {
+                                      showAdminToast("🗑️ Message log deleted successfully!");
+                                      setMessages(prev => prev.filter(item => item.id !== m.id));
+                                    }
+                                  } catch(e) { showAdminToast("Failed to delete message.", "error"); }
+                                }}
+                                className="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1 rounded text-xs font-bold transition shadow-sm"
+                              >
+                                Delete Log
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ));

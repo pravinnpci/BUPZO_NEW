@@ -94,9 +94,12 @@ export function CustomerSettings({ user }: { user: any }) {
   const [lastName, setLastName] = useState(nameParts.slice(1).join(' ') || '');
   const [email, setEmail] = useState(user?.email || '');
   
-  // Real phone state (strip GOOG- placeholder)
-  const initialPhone = user?.phone?.startsWith('GOOG-') ? '' : (user?.phone?.replace('+91', '') || ''); // Remove +91 for display
-  const [phone, setPhone] = useState(initialPhone);
+  // Real phone state (strip MOCK- and GOOG- placeholders)
+  const cleanInitialPhone = (p?: string) => {
+    if (!p || p.startsWith('GOOG-') || p.startsWith('MOCK-')) return '';
+    return p.replace('+91', '').trim();
+  };
+  const [phone, setPhone] = useState(cleanInitialPhone(user?.phone));
   
   // Strict Verification States permanently initialized from DB user object
   const [isPhoneVerifiedState, setIsPhoneVerifiedState] = useState(Boolean(user?.phone_verified));
@@ -162,7 +165,7 @@ export function CustomerSettings({ user }: { user: any }) {
       setFirstName(parts[0] || '');
       setLastName(parts.slice(1).join(' ') || '');
       setEmail(user.email || '');
-      const realP = user.phone?.startsWith('GOOG-') ? '' : (user.phone || '');
+      const realP = cleanInitialPhone(user.phone);
       setPhone(realP);
       setIsPhoneVerifiedState(Boolean(user.phone_verified));
       setIsEmailVerifiedState(Boolean(user.email_verified) || Boolean(user.google_verified));

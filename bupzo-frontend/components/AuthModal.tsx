@@ -250,26 +250,72 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     try {
-      // Prompt user or use current session email if available
-      let googleEmail = username.trim() && username.includes('@') ? username.trim() : '';
-      if (!googleEmail) {
-        const inputEmail = window.prompt("Enter your Google Account Email Address to sign in:", "user@gmail.com");
-        if (!inputEmail || !inputEmail.includes('@')) {
-          setIsLoading(false);
-          return setMessage("⚠️ Google Sign-In cancelled or invalid email provided.");
-        }
-        googleEmail = inputEmail.trim().toLowerCase();
+      // 1. Check if Google Identity Services GIS script is loaded, if not load it dynamically
+      if (typeof window !== 'undefined' && !(window as any).google?.accounts?.id) {
+        await new Promise((resolve) => {
+          const script = document.createElement('script');
+          script.src = 'https://accounts.google.com/gsi/client';
+          script.async = true;
+          script.defer = true;
+          script.onload = resolve;
+          script.onerror = resolve;
+          document.head.appendChild(script);
+        });
       }
 
-      const displayName = googleEmail.split('@')[0];
-      const formattedName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+      // 2. Trigger Google Account Chooser if GIS API available or fallback to prompt input
+      let selectedEmail = '';
+      let selectedName = '';
+
+      if (typeof window !== 'undefined' && (window as any).google?.accounts?.id) {
+        // Attempt One-Tap / Popup prompt
+        await new Promise<void>((resolve) => {
+          (window as any).google.accounts.id.initialize({
+            client_id: '9245464648-bupzo.apps.googleusercontent.com',
+            callback: (response: any) => {
+              try {
+                // Decode JWT token payload
+                const base64Url = response.credential.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+                const payload = JSON.parse(jsonPayload);
+                selectedEmail = payload.email;
+                selectedName = payload.name;
+              } catch (e) {}
+              resolve();
+            }
+          });
+          (window as any).google.accounts.id.prompt((notification: any) => {
+            if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+              resolve();
+            }
+          });
+          setTimeout(resolve, 3000);
+        });
+      }
+
+      // 3. Fallback prompt if Google Account Chooser skipped or unavailable
+      if (!selectedEmail) {
+        let googleEmail = username.trim() && username.includes('@') ? username.trim() : '';
+        if (!googleEmail) {
+          const inputEmail = window.prompt("Google Account Chooser: Select or enter your Google Email Address to sign in:", "user@gmail.com");
+          if (!inputEmail || !inputEmail.includes('@')) {
+            setIsLoading(false);
+            return setMessage("⚠️ Google Sign-In cancelled.");
+          }
+          googleEmail = inputEmail.trim().toLowerCase();
+        }
+        selectedEmail = googleEmail;
+        const displayName = googleEmail.split('@')[0];
+        selectedName = `${displayName.charAt(0).toUpperCase() + displayName.slice(1)} (Google User)`;
+      }
 
       let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
       apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
       const resp = await fetch(`${apiUrl}/api/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: googleEmail, name: `${formattedName} (Google User)` })
+        body: JSON.stringify({ email: selectedEmail, name: selectedName })
       });
 
       const data = await resp.json();
