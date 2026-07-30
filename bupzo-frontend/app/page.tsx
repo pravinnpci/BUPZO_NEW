@@ -844,10 +844,10 @@ export default function Home() {
               return;
             }
             if (userRole === 'customer') {
-              if (user.isSeller || user.is_seller || user.seller_status === 'APPROVED') {
+              if (user.isSeller || user.is_seller || user.seller_status === 'APPROVED' || user.seller_status === 'PENDING') {
                 setUserRole('seller');
               } else {
-                alert('ℹ️ You are currently logged in as a Customer. Please click "Become a Seller" to register as a Merchant!');
+                alert('ℹ️ You are currently registered as a Customer. Please click "Become a Seller" to submit your Merchant KYC application!');
                 setCustomerTab('kyc');
               }
             } else {

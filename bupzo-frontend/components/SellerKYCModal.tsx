@@ -93,9 +93,11 @@ export default function SellerKYCModal({ onClose }: { onClose: () => void }) {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL ? process.env.NEXT_PUBLIC_API_URL.replace(/\/$/, '') : 'http://localhost:8004';
       const payload = {
-        phone: user.phone || `MOCK-${user.id.substring(0, 8)}`,
+        user_id: user.id,
+        phone: user.phone && !user.phone.startsWith('GOOG-') ? user.phone : `MOCK-${user.id.substring(0, 8)}`,
         email: user.email || undefined,
         business_name: businessName.trim(),
+        status: 'PENDING',
         kyc_details: { 
           gstin: gstin.trim().toUpperCase(), 
           pan: pan.trim().toUpperCase(), 
@@ -117,8 +119,11 @@ export default function SellerKYCModal({ onClose }: { onClose: () => void }) {
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail || 'Failed to submit KYC.');
       
-      alert('🎉 KYC Submitted Successfully! You are now a Seller.');
-      setUser({ ...user, isSeller: true });
+      alert('🎉 Merchant KYC Submitted Successfully! Your application is under review by Admin.');
+      const updatedUser = { ...user, isSeller: true, is_seller: true, seller_status: 'PENDING' };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      localStorage.setItem('bupzo_user', JSON.stringify(updatedUser));
       onClose();
     } catch (err: any) {
       setError(err.message || 'Submission error');

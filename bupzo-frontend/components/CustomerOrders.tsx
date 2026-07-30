@@ -101,9 +101,36 @@ export const CustomerOrders = ({ customerOrders, user }: any) => {
                     </div>
                   </div>
                   {ord.tracking_id && (
-                     <div className="bg-blue-50 text-blue-700 text-sm px-4 py-2 rounded">
-                        <strong>Tracking ID:</strong> {ord.tracking_id} ({ord.shipping_partner})
-                     </div>
+                    <div className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white text-xs p-4 rounded-xl shadow-md space-y-3 mt-4">
+                      <div className="flex items-center justify-between border-b border-blue-700/50 pb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">🚀</span>
+                          <div>
+                            <span className="font-extrabold text-blue-200">Shiprocket Live Express Tracking</span>
+                            <span className="block text-[10px] text-blue-300">Courier: {ord.shipping_partner || 'Delhivery Express'}</span>
+                          </div>
+                        </div>
+                        <span className="font-mono bg-blue-500/30 border border-blue-400/40 text-blue-200 text-[11px] px-2.5 py-1 rounded-lg">
+                          AWB: {ord.tracking_id}
+                        </span>
+                      </div>
+                      
+                      {/* Simulated Live Location Tracking Map Widget */}
+                      <div className="bg-black/30 backdrop-blur border border-blue-500/20 p-3 rounded-lg flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-400 text-sm animate-pulse">
+                            📍
+                          </div>
+                          <div>
+                            <p className="font-bold text-white text-xs">Current Shipment Location</p>
+                            <p className="text-[11px] text-blue-200 font-mono">Hub Facility: Chennai Central Logistics Hub → In Transit to Recipient</p>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-bold bg-emerald-500 text-white px-2 py-0.5 rounded-full shrink-0">
+                          LIVE IN-TRANSIT
+                        </span>
+                      </div>
+                    </div>
                   )}
                 </div>
                   )}

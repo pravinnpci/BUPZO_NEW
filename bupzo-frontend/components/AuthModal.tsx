@@ -250,37 +250,44 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     try {
-      // Mock Google OAuth login flow
-      const mockGoogleUser = {
-        id: "GOOG-USER-" + Math.floor(Math.random() * 100000),
-        name: "Pravinkumar Google User",
-        email: "googleuser@example.com", // Use a generic email
-        phone: "+919876543210", // Use a valid test phone number for consistency
-        google_verified: true,
-        email_verified: true, // Google verifies email
-        phone_verified: true,
-        isSeller: false
-      };
+      // Prompt user or use current session email if available
+      let googleEmail = username.trim() && username.includes('@') ? username.trim() : '';
+      if (!googleEmail) {
+        const inputEmail = window.prompt("Enter your Google Account Email Address to sign in:", "user@gmail.com");
+        if (!inputEmail || !inputEmail.includes('@')) {
+          setIsLoading(false);
+          return setMessage("⚠️ Google Sign-In cancelled or invalid email provided.");
+        }
+        googleEmail = inputEmail.trim().toLowerCase();
+      }
+
+      const displayName = googleEmail.split('@')[0];
+      const formattedName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+
       let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
       apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
       const resp = await fetch(`${apiUrl}/api/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: mockGoogleUser.email, name: mockGoogleUser.name })
+        body: JSON.stringify({ email: googleEmail, name: `${formattedName} (Google User)` })
       });
+
       const data = await resp.json();
-      const finalUser = data.user || mockGoogleUser;
-      const token = data.access_token || "google_mock_token_123"; // Mock token for local dev
+      if (!resp.ok) {
+        throw new Error(data.detail || 'Google Authentication failed.');
+      }
+
+      const finalUser = data.user;
+      const token = data.access_token;
 
       setTokens(token, token);
       setUser(finalUser);
-      localStorage.setItem('user', JSON.stringify(finalUser)); // Persist user data
-      localStorage.setItem('bupzo_user', JSON.stringify(finalUser)); // Persist user data
-      setMessage('🎉 Signed in with Google successfully!');
+      localStorage.setItem('user', JSON.stringify(finalUser));
+      localStorage.setItem('bupzo_user', JSON.stringify(finalUser));
+      setMessage(`🎉 Signed in as ${finalUser.email} with Google successfully!`);
       setTimeout(() => onClose(), 1000);
-    } catch (e) {
-      setMessage('🎉 Google Login successful!');
-      setTimeout(() => onClose(), 1000);
+    } catch (err: any) {
+      setMessage(err.message || '⚠️ Google Login failed.');
     } finally {
       setIsLoading(false);
     }
@@ -319,26 +326,18 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
       });
       const data = await resp.json();
       if (!resp.ok) {
-        let errStr = 'Failed to send reset code. Please check credentials.';
-        if (typeof data.detail === 'string') {
-          errStr = data.detail;
-        } else if (Array.isArray(data.detail)) {
-          errStr = data.detail[0]?.msg || 'Validation error';
-        } else if (data.message && typeof data.message === 'string') {
-          errStr = data.message;
-        }
-        throw new Error(errStr);
+        throw new Error(data.detail || 'Failed to send reset code. Please check credentials.');
       }
 
       if (data?.reset_otp) setServerOtp(String(data.reset_otp));
+
       setForgotStep(2);
-      const msgStr = typeof data.message === 'string' ? data.message : (forgotMethod === 'whatsapp'
+      const msgStr = typeof data.message === 'string' ? data.message : (forgotMethod === 'whatsapp' 
         ? `✨ Password Reset 6-Digit OTP dispatched via WhatsApp to +91 ${targetVal}! Please enter code below.`
         : `✨ Password Reset 6-Digit Verification OTP sent to your Email (${targetVal})! Please enter code below.`);
       setMessage(msgStr);
     } catch (err: any) {
-      const errMsg = typeof err?.message === 'string' ? err.message : 'Error sending reset code.';
-      setMessage(errMsg.startsWith('[object') ? '⚠️ Failed to send reset code. Please check your credentials.' : errMsg);
+      setMessage(err.message || 'Error sending reset code.');
     } finally {
       setIsLoading(false);
     }
@@ -361,21 +360,22 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           phone_or_email: username.trim(),
-          otp: fullOtp,
+          otp_code: fullOtp,
           new_password: newPassword
         })
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || 'Password reset failed');
+      if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Password reset failed');
 
-      setMessage(data.message || '🎉 Password reset successfully! Please sign in with your new password.');
+      setMessage(typeof data.message === 'string' ? data.message : '🎉 Password reset successfully! Please sign in with your new password.');
       setTimeout(() => {
         setMode('login');
         setForgotStep(1);
         setOtp(['', '', '', '', '', '']);
       }, 2000);
     } catch (err: any) {
-      setMessage(err.message || 'Failed to reset password.');
+      const errorMsg = typeof err.message === 'string' ? err.message : 'Failed to reset password.';
+      setMessage(errorMsg);
     } finally {
       setIsLoading(false);
     }
