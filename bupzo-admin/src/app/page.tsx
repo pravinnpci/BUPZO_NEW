@@ -1243,14 +1243,14 @@ export default function AdminMainPage() {
   const handleAdminReplyMessage = async () => {
     if (!adminReplyContent.trim() || !adminReplyTo) return;
     try {
-      const targetReceiverId = adminReplyTo.sender_id || adminReplyTo.user_id || adminReplyTo.from_id;
+      const receiver_id = adminReplyTo.sender_id || adminReplyTo.user_id || adminReplyTo.from_id || 'b02c2345-6789-bcde-f012-2345678901bb';
       const resp = await fetch(`${API_URL}/api/messages/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sender_id: 'a01b1234-5678-abcd-ef01-1234567890aa',
-          receiver_id: targetReceiverId,
-          subject: adminReplyTo.subject ? `Re: ${adminReplyTo.subject}` : 'Bupzo Admin Response',
+          receiver_id: receiver_id,
+          subject: adminReplyTo.subject ? `Re: ${adminReplyTo.subject}` : 'Bupzo Admin Reply',
           content: adminReplyContent.trim()
         })
       });
@@ -2525,6 +2525,12 @@ export default function AdminMainPage() {
                       <th className="px-4 py-3 cursor-pointer hover:text-primary" onClick={() => handleMsgSort('sender_name')}>
                         From {msgSortKey === 'sender_name' ? (msgSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
                       </th>
+                      <th className="px-4 py-3 cursor-pointer hover:text-primary" onClick={() => handleMsgSort('sender_email')}>
+                        Email ID {msgSortKey === 'sender_email' ? (msgSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
+                      </th>
+                      <th className="px-4 py-3 cursor-pointer hover:text-primary" onClick={() => handleMsgSort('sender_phone')}>
+                        Phone Number {msgSortKey === 'sender_phone' ? (msgSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
+                      </th>
                       <th className="px-4 py-3 cursor-pointer hover:text-primary" onClick={() => handleMsgSort('receiver_name')}>
                         To {msgSortKey === 'receiver_name' ? (msgSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
                       </th>
@@ -2545,6 +2551,8 @@ export default function AdminMainPage() {
                       const s = msgSearchTerm.toLowerCase();
                       const filtered = messages.filter((m: any) => {
                         return (m.sender_name || '').toLowerCase().includes(s) || 
+                               (m.sender_email || m.email || '').toLowerCase().includes(s) || 
+                               (m.sender_phone || m.phone || '').toLowerCase().includes(s) || 
                                (m.receiver_name || '').toLowerCase().includes(s) || 
                                (m.subject || '').toLowerCase().includes(s) || 
                                (m.content || '').toLowerCase().includes(s);
@@ -2556,6 +2564,12 @@ export default function AdminMainPage() {
                         if (msgSortKey === 'created_at' || msgSortKey === 'date') {
                           aVal = new Date(a.created_at || a.date || Date.now()).getTime();
                           bVal = new Date(b.created_at || b.date || Date.now()).getTime();
+                        } else if (msgSortKey === 'sender_email') {
+                          aVal = String(a.sender_email || a.email || '').toLowerCase();
+                          bVal = String(b.sender_email || b.email || '').toLowerCase();
+                        } else if (msgSortKey === 'sender_phone') {
+                          aVal = String(a.sender_phone || a.phone || '').toLowerCase();
+                          bVal = String(b.sender_phone || b.phone || '').toLowerCase();
                         } else {
                           aVal = String(aVal || '').toLowerCase();
                           bVal = String(bVal || '').toLowerCase();
@@ -2566,13 +2580,15 @@ export default function AdminMainPage() {
 
                       if (sorted.length === 0) {
                         return (
-                          <tr><td colSpan={6} className="px-4 py-8 text-center text-zinc-500 font-medium">No messages found matching criteria.</td></tr>
+                          <tr><td colSpan={8} className="px-4 py-8 text-center text-zinc-500 font-medium">No messages found matching criteria.</td></tr>
                         );
                       }
 
                       return sorted.map((m: any) => (
                         <tr key={m.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40">
                           <td className="px-4 py-3 font-bold">{m.sender_name || 'System User'}</td>
+                          <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 font-medium">{m.sender_email || m.email || 'N/A'}</td>
+                          <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 font-medium">{m.sender_phone || m.phone || 'N/A'}</td>
                           <td className="px-4 py-3 font-bold">{m.receiver_name || 'Bupzo Patron'}</td>
                           <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300 font-bold">{m.subject || 'Message Notice'}</td>
                           <td className="px-4 py-3 max-w-xs text-zinc-600 dark:text-zinc-400 font-medium truncate">{m.content}</td>

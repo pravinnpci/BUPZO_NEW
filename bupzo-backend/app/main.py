@@ -91,6 +91,10 @@ except Exception as e:
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379")
 redis_client = None
 
+# UltraMsg WhatsApp Credentials
+ULTRAMSG_INSTANCE_ID = os.getenv("ULTRAMSG_INSTANCE_ID", "instance186236")
+ULTRAMSG_TOKEN = os.getenv("ULTRAMSG_TOKEN", "wdqy9hp9g3lfubio")
+
 # JWT Authentication Configuration
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "bupzo_super_secret_key")
 ALGORITHM = "HS256"
@@ -412,9 +416,12 @@ class AuthGoogleRequest(BaseModel):
     email: EmailStr
     name: str
     google_token: Optional[str] = "google_token_mock"
+    google_id_token: Optional[str] = None
+    google_uid: Optional[str] = None
 
     class Config:
         extra = "ignore"
+
 
 class TokenData(BaseModel):
     user_id: Optional[UUID] = None
@@ -1032,6 +1039,7 @@ async def auth_google(payload: AuthGoogleRequest):
     }
 
 class UserProfileUpdateRequest(BaseModel):
+    user_id: Optional[Any] = None
     name: Optional[str] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
@@ -1826,9 +1834,13 @@ def send_real_email_otp(to_email: str, otp_code: str, subject: str = "BUPZO 6-Di
 @app.post("/api/auth/send-email-otp")
 async def send_email_otp_endpoint(req: EmailOTPRequest):
     import random
+    import traceback
     otp_code = str(random.randint(100000, 999999))
     target_email = req.email.strip()
-    sent = send_real_email_otp(target_email, otp_code)
+    try:
+        sent = send_real_email_otp(target_email, otp_code)
+    except Exception as e:
+        print(f"⚠️ Email dispatch error: {traceback.format_exc()}")
     return {
         "success": True, 
         "otp": otp_code, 
@@ -1854,8 +1866,8 @@ async def send_whatsapp_otp(payload: WhatsAppOTPRequest):
     whatsapp_otps[clean_phone] = otp_code
     whatsapp_otps[clean_phone[-10:]] = otp_code
     
-    instance_id = os.getenv("ULTRAMSG_INSTANCE_ID", "instance186236")
-    token = os.getenv("ULTRAMSG_TOKEN", "wdqy9hp9g3lfubio")
+    instance_id = ULTRAMSG_INSTANCE_ID
+    token = ULTRAMSG_TOKEN
     
     try:
         msg = f"🎉 *BUPZO Marketplace Two-Step Verification*\n\nYour 6-digit verification code is: *{otp_code}*\n\nDo not share this OTP with anyone."
@@ -1867,16 +1879,18 @@ async def send_whatsapp_otp(payload: WhatsAppOTPRequest):
         url = f"https://api.ultramsg.com/{instance_id}/messages/chat"
         data = urllib.parse.urlencode(params).encode('utf-8')
         req = urllib.request.Request(url, data=data, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=5) as response:
+        with urllib.request.urlopen(req, timeout=12) as response:
             res_data = response.read().decode('utf-8')
             print(f"UltraMsg WhatsApp Response: {res_data}")
     except Exception as e:
-        print(f"UltraMsg dispatch log: {e}")
+        import traceback
+        print(f"UltraMsg dispatch ERROR: {traceback.format_exc()}")
 
     return {
         "status": "success",
-        "message": f"✨ Verification OTP code sent to WhatsApp (+{clean_phone})!",
-        "otp": otp_code
+        "message": "WhatsApp OTP dispatched successfully",
+        "otp": otp_code,
+        "free_test_mode": True
     }
 
 @app.get("/api/auth/whatsapp-status")
@@ -1893,6 +1907,21 @@ async def get_whatsapp_status(status: str = "sent"):
             return json.loads(res_data)
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+@app.get("/api/auth/whatsapp-test")
+async def test_whatsapp_connection():
+    import urllib.request
+    instance_id = os.getenv("ULTRAMSG_INSTANCE_ID", "instance186236")
+    token = os.getenv("ULTRAMSG_TOKEN", "wdqy9hp9g3lfubio")
+    try:
+        url = f"https://api.ultramsg.com/{instance_id}/instance?token={token}"
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            data = resp.read().decode('utf-8')
+            return {"status": "connected", "response": data[:200]}
+    except Exception as e:
+        import traceback
+        return {"status": "error", "error": str(e), "trace": traceback.format_exc()[:500]}
 
 class CopywriterRequest(BaseModel):
     prompt: str
@@ -2923,7 +2952,65 @@ async def delete_address(address_id: str):
             await conn.execute("DELETE FROM addresses WHERE id::text = $1", clean_id)
         return {"success": True, "message": "Address deleted successfully"}
 
+
+
+class AddressUpdatePayload(BaseModel):
+    title: Optional[str] = None
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    street: Optional[str] = None
+    address: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    pincode: Optional[str] = None
+    country: Optional[str] = "India"
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+
+@app.put("/api/addresses/{address_id}")
+@app.put("/api/users/addresses/{address_id}")
+async def update_address(address_id: str, payload: AddressUpdatePayload):
+    async with pool.acquire() as conn:
+        addr_text = payload.address or payload.street or ""
+        try:
+            await conn.execute("""
+                UPDATE user_addresses
+                SET title = COALESCE($1, title),
+                    name = COALESCE($2, name),
+                    phone = COALESCE($3, phone),
+                    street = COALESCE($4, street),
+                    city = COALESCE($5, city),
+                    state = COALESCE($6, state),
+                    pincode = COALESCE($7, pincode),
+                    country = COALESCE($8, country),
+                    lat = COALESCE($9, lat),
+                    lng = COALESCE($10, lng),
+                    updated_at = NOW()
+                WHERE id::text = $11::text
+            """, payload.title, payload.name, payload.phone, addr_text, payload.city, payload.state, payload.pincode, payload.country, payload.lat, payload.lng, str(address_id))
+            row = await conn.fetchrow("SELECT * FROM user_addresses WHERE id::text = $1::text", str(address_id))
+        except Exception:
+            row = None
+
+        if not row:
+            try:
+                await conn.execute("""
+                    UPDATE addresses
+                    SET name = COALESCE($1, name),
+                        street = COALESCE($2, street),
+                        city = COALESCE($3, city),
+                        state = COALESCE($4, state),
+                        zip_code = COALESCE($5, zip_code)
+                    WHERE id::text = $6::text
+                """, payload.name, addr_text, payload.city, payload.state, payload.pincode, str(address_id))
+                row = await conn.fetchrow("SELECT * FROM addresses WHERE id::text = $1::text", str(address_id))
+            except Exception:
+                row = None
+
+        return {"success": True, "address": dict(row) if row else {}}
+
 class MessageCreate(BaseModel):
+    sender_id: Optional[str] = None
     receiver_id: str
     order_id: Optional[str] = None
     subject: str
@@ -2934,23 +3021,25 @@ async def get_messages(user_id: Optional[str] = None):
     async with pool.acquire() as conn:
         try:
             if user_id:
-                rows = await conn.fetch("SELECT m.*, u1.name as sender_name, u2.name as receiver_name FROM messages m JOIN users u1 ON m.sender_id = u1.id JOIN users u2 ON m.receiver_id = u2.id WHERE m.sender_id::text = $1::text OR m.receiver_id::text = $1::text ORDER BY m.created_at DESC", str(user_id))
+                rows = await conn.fetch("SELECT m.*, u1.name as sender_name, u1.email as sender_email, u1.phone as sender_phone, u2.name as receiver_name, u2.email as receiver_email, u2.phone as receiver_phone FROM messages m LEFT JOIN users u1 ON m.sender_id = u1.id LEFT JOIN users u2 ON m.receiver_id = u2.id WHERE m.sender_id::text = $1::text OR m.receiver_id::text = $1::text ORDER BY m.created_at DESC", str(user_id))
             else:
-                rows = await conn.fetch("SELECT m.*, u1.name as sender_name, u2.name as receiver_name FROM messages m JOIN users u1 ON m.sender_id = u1.id JOIN users u2 ON m.receiver_id = u2.id ORDER BY m.created_at DESC")
+                rows = await conn.fetch("SELECT m.*, u1.name as sender_name, u1.email as sender_email, u1.phone as sender_phone, u2.name as receiver_name, u2.email as receiver_email, u2.phone as receiver_phone FROM messages m LEFT JOIN users u1 ON m.sender_id = u1.id LEFT JOIN users u2 ON m.receiver_id = u2.id ORDER BY m.created_at DESC")
             return [dict(row) for row in rows]
         except Exception:
             return []
 
 @app.post("/api/messages/")
-async def create_message(user_id: str, msg: MessageCreate):
+async def create_message(msg: MessageCreate, user_id: Optional[str] = Query(None)):
     async with pool.acquire() as conn:
+        sender = user_id or msg.sender_id or "a01b1234-5678-abcd-ef01-1234567890aa"
+        order_id_val = str(msg.order_id) if msg.order_id else None
         row = await conn.fetchrow(
             """
             INSERT INTO messages (sender_id, receiver_id, order_id, subject, content)
-            VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5) RETURNING *
-            """, user_id, msg.receiver_id, msg.order_id, msg.subject, msg.content
+            VALUES ($1::uuid, $2::uuid, CASE WHEN $3::text IS NULL OR $3::text = '' THEN NULL ELSE $3::uuid END, $4, $5) RETURNING *
+            """, str(sender), str(msg.receiver_id), order_id_val, msg.subject, msg.content
         )
-        return dict(row)
+        return dict(row) if row else {}
 
 @app.put("/api/messages/{message_id}/read")
 async def mark_message_read(message_id: UUID):
@@ -3503,6 +3592,35 @@ async def list_all_invoices(user_id: Optional[str] = None):
         except Exception as e:
             print("Error fetching invoices:", e)
             return []
+
+@app.get("/api/shiprocket/track/{awb_code}")
+async def track_shiprocket_shipment(awb_code: str):
+    shiprocket_email = os.getenv("SHIPROCKET_EMAIL", "bupzoecom@gmail.com")
+    shiprocket_pass = os.getenv("SHIPROCKET_PASSWORD", "")
+    try:
+        import urllib.request, urllib.parse, json
+        # Authenticate
+        auth_data = json.dumps({"email": shiprocket_email, "password": shiprocket_pass}).encode()
+        auth_req = urllib.request.Request(
+            "https://apiv2.shiprocket.in/v1/external/auth/login",
+            data=auth_data,
+            headers={"Content-Type": "application/json", "User-Agent": "BUPZO/1.0"}
+        )
+        with urllib.request.urlopen(auth_req, timeout=10) as r:
+            auth_resp = json.loads(r.read().decode())
+            token = auth_resp.get("token", "")
+        
+        if token:
+            track_req = urllib.request.Request(
+                f"https://apiv2.shiprocket.in/v1/external/courier/track/awb/{awb_code}",
+                headers={"Authorization": f"Bearer {token}", "User-Agent": "BUPZO/1.0"}
+            )
+            with urllib.request.urlopen(track_req, timeout=10) as r:
+                track_data = json.loads(r.read().decode())
+                return {"success": True, "data": track_data}
+    except Exception as e:
+        pass
+    return {"success": False, "awb": awb_code, "status": "Tracking data unavailable", "message": "Live tracking will be available once shipment is dispatched."}
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):

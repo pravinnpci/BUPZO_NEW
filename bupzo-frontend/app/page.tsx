@@ -712,7 +712,9 @@ export default function Home() {
     }).filter(Boolean) as any);
   };
 
-  const handleCheckoutSubmit = async (walletAmountUsed: number = 0, shippingCost: number = 50, shippingPartner: string = 'Delhivery', trustDonation: number = 0) => {
+  const TRUST_DONATION_AMOUNT = 2;
+
+  const handleCheckoutSubmit = async (walletAmountUsed: number = 0, shippingCost: number = 50, shippingPartner: string = 'Delhivery', trustDonation: number = TRUST_DONATION_AMOUNT) => {
     if (!user || !user.id || !user.phone) {
       setIsAuthModalOpen(true);
       alert("Please login to proceed with checkout.");
@@ -749,7 +751,7 @@ export default function Home() {
     }
   };
 
-  const executeCheckout = async (walletAmountUsed: number, shippingCost: number, shippingPartner: string, trustDonation: number = 0) => {
+  const executeCheckout = async (walletAmountUsed: number, shippingCost: number, shippingPartner: string, trustDonation: number = TRUST_DONATION_AMOUNT) => {
     try {
       const sellerCarts: Record<string, any[]> = {};
       for (const item of cart) {
@@ -769,7 +771,8 @@ export default function Home() {
           total_amount: sellerSubtotal + (shippingCost / numSellers) + (trustDonation / numSellers),
           order_source: 'WEB',
           shipping_partner: shippingPartner,
-          payment_gateway: paymentAmount > 0 ? 'Razorpay' : 'Wallet'
+          payment_gateway: paymentAmount > 0 ? 'Razorpay' : 'Wallet',
+          trust_donation_amount: trustDonation / numSellers
         });
       }
 
@@ -844,12 +847,7 @@ export default function Home() {
               return;
             }
             if (userRole === 'customer') {
-              if (user.isSeller || user.is_seller || user.seller_status === 'APPROVED' || user.seller_status === 'PENDING') {
-                setUserRole('seller');
-              } else {
-                alert('ℹ️ You are currently registered as a Customer. Please click "Become a Seller" to submit your Merchant KYC application!');
-                setCustomerTab('kyc');
-              }
+              setUserRole('seller');
             } else {
               setUserRole('customer');
             }

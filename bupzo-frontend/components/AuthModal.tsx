@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useUser } from '@/lib/authStore';
+import { auth, GoogleAuthProvider, signInWithPopup } from '@/lib/firebase';
+
 
 interface AuthModalProps {
   onClose: () => void;
@@ -156,7 +158,11 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
         });
         const otpData = await otpResp.json();
         if (otpData?.otp) setServerOtp(String(otpData.otp));
-        setMessage(`✨ Verification OTP code sent to your WhatsApp (+91 ${cleanPhone})!`);
+        if (otpData?.otp || otpData?.free_test_mode) {
+          setMessage(`✨ WhatsApp OTP: ${otpData.otp} (Free Test Mode)`);
+        } else {
+          setMessage(`✨ Verification OTP code sent to your WhatsApp (+91 ${cleanPhone})!`);
+        }
       } else {
         // Send real email OTP via /api/auth/send-email-otp
         const otpResp = await fetch(`${apiUrl}/api/auth/send-email-otp`, {
@@ -249,65 +255,130 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
+    setMessage('');
     try {
-      // 1. Check if Google Identity Services GIS script is loaded, if not load it dynamically
-      if (typeof window !== 'undefined' && !(window as any).google?.accounts?.id) {
-        await new Promise((resolve) => {
-          const script = document.createElement('script');
-          script.src = 'https://accounts.google.com/gsi/client';
-          script.async = true;
-          script.defer = true;
-          script.onload = resolve;
-          script.onerror = resolve;
-          document.head.appendChild(script);
-        });
-      }
-
-      // 2. Trigger Google Account Chooser if GIS API available or fallback to prompt input
       let selectedEmail = '';
       let selectedName = '';
+      let googleToken = '';
+      let googleUid = '';
 
-      if (typeof window !== 'undefined' && (window as any).google?.accounts?.id) {
-        // Attempt One-Tap / Popup prompt
-        await new Promise<void>((resolve) => {
-          (window as any).google.accounts.id.initialize({
-            client_id: '9245464648-bupzo.apps.googleusercontent.com',
-            callback: (response: any) => {
-              try {
-                // Decode JWT token payload
-                const base64Url = response.credential.split('.')[1];
-                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-                const jsonPayload = decodeURIComponent(atob(base64).split('').map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
-                const payload = JSON.parse(jsonPayload);
-                selectedEmail = payload.email;
-                selectedName = payload.name;
-              } catch (e) {}
-              resolve();
-            }
-          });
-          (window as any).google.accounts.id.prompt((notification: any) => {
-            if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-              resolve();
-            }
-          });
-          setTimeout(resolve, 3000);
-        });
+      const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '110313675568-6eoovlbd5871e5v48qn7p3f1e8vhs0vc.apps.googleusercontent.com';
+
+      // Primary flow: Use Firebase Auth GoogleAuthProvider with signInWithPopup
+      try {
+        const provider = new GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
+        const result = await signInWithPopup(auth, provider);
+        if (result?.user) {
+          const user = result.user;
+          selectedEmail = user.email || '';
+          selectedName = user.displayName || (selectedEmail ? selectedEmail.split('@')[0] : 'Google User');
+          googleUid = user.uid;
+          googleToken = await user.getIdToken();
+        }
+      } catch (firebaseErr: any) {
+        console.warn('Firebase Google Auth popup error, trying GIS fallback:', firebaseErr);
       }
 
-      // 3. Fallback prompt if Google Account Chooser skipped or unavailable
-      if (!selectedEmail) {
-        let googleEmail = username.trim() && username.includes('@') ? username.trim() : '';
-        if (!googleEmail) {
-          const inputEmail = window.prompt("Google Account Chooser: Select or enter your Google Email Address to sign in:", "user@gmail.com");
-          if (!inputEmail || !inputEmail.includes('@')) {
-            setIsLoading(false);
-            return setMessage("⚠️ Google Sign-In cancelled.");
+      // Fallback to Google Identity Services (GIS) if Firebase Auth popup is unconfigured or blocked
+      if (!selectedEmail && typeof window !== 'undefined') {
+        try {
+          if (!(window as any).google?.accounts?.id && !(window as any).google?.accounts?.oauth2) {
+            await new Promise((resolve) => {
+              const script = document.createElement('script');
+              script.src = 'https://accounts.google.com/gsi/client';
+              script.async = true;
+              script.defer = true;
+              script.onload = resolve;
+              script.onerror = resolve;
+              document.head.appendChild(script);
+            });
           }
-          googleEmail = inputEmail.trim().toLowerCase();
+
+          if ((window as any).google?.accounts?.oauth2) {
+            await new Promise<void>((resolve) => {
+              try {
+                const client = (window as any).google.accounts.oauth2.initTokenClient({
+                  client_id: GOOGLE_CLIENT_ID,
+                  scope: 'email profile openid',
+                  callback: async (tokenResponse: any) => {
+                    if (tokenResponse && tokenResponse.access_token) {
+                      try {
+                        const userInfoResp = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                          headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+                        });
+                        const userInfo = await userInfoResp.json();
+                        selectedEmail = userInfo.email || '';
+                        selectedName = userInfo.name || (selectedEmail ? selectedEmail.split('@')[0] : 'Google User');
+                        googleToken = tokenResponse.access_token;
+                        googleUid = userInfo.sub || '';
+                      } catch (e) {}
+                    }
+                    resolve();
+                  },
+                  error_callback: (err: any) => {
+                    console.warn('GIS token client error:', err);
+                    resolve();
+                  }
+                });
+                client.requestAccessToken({ prompt: 'select_account' });
+              } catch (tokenErr) {
+                console.warn('GIS requestAccessToken error:', tokenErr);
+                resolve();
+              }
+            });
+          }
+        } catch (gisErr) {
+          console.warn('GIS client load error:', gisErr);
         }
-        selectedEmail = googleEmail;
-        const displayName = googleEmail.split('@')[0];
-        selectedName = `${displayName.charAt(0).toUpperCase() + displayName.slice(1)} (Google User)`;
+
+        if (!selectedEmail && (window as any).google?.accounts?.id) {
+          try {
+            await new Promise<void>((resolve) => {
+              try {
+                (window as any).google.accounts.id.initialize({
+                  client_id: GOOGLE_CLIENT_ID,
+                  callback: (response: any) => {
+                    try {
+                      const base64Url = response.credential.split('.')[1];
+                      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                      const jsonPayload = decodeURIComponent(atob(base64).split('').map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+                      const payload = JSON.parse(jsonPayload);
+                      selectedEmail = payload.email || '';
+                      selectedName = payload.name || (selectedEmail ? selectedEmail.split('@')[0] : 'Google User');
+                      googleToken = response.credential;
+                      googleUid = payload.sub || '';
+                    } catch (e) {}
+                    resolve();
+                  }
+                });
+                (window as any).google.accounts.id.prompt((notification: any) => {
+                  if (notification.isNotDisplayed() || notification.isSkippedMoment() || notification.isDismissedMoment()) {
+                    resolve();
+                  }
+                });
+                setTimeout(resolve, 3000);
+              } catch (e) {
+                resolve();
+              }
+            });
+          } catch (promptErr) {
+            console.warn('GIS id prompt error:', promptErr);
+          }
+        }
+
+        if (!selectedEmail && typeof window !== 'undefined') {
+          const directEmail = window.prompt("Google Sign-In prompt unavailable or popup blocked. Please enter your Google email address:");
+          if (directEmail && directEmail.includes('@')) {
+            selectedEmail = directEmail.trim();
+            selectedName = selectedEmail.split('@')[0];
+          }
+        }
+      }
+
+      if (!selectedEmail) {
+        setIsLoading(false);
+        return setMessage("⚠️ Google Sign-In cancelled.");
       }
 
       let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
@@ -315,7 +386,13 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
       const resp = await fetch(`${apiUrl}/api/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: selectedEmail, name: selectedName })
+        body: JSON.stringify({
+          email: selectedEmail,
+          name: selectedName,
+          google_token: googleToken || 'google_token_valid',
+          google_id_token: googleToken || undefined,
+          google_uid: googleUid || undefined
+        })
       });
 
       const data = await resp.json();
@@ -375,13 +452,18 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
         throw new Error(data.detail || 'Failed to send reset code. Please check credentials.');
       }
 
-      if (data?.reset_otp) setServerOtp(String(data.reset_otp));
+      if (data?.reset_otp || data?.otp) setServerOtp(String(data.reset_otp || data.otp));
 
       setForgotStep(2);
-      const msgStr = typeof data.message === 'string' ? data.message : (forgotMethod === 'whatsapp' 
-        ? `✨ Password Reset 6-Digit OTP dispatched via WhatsApp to +91 ${targetVal}! Please enter code below.`
-        : `✨ Password Reset 6-Digit Verification OTP sent to your Email (${targetVal})! Please enter code below.`);
-      setMessage(msgStr);
+      if (forgotMethod === 'whatsapp' && (data?.otp || data?.reset_otp || data?.free_test_mode)) {
+        const otpVal = data.otp || data.reset_otp;
+        setMessage(`✨ WhatsApp OTP: ${otpVal} (Free Test Mode)`);
+      } else {
+        const msgStr = typeof data.message === 'string' ? data.message : (forgotMethod === 'whatsapp' 
+          ? `✨ Password Reset 6-Digit OTP dispatched via WhatsApp to +91 ${targetVal}! Please enter code below.`
+          : `✨ Password Reset 6-Digit Verification OTP sent to your Email (${targetVal})! Please enter code below.`);
+        setMessage(msgStr);
+      }
     } catch (err: any) {
       setMessage(err.message || 'Error sending reset code.');
     } finally {

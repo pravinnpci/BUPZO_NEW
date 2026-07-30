@@ -120,8 +120,9 @@ export default function CartModal({
     }
   }, [user, isOpen]);
 
+  const TRUST_DONATION_AMOUNT = 2;
   const [addDonation, setAddDonation] = useState<boolean>(true);
-  const donationAmount = addDonation ? 2 : 0;
+  const donationAmount = addDonation ? TRUST_DONATION_AMOUNT : 0;
 
   if (!isOpen) return null;
 
@@ -277,6 +278,13 @@ export default function CartModal({
                       +₹2
                     </label>
                   </div>
+
+                  {addDonation && (
+                    <div className="flex justify-between text-emerald-700 font-bold text-xs">
+                      <span>+ ₹2 Bupzo Trust Donation</span>
+                      <span>+₹{TRUST_DONATION_AMOUNT}</span>
+                    </div>
+                  )}
 
                   <div className="flex justify-between text-base font-extrabold text-[#232f3e] border-t border-gray-200 pt-2 mt-3">
                     <span>Total</span>

@@ -1,7 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+
+const fetchShiprocketTracking = async (trackingId: string) => {
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+    const resp = await fetch(`${apiUrl}/api/shiprocket/track/${trackingId}`);
+    if (resp.ok) {
+      const data = await resp.json();
+      return data;
+    }
+  } catch(e) { console.warn('Tracking fetch error', e); }
+  return null;
+};
 
 export const CustomerOrders = ({ customerOrders, user }: any) => {
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+  const [trackingData, setTrackingData] = useState<{[key: string]: any}>({});
+
+  useEffect(() => {
+    if (expandedOrderId) {
+      const ord = customerOrders?.find((o: any) => o.id === expandedOrderId);
+      if (ord && ord.tracking_id && !trackingData[ord.id]) {
+        fetchShiprocketTracking(ord.tracking_id).then(data => {
+          if (data) {
+            setTrackingData(prev => ({ ...prev, [ord.id]: data }));
+          }
+        });
+      }
+    }
+  }, [expandedOrderId, customerOrders]);
 
   return (
     <div className="w-full bg-white pb-20">
@@ -100,38 +126,71 @@ export const CustomerOrders = ({ customerOrders, user }: any) => {
                       })}
                     </div>
                   </div>
-                  {ord.tracking_id && (
-                    <div className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white text-xs p-4 rounded-xl shadow-md space-y-3 mt-4">
-                      <div className="flex items-center justify-between border-b border-blue-700/50 pb-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-base">🚀</span>
-                          <div>
-                            <span className="font-extrabold text-blue-200">Shiprocket Live Express Tracking</span>
-                            <span className="block text-[10px] text-blue-300">Courier: {ord.shipping_partner || 'Delhivery Express'}</span>
+                  {ord.tracking_id && (() => {
+                    const liveInfo = trackingData[ord.id];
+                    const trackObj = liveInfo?.data?.tracking_data?.shipment_track?.[0] || liveInfo?.data?.tracking_data || liveInfo?.data || {};
+                    const currentStatus = trackObj.current_status || trackObj.shipment_status || (liveInfo?.success ? liveInfo?.status : null);
+                    const expectedDelivery = trackObj.etd || trackObj.expected_date || trackObj.edd || liveInfo?.etd || liveInfo?.expected_date;
+                    const lastLocation = trackObj.current_location || trackObj.last_location || trackObj.location || trackObj.destination || trackObj.origin;
+
+                    const hasRealData = liveInfo && liveInfo.success && (currentStatus || expectedDelivery || lastLocation);
+
+                    return (
+                      <div className="bg-gradient-to-r from-blue-900 to-indigo-900 text-white text-xs p-4 rounded-xl shadow-md space-y-3 mt-4">
+                        <div className="flex items-center justify-between border-b border-blue-700/50 pb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-base">🚀</span>
+                            <div>
+                              <span className="font-extrabold text-blue-200">Shiprocket Live Express Tracking</span>
+                              <span className="block text-[10px] text-blue-300">Courier: {ord.shipping_partner || 'Delhivery Express'}</span>
+                            </div>
                           </div>
+                          <span className="font-mono bg-blue-500/30 border border-blue-400/40 text-blue-200 text-[11px] px-2.5 py-1 rounded-lg">
+                            AWB: {ord.tracking_id}
+                          </span>
                         </div>
-                        <span className="font-mono bg-blue-500/30 border border-blue-400/40 text-blue-200 text-[11px] px-2.5 py-1 rounded-lg">
-                          AWB: {ord.tracking_id}
-                        </span>
-                      </div>
-                      
-                      {/* Simulated Live Location Tracking Map Widget */}
-                      <div className="bg-black/30 backdrop-blur border border-blue-500/20 p-3 rounded-lg flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-400 text-sm animate-pulse">
-                            📍
+                        
+                        {hasRealData ? (
+                          <div className="bg-black/30 backdrop-blur border border-blue-500/20 p-3 rounded-lg space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                                <span className="font-bold text-white text-xs">Current Status:</span>
+                                <span className="text-emerald-300 font-extrabold">{currentStatus}</span>
+                              </div>
+                              {expectedDelivery && (
+                                <span className="text-[10px] font-semibold bg-blue-500/30 border border-blue-400/30 text-blue-200 px-2 py-0.5 rounded">
+                                  Expected: {expectedDelivery}
+                                </span>
+                              )}
+                            </div>
+                            {lastLocation && (
+                              <div className="text-[11px] text-blue-200 font-mono flex items-center gap-1.5 pt-1 border-t border-blue-800/40">
+                                <span>📍 Last Location:</span>
+                                <span className="text-white font-bold">{lastLocation}</span>
+                              </div>
+                            )}
                           </div>
-                          <div>
-                            <p className="font-bold text-white text-xs">Current Shipment Location</p>
-                            <p className="text-[11px] text-blue-200 font-mono">Hub Facility: Chennai Central Logistics Hub → In Transit to Recipient</p>
+                        ) : (
+                          /* Fallback static display */
+                          <div className="bg-black/30 backdrop-blur border border-blue-500/20 p-3 rounded-lg flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-full bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-400 text-sm animate-pulse">
+                                📍
+                              </div>
+                              <div>
+                                <p className="font-bold text-white text-xs">Current Shipment Location</p>
+                                <p className="text-[11px] text-blue-200 font-mono">Hub Facility: Chennai Central Logistics Hub → In Transit to Recipient</p>
+                              </div>
+                            </div>
+                            <span className="text-[10px] font-bold bg-emerald-500 text-white px-2 py-0.5 rounded-full shrink-0">
+                              LIVE IN-TRANSIT
+                            </span>
                           </div>
-                        </div>
-                        <span className="text-[10px] font-bold bg-emerald-500 text-white px-2 py-0.5 rounded-full shrink-0">
-                          LIVE IN-TRANSIT
-                        </span>
+                        )}
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </div>
                   )}
                 </div>

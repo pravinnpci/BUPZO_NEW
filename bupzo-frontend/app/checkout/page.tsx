@@ -30,8 +30,9 @@ export default function CheckoutPage() {
     }
   }, [cart.length]);
 
+  const TRUST_DONATION_AMOUNT = 2;
   const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  const totalAmountDue = subtotal + shippingCost; 
+  const totalAmountDue = subtotal + shippingCost + TRUST_DONATION_AMOUNT; 
   const maxWalletUsable = Math.min(totalAmountDue, user?.walletBalance || 0);
   const remainingAmount = totalAmountDue - walletAmountToUse;
 
@@ -80,6 +81,7 @@ export default function CheckoutPage() {
         sellerCarts[item.product.seller_id].push(item);
       }
 
+      const numSellers = Object.keys(sellerCarts).length || 1;
       for (const sellerId of Object.keys(sellerCarts)) {
         const sellerItems = sellerCarts[sellerId];
         const sellerSubtotal = sellerItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
@@ -88,9 +90,10 @@ export default function CheckoutPage() {
           user_id: user.id,
           seller_id: sellerId,
           items: sellerItems.map(item => ({ product_id: item.product.id, quantity: item.quantity })),
-          total_amount: sellerSubtotal,
+          total_amount: sellerSubtotal + (shippingCost / numSellers) + (TRUST_DONATION_AMOUNT / numSellers),
           order_source: 'WEB',
-          payment_gateway: remainingAmount > 0 ? 'Razorpay' : 'Wallet'
+          payment_gateway: remainingAmount > 0 ? 'Razorpay' : 'Wallet',
+          trust_donation_amount: TRUST_DONATION_AMOUNT / numSellers
         });
       }
       

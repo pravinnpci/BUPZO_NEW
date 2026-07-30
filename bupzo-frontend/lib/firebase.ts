@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getAuth, signInWithPhoneNumber, RecaptchaVerifier } from "firebase/auth";
+import { getAuth, signInWithPhoneNumber, RecaptchaVerifier, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "mock-api-key",
@@ -13,4 +13,5 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
-export { auth, signInWithPhoneNumber, RecaptchaVerifier };
+export { auth, signInWithPhoneNumber, RecaptchaVerifier, GoogleAuthProvider, signInWithPopup };
+

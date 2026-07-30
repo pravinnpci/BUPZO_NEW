@@ -112,9 +112,9 @@ export const CustomerWallet = ({ walletBalance, walletTransactions, user }: any)
          </div>
 
          <div className="bg-[#f8f8f8] rounded-xl p-6 shadow-sm border border-gray-200 mb-8">
-            <h3 className="text-xl font-extrabold text-[#232f3e] uppercase mb-4 border-b border-gray-200 pb-2 flex justify-between items-center">
+             <h3 className="text-xl font-extrabold text-[#232f3e] uppercase mb-4 border-b border-gray-200 pb-2 flex justify-between items-center">
               <span>Order Settlement & Commission Tally</span>
-              <span className="text-xs text-gray-500 font-normal">Escrow Rule: 90% Seller / 10% Platform</span>
+              <span className="text-xs text-gray-500 font-normal">Escrow Rule: 95% Seller / 5% Platform</span>
             </h3>
             
             <div className="overflow-x-auto">
@@ -123,16 +123,16 @@ export const CustomerWallet = ({ walletBalance, walletTransactions, user }: any)
                   <tr className="border-b border-gray-300 text-gray-500 uppercase text-[10px]">
                     <th className="py-2">Transaction / Order</th>
                     <th className="py-2">Amount</th>
-                    <th className="py-2">Seller Payout (90%)</th>
-                    <th className="py-2">Platform Comm (10%)</th>
+                    <th className="py-2">Seller Payout (95%)</th>
+                    <th className="py-2">Platform Comm (5%)</th>
                     <th className="py-2 text-right">Escrow Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {walletTransactions.map((tx: any) => {
                     const amt = Math.abs(tx.amount || 0);
-                    const sellerShare = Math.round(amt * 0.90);
-                    const platformShare = Math.round(amt * 0.10);
+                    const sellerShare = Math.round(amt * 0.95);
+                    const platformShare = Math.round(amt * 0.05);
                     return (
                       <tr key={tx.id || Math.random()} className="hover:bg-gray-100/50">
                         <td className="py-3 font-bold text-gray-800">{tx.description || tx.type}</td>

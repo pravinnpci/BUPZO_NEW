@@ -89,9 +89,7 @@ function OutlinedField({
 
 export function CustomerSettings({ user }: { user: any }) {
   const { setUser } = useUser();
-  const nameParts = (user?.name || 'Bupzo Patron').split(' ');
-  const [firstName, setFirstName] = useState(nameParts[0] || '');
-  const [lastName, setLastName] = useState(nameParts.slice(1).join(' ') || '');
+  const [fullName, setFullName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   
   // Real phone state (strip MOCK- and GOOG- placeholders)
@@ -161,9 +159,7 @@ export function CustomerSettings({ user }: { user: any }) {
       loadAddresses();
     }
     if (user) {
-      const parts = (user.name || '').split(' ');
-      setFirstName(parts[0] || '');
-      setLastName(parts.slice(1).join(' ') || '');
+      setFullName(user.name || '');
       setEmail(user.email || '');
       const realP = cleanInitialPhone(user.phone);
       setPhone(realP);
@@ -393,7 +389,7 @@ export function CustomerSettings({ user }: { user: any }) {
       let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
       apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
       const resp = await fetch(`${apiUrl}/api/users/profile`, {
-        method: 'PUT', // Use PUT for updates
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${getAuthToken()}`
@@ -401,15 +397,15 @@ export function CustomerSettings({ user }: { user: any }) {
         body: JSON.stringify({
           user_id: user?.id,
           email: email.trim(),
-          email_verified: true // Explicitly set to true
+          email_verified: true
         })
       });
 
-      const data = await resp.json();
+      const data = await resp.json().catch(() => ({}));
       setIsEmailVerifiedState(true);
       setShowEmailOtpBox(false);
 
-      const updatedUser = data?.user || { ...user, email: email.trim(), email_verified: true };
+      const updatedUser = data?.user || { ...user, email: email.trim(), email_verified: true, phone_verified: isPhoneVerifiedState };
       setUser(updatedUser);
       localStorage.setItem('user', JSON.stringify(updatedUser));
       localStorage.setItem('bupzo_user', JSON.stringify(updatedUser));
@@ -429,7 +425,6 @@ export function CustomerSettings({ user }: { user: any }) {
     try {
       let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
       apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
-      const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
 
       const token = getAuthToken();
       if (!token) {
@@ -439,7 +434,7 @@ export function CustomerSettings({ user }: { user: any }) {
       }
 
       const updatedData: any = {
-        name: fullName,
+        name: fullName.trim(),
         phone_verified: isPhoneVerifiedState,
         email_verified: isEmailVerifiedState
       };
@@ -556,28 +551,33 @@ export function CustomerSettings({ user }: { user: any }) {
     setIsLoading(true);
     try {
       const addressData = {
-        ...newAddr,
-        zip_code: newAddr.zip_code.trim(), // Ensure zip_code is trimmed
-        address_lat: lat, // Use current map lat
-        address_lng: lng, // Use current map lng
-        latitude: lat, // For backward compatibility if needed
-        longitude: lng // For backward compatibility if needed
+        name: newAddr.name.trim(),
+        street: newAddr.street.trim(),
+        city: newAddr.city.trim(),
+        state: newAddr.state,
+        zip_code: newAddr.zip_code.trim(),
+        address_lat: lat,
+        address_lng: lng,
+        latitude: lat,
+        longitude: lng
       };
 
       if (editingAddrId) {
-        await updateAddress(editingAddrId as any, addressData as any); // Call updateAddress
+        await updateAddress(editingAddrId as any, addressData as any);
         setStatusMsg("✨ Address updated successfully!");
       } else {
-        await createAddress(user.id, addressData as any); // Call createAddress for new
+        await createAddress(user.id, addressData as any);
         setStatusMsg("✨ Delivery address with Pinpoint Coordinates added successfully!");
       }
       
       setShowNewAddress(false);
       setEditingAddrId(null);
-      setNewAddr({ name: '', street: '', city: '', state: 'Tamil Nadu', zip_code: '', address_lat: 0, address_lng: 0 }); // Reset form
+      setNewAddr({ name: '', street: '', city: '', state: 'Tamil Nadu', zip_code: '', address_lat: 0, address_lng: 0 });
       loadAddresses();
     } catch (err) {
       alert("Failed to save address.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -594,9 +594,7 @@ export function CustomerSettings({ user }: { user: any }) {
 
   const handleReset = () => {
     if (user) {
-      const parts = (user.name || '').split(' ');
-      setFirstName(parts[0] || '');
-      setLastName(parts.slice(1).join(' ') || '');
+      setFullName(user.name || '');
       setEmail(user.email || '');
       setPhone(user.phone?.startsWith('GOOG-') ? '' : (user.phone?.replace('+91', '') || ''));
       setAddress(user.address || '');
@@ -636,10 +634,7 @@ export function CustomerSettings({ user }: { user: any }) {
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 space-y-6">
             <h2 className="text-lg font-bold text-gray-900 border-b pb-3">Personal Information</h2>
             
-            <div className="grid grid-cols-2 gap-4">
-              <OutlinedField label="First Name" value={firstName} onChange={setFirstName} placeholder="First Name" />
-              <OutlinedField label="Last Name" value={lastName} onChange={setLastName} placeholder="Last Name" />
-            </div>
+            <OutlinedField label="Full Name" value={fullName} onChange={setFullName} placeholder="Full Name" />
 
             <OutlinedField 
               label="E-mail" 
