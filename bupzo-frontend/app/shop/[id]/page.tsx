@@ -23,6 +23,7 @@ export default function SellerShopPage() {
   const [followersList, setFollowersList] = useState<any[]>([]);
   const [followersCount, setFollowersCount] = useState<number>(0);
   const [storeReviews, setStoreReviews] = useState<any[]>([]);
+  const [dbCategories, setDbCategories] = useState<any[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [toastMessage, setToastMessage] = useState<string>('');
   
@@ -75,12 +76,13 @@ export default function SellerShopPage() {
         
         let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
         apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
-        const catRes = await fetch(`${apiUrl}/api/categories`);
+        const catRes = await fetch(`${apiUrl}/api/categories/?approved_only=true`);
         const catData = catRes.ok ? await catRes.json() : [];
+        setDbCategories(catData || []);
 
         const prodCats = (productsData || []).map((p: any) => p.category_name || p.category).filter(Boolean);
         const dbCatNames = (catData || []).map((c: any) => c.name).filter(Boolean);
-        const combinedCats = Array.from(new Set([...prodCats, ...dbCatNames]));
+        const combinedCats = Array.from(new Set([...dbCatNames, ...prodCats]));
         if (combinedCats.length > 0) {
           setCategories(combinedCats);
         }
@@ -126,22 +128,50 @@ export default function SellerShopPage() {
   if (loading) return <div className="flex justify-center items-center h-screen bg-gray-50"><div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-[#e52e06]"></div></div>;
   if (!seller) return <div className="text-center py-20 text-gray-500 font-bold">Shop not found.</div>;
 
-  // Derive unique active categories dynamically from seller products with non-zero counts
-  const sellerCatCounts: Record<string, number> = {};
-  products.forEach(p => {
-    const cName = (p.category_name || (p as any).category || 'General').trim();
-    sellerCatCounts[cName] = (sellerCatCounts[cName] || 0) + 1;
+  // Build unified categories list with item counts matching DB categories from GET /api/categories/?approved_only=true
+  const categoryMap = new Map<string, { id?: string; name: string }>();
+  (dbCategories || []).forEach((c: any) => {
+    if (c && c.name) {
+      categoryMap.set(c.name.trim().toLowerCase(), { id: c.id, name: c.name.trim() });
+    }
   });
-  const categoriesList = Object.keys(sellerCatCounts).length > 0 
-    ? Object.keys(sellerCatCounts) 
-    : ['General'];
+  products.forEach((p: any) => {
+    const cName = (p.category_name || p.category || '').trim();
+    if (cName && !categoryMap.has(cName.toLowerCase())) {
+      categoryMap.set(cName.toLowerCase(), { id: p.category_id, name: cName });
+    }
+  });
+  const categoriesList = Array.from(categoryMap.values());
+
+  // Helper to calculate product count for a given category item
+  const getCategoryCount = (catItem: { id?: string; name: string }) => {
+    return products.filter(p => {
+      const pCatName = (p.category_name || (p as any).category || '').trim().toLowerCase();
+      const pCatId = p.category_id;
+      return (
+        (catItem.id && pCatId === catItem.id) ||
+        (catItem.name && pCatName === catItem.name.toLowerCase())
+      );
+    }).length;
+  };
 
   // Filtered & Sorted products
   const filteredProducts = products.filter(p => {
     const pCat = (p.category_name || (p as any).category || 'General').trim();
+    const pCatId = p.category_id;
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           (p.description && p.description.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesCat = selectedCategories.length === 0 || selectedCategories.some(sc => sc.toLowerCase() === pCat.toLowerCase());
+    
+    const matchesCat = selectedCategories.length === 0 || selectedCategories.some(sc => {
+      const scLower = sc.toLowerCase();
+      const dbCat = dbCategories.find((c: any) => c.name.toLowerCase() === scLower || c.id === sc);
+      return (
+        pCat.toLowerCase() === scLower ||
+        pCatId === sc ||
+        (dbCat && pCatId === dbCat.id)
+      );
+    });
+
     const matchesPrice = (p.price || 0) <= maxPrice;
     return matchesSearch && matchesCat && matchesPrice;
   }).sort((a, b) => {
@@ -275,24 +305,25 @@ export default function SellerShopPage() {
                     />
                     All Categories ({products.length})
                   </label>
-                  {categoriesList.map(cat => {
-                    const isChecked = selectedCategories.some(sc => sc.toLowerCase() === cat.toLowerCase());
-                    const catCount = products.filter(p => (p.category_name || (p as any).category || 'General').trim().toLowerCase() === cat.toLowerCase()).length;
+                  {categoriesList.map(catObj => {
+                    const catName = catObj.name;
+                    const isChecked = selectedCategories.some(sc => sc.toLowerCase() === catName.toLowerCase() || (catObj.id && sc === catObj.id));
+                    const catCount = getCategoryCount(catObj);
                     return (
-                      <label key={cat} className="flex items-center gap-2 cursor-pointer font-semibold hover:text-[#e52e06] transition-colors">
+                      <label key={catObj.id || catName} className="flex items-center gap-2 cursor-pointer font-semibold hover:text-[#e52e06] transition-colors">
                         <input 
                           type="checkbox" 
                           checked={isChecked} 
                           onChange={() => {
                             if (isChecked) {
-                              setSelectedCategories(prev => prev.filter(c => c.toLowerCase() !== cat.toLowerCase()));
+                              setSelectedCategories(prev => prev.filter(c => c.toLowerCase() !== catName.toLowerCase() && c !== catObj.id));
                             } else {
-                              setSelectedCategories(prev => [...prev, cat]);
+                              setSelectedCategories(prev => [...prev, catName]);
                             }
                           }}
                           className="accent-[#e52e06] w-3.5 h-3.5 rounded" 
                         />
-                        <span>{cat}</span>
+                        <span>{catName}</span>
                         <span className="text-[10px] text-gray-400 font-mono font-bold">({catCount})</span>
                       </label>
                     );

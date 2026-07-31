@@ -21,17 +21,141 @@ interface AdminSellersProps {
   onDeleteSeller: (sellerId: string) => void;
   onUpdateSeller: (sellerId: string, businessName: string, commission: number, status: string, kycDetails?: any) => Promise<void>;
   onCreateSeller: (data: any) => Promise<boolean | void>;
+  onRefreshData?: () => void;
 }
 
 export const AdminSellers: React.FC<AdminSellersProps> = ({
   sellers,
   onDeleteSeller,
   onUpdateSeller,
-  onCreateSeller
+  onCreateSeller,
+  onRefreshData
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortKey, setSortKey] = useState<keyof Seller | ''>('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  // Seller Rejection Modal state
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectSellerId, setRejectSellerId] = useState<string | null>(null);
+  const [rejectSellerName, setRejectSellerName] = useState<string | null>(null);
+  const [sellerRejectionReason, setSellerRejectionReason] = useState('');
+
+  // Sellers state & auto re-fetch from GET /api/sellers/
+  const [localSellers, setLocalSellers] = useState<Seller[]>(sellers || []);
+
+  const fetchSellersFromApi = async () => {
+    try {
+      const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+      const API_URL = rawApiUrl.split('#')[0].trim().replace(/\/$/, '');
+      const resp = await fetch(`${API_URL}/api/sellers/`, { cache: 'no-store' });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (Array.isArray(data)) {
+          const mapped: Seller[] = data.map((s: any) => {
+            let rawStatus = s.status || 'PENDING';
+            let displayStatus = 'Pending Review';
+            if (rawStatus === 'APPROVED' || rawStatus === 'Approved') {
+              displayStatus = 'Approved';
+            } else if (rawStatus === 'REJECTED' || rawStatus === 'Rejected') {
+              displayStatus = 'Rejected';
+            } else {
+              displayStatus = 'Pending Review';
+            }
+
+            const kyc = typeof s.kyc_details === 'string' ? JSON.parse(s.kyc_details || '{}') : (s.kyc_details || {});
+
+            return {
+              id: s.id,
+              user_id: s.user_id,
+              businessName: s.business_name || s.businessName || 'Unnamed Store',
+              commission: s.commission_rate !== undefined ? s.commission_rate : (s.commission || 10.0),
+              status: displayStatus,
+              date: s.created_at ? new Date(s.created_at).toLocaleString() : (s.date || ''),
+              owner: s.user_name || s.owner || 'Seller Account',
+              owner_email: s.user_email || s.owner_email,
+              owner_phone: s.user_phone || s.owner_phone,
+              followers: s.followers_count !== undefined ? s.followers_count : (s.followers || 0),
+              followers_count: s.followers_count !== undefined ? s.followers_count : (s.followers || 0),
+              kyc_details: kyc
+            };
+          });
+          setLocalSellers(mapped);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching sellers from API:", err);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchSellersFromApi();
+  }, []);
+
+  React.useEffect(() => {
+    if (sellers && sellers.length > 0) {
+      setLocalSellers(sellers.map(s => ({
+        ...s,
+        status: (s.status === 'PENDING' || s.status === 'Pending' || s.status === 'Pending KYC' || s.status === 'PENDING_REVIEW') ? 'Pending Review' : s.status
+      })));
+    }
+  }, [sellers]);
+
+  const handleApproveSellerAction = async (sellerId: string) => {
+    try {
+      const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+      const API_URL = rawApiUrl.split('#')[0].trim().replace(/\/$/, '');
+      const resp = await fetch(`${API_URL}/api/sellers/${sellerId}/approve`, { method: 'POST' });
+      if (resp.ok) {
+        showAdminToast("Merchant approved successfully!");
+      } else {
+        showAdminToast("Failed to approve merchant.", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      showAdminToast("Error approving merchant.", "error");
+    }
+    await fetchSellersFromApi();
+    if (onRefreshData) onRefreshData();
+  };
+
+  const openRejectSellerModal = (sellerId: string, storeName: string) => {
+    setRejectSellerId(sellerId);
+    setRejectSellerName(storeName);
+    setSellerRejectionReason('');
+    setShowRejectModal(true);
+  };
+
+  const handleRejectSellerSubmit = async () => {
+    if (!rejectSellerId) return;
+    if (!sellerRejectionReason.trim()) {
+      alert("Admin Rejection Reason is required!");
+      return;
+    }
+    try {
+      const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+      const API_URL = rawApiUrl.split('#')[0].trim().replace(/\/$/, '');
+      const resp = await fetch(`${API_URL}/api/sellers/${rejectSellerId}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: sellerRejectionReason.trim() })
+      });
+      if (resp.ok) {
+        showAdminToast("Merchant rejected successfully!");
+      } else {
+        showAdminToast("Failed to reject merchant.", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      showAdminToast("Error rejecting merchant.", "error");
+    }
+    setShowRejectModal(false);
+    setRejectSellerId(null);
+    setRejectSellerName(null);
+    setSellerRejectionReason('');
+    await fetchSellersFromApi();
+    if (onRefreshData) onRefreshData();
+  };
 
   // Add Merchant Modal States
   const [showAddModal, setShowAddModal] = useState(false);
@@ -147,6 +271,12 @@ export const AdminSellers: React.FC<AdminSellersProps> = ({
     e.preventDefault();
     if (!selectedSeller) return;
     
+    if (editStatus === 'REJECTED' && selectedSeller.status !== 'REJECTED' && selectedSeller.status !== 'Rejected') {
+      setShowEditModal(false);
+      openRejectSellerModal(selectedSeller.id, editName || selectedSeller.businessName);
+      return;
+    }
+
     const kyc = selectedSeller.kyc_details || {};
     const updatedKyc = {
       ...kyc,
@@ -162,7 +292,9 @@ export const AdminSellers: React.FC<AdminSellersProps> = ({
     setSelectedSeller(null);
   };
 
-  const filteredSellers = sellers.filter(s => {
+  const activeSellersList = localSellers.length > 0 ? localSellers : sellers;
+
+  const filteredSellers = activeSellersList.filter(s => {
     const term = searchTerm.toLowerCase();
     const kyc = typeof s.kyc_details === 'string' ? JSON.parse(s.kyc_details || '{}') : (s.kyc_details || {});
     const kycStatusStr = (kyc.aadharUrl || kyc.pan || kyc.gstin) ? 'verified docs verified' : 'missing docs missing';
@@ -278,8 +410,14 @@ export const AdminSellers: React.FC<AdminSellersProps> = ({
                   <td className="py-3 font-mono font-bold text-blue-600">👥 {s.followers_count !== undefined ? s.followers_count : (s.followers || 0)}</td>
                   <td className="py-3 font-mono font-bold">{s.commission}%</td>
                   <td className="py-3">
-                    <span className={`px-2 py-0.5 rounded font-bold ${s.status === 'Approved' ? 'bg-green-100 text-green-700' : s.status === 'Pending KYC' ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}`}>
-                      {s.status}
+                    <span className={
+                      s.status === 'Approved' || s.status === 'APPROVED' 
+                        ? "px-2.5 py-0.5 rounded text-[11px] font-bold bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300"
+                        : s.status === 'REJECTED' || s.status === 'Rejected'
+                        ? "px-2.5 py-0.5 rounded text-[11px] font-bold bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300"
+                        : "px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-yellow-100 text-yellow-800 dark:bg-yellow-950/80 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-700/50 flex items-center gap-1 w-fit"
+                    }>
+                      {s.status === 'Approved' || s.status === 'APPROVED' ? 'Approved' : s.status === 'REJECTED' || s.status === 'Rejected' ? 'Rejected' : '🟡 Pending Review'}
                     </span>
                   </td>
                   <td className="py-3 font-mono text-[10px] text-zinc-500 whitespace-nowrap">{(s as any).created_at ? new Date((s as any).created_at).toLocaleString() : (s.date || '2026-07-25 20:45')}</td>
@@ -294,6 +432,22 @@ export const AdminSellers: React.FC<AdminSellersProps> = ({
                     <div className="flex justify-end gap-1.5">
                       {(!s.kyc_details || ( (!s.kyc_details.documents || s.kyc_details.documents.length === 0) && !Object.keys(s.kyc_details).some(k => k.toLowerCase().includes('url') || k.toLowerCase() === 'pan' || k.toLowerCase() === 'ifsc') )) && (
                         <span className="text-red-500 font-bold text-[10px] flex items-center px-2 mr-2 border border-red-200 bg-red-50 rounded" title="Missing KYC Docs">Missing Docs</span>
+                      )}
+                      {s.status !== 'Approved' && s.status !== 'APPROVED' && (
+                        <button
+                          onClick={() => handleApproveSellerAction(s.id)}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded text-[10px] font-bold shadow-sm transition"
+                        >
+                          Approve Merchant
+                        </button>
+                      )}
+                      {s.status !== 'REJECTED' && s.status !== 'Rejected' && (
+                        <button
+                          onClick={() => openRejectSellerModal(s.id, s.businessName)}
+                          className="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1 rounded text-[10px] font-bold shadow-sm transition"
+                        >
+                          Reject Merchant
+                        </button>
                       )}
                       <button 
                         onClick={() => {
@@ -637,64 +791,90 @@ export const AdminSellers: React.FC<AdminSellersProps> = ({
       )}
 
       {/* KYC DETAILS VIEWER MODAL */}
-      {viewKycSeller && (
-        <div className="fixed inset-0 bg-black bg-opacity-65 z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="bg-blue-600 p-4 flex justify-between items-center text-white shrink-0">
-              <h3 className="font-bold text-lg">KYC Verification Documents</h3>
-              <button onClick={() => setViewKycSeller(null)} className="text-sm opacity-80 hover:opacity-100 flex items-center gap-1">✕ Close</button>
-            </div>
-            <div className="p-6 text-sm text-zinc-700 dark:text-zinc-300 space-y-4 overflow-y-auto">
-              <div>
-                <span className="font-bold text-zinc-400">Business Name:</span>
-                <p className="text-sm font-semibold text-zinc-900 dark:text-white">{viewKycSeller.businessName}</p>
+      {viewKycSeller && (() => {
+        const kyc = typeof viewKycSeller.kyc_details === 'string'
+          ? JSON.parse(viewKycSeller.kyc_details || '{}')
+          : (viewKycSeller.kyc_details || {});
+
+        const bankAcc = kyc.account_number || kyc.accountNumber || kyc.accountNum || (viewKycSeller as any).account_number || (viewKycSeller as any).accountNumber || 'Not Provided';
+        const bankName = kyc.bankName || kyc.bank_name || (viewKycSeller as any).bank_name || (viewKycSeller as any).bankName || 'Not Provided';
+        const ifscCode = kyc.ifsc || kyc.ifsc_code || (viewKycSeller as any).ifsc_code || (viewKycSeller as any).ifsc || 'Not Provided';
+        const gstin = kyc.gstin || kyc.gst_number || kyc.gstin_number || (viewKycSeller as any).gstin || 'Not Provided';
+        const pan = kyc.pan || kyc.pan_number || (viewKycSeller as any).pan || 'Not Provided';
+        const fssai = kyc.fssai || kyc.fssai_license || kyc.fssai_number || (viewKycSeller as any).fssai || 'Not Provided';
+
+        return (
+          <div className="fixed inset-0 bg-black bg-opacity-65 z-50 flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+              <div className="bg-blue-600 p-4 flex justify-between items-center text-white shrink-0">
+                <h3 className="font-bold text-lg">KYC Verification Documents</h3>
+                <button onClick={() => setViewKycSeller(null)} className="text-sm opacity-80 hover:opacity-100 flex items-center gap-1 font-bold">✕ Close</button>
               </div>
-              <div>
-                <span className="font-bold text-zinc-400">GST / Tax Number:</span>
-                <p className="font-mono">{viewKycSeller.kyc_details?.gstin || viewKycSeller.kyc_details?.gst_number || viewKycSeller.kyc_details?.gstin_number || 'Not Provided'}</p>
-              </div>
-              <div>
-                <span className="font-bold text-zinc-400">PAN Card Number:</span>
-                <p className="font-mono">{viewKycSeller.kyc_details?.pan || viewKycSeller.kyc_details?.pan_number || 'Not Provided'}</p>
-              </div>
-              <div>
-                <span className="font-bold text-zinc-400">FSSAI License:</span>
-                <p className="font-mono text-zinc-200 mt-1">{viewKycSeller.kyc_details?.fssai || viewKycSeller.kyc_details?.fssai_license || 'Not Provided'}</p>
-              </div>
-              <div>
-                <span className="font-bold text-zinc-400">Bank Account Details:</span>
-                <p className="bg-zinc-100 dark:bg-zinc-800 p-2 rounded text-zinc-800 dark:text-zinc-200 font-mono mt-1 border border-zinc-200 dark:border-zinc-700">
-                  Bank: {viewKycSeller.kyc_details?.bankName || viewKycSeller.kyc_details?.bank_name || 'N/A'}<br/>
-                  A/C: {viewKycSeller.kyc_details?.accountNumber || viewKycSeller.kyc_details?.account_number || viewKycSeller.kyc_details?.accountNum || 'N/A'}<br/>
-                  IFSC: {viewKycSeller.kyc_details?.ifsc || viewKycSeller.kyc_details?.ifsc_code || 'N/A'}
-                </p>
-              </div>
-              <div>
-                <span className="font-bold text-zinc-400">Uploaded Document Attachments:</span>
-                {viewKycSeller.kyc_details?.documents?.length > 0 ? (
-                  <div className="mt-2 grid grid-cols-2 gap-2">
-                    {viewKycSeller.kyc_details.documents.map((doc: string, idx: number) => (
-                      <div key={idx} className="bg-white dark:bg-zinc-950 p-2 border border-zinc-200 dark:border-zinc-850 rounded-xl">
-                        {doc.endsWith('.pdf') ? (
-                          <a href={doc} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">View Document {idx + 1}</a>
-                        ) : (
-                          <img 
-                            src={doc} 
-                            alt={`Verification Doc ${idx + 1}`} 
-                            className="max-h-64 object-contain rounded mx-auto"
-                          />
-                        )}
-                      </div>
-                    ))}
+              <div className="p-6 text-sm text-zinc-700 dark:text-zinc-300 space-y-4 overflow-y-auto">
+                <div>
+                  <span className="font-bold text-zinc-400 uppercase text-[10px] tracking-wider block">Business Name</span>
+                  <p className="text-base font-semibold text-zinc-900 dark:text-white break-words mt-0.5">{viewKycSeller.businessName}</p>
+                </div>
+                <div>
+                  <span className="font-bold text-zinc-400 uppercase text-[10px] tracking-wider block">GSTIN / Tax Number</span>
+                  <p className="font-mono text-sm text-zinc-900 dark:text-zinc-100 break-all select-all font-semibold mt-0.5">{gstin}</p>
+                </div>
+                <div>
+                  <span className="font-bold text-zinc-400 uppercase text-[10px] tracking-wider block">PAN Card Number</span>
+                  <p className="font-mono text-sm text-zinc-900 dark:text-zinc-100 break-all select-all font-semibold mt-0.5">{pan}</p>
+                </div>
+                <div>
+                  <span className="font-bold text-zinc-400 uppercase text-[10px] tracking-wider block">FSSAI License</span>
+                  <p className="font-mono text-sm text-zinc-900 dark:text-zinc-100 break-all select-all font-semibold mt-0.5">{fssai}</p>
+                </div>
+                <div>
+                  <span className="font-bold text-zinc-400 uppercase text-[10px] tracking-wider block mb-1">Bank Account Details</span>
+                  <div className="bg-zinc-50 dark:bg-zinc-800/80 p-3.5 rounded-xl text-zinc-800 dark:text-zinc-200 font-mono text-xs border border-zinc-200 dark:border-zinc-700 leading-relaxed break-all space-y-1.5">
+                    <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
+                      <span className="text-zinc-500 font-semibold">Bank Name:</span>
+                      <span className="font-bold text-zinc-900 dark:text-zinc-100 select-all">{bankName}</span>
+                    </div>
+                    <div className="flex flex-col sm:flex-row sm:justify-between gap-1 border-t border-zinc-200 dark:border-zinc-700/60 pt-1.5">
+                      <span className="text-zinc-500 font-semibold">Bank Account Number:</span>
+                      <span className="font-bold text-blue-600 dark:text-blue-400 select-all text-sm tracking-wide">{bankAcc}</span>
+                    </div>
+                    <div className="flex flex-col sm:flex-row sm:justify-between gap-1 border-t border-zinc-200 dark:border-zinc-700/60 pt-1.5">
+                      <span className="text-zinc-500 font-semibold">IFSC Code:</span>
+                      <span className="font-bold text-zinc-900 dark:text-zinc-100 select-all uppercase">{ifscCode}</span>
+                    </div>
                   </div>
-                ) : (
-                  <p className="text-zinc-500 italic mt-1">No scanned document file upload attached.</p>
-                )}
+                </div>
+                <div>
+                  <span className="font-bold text-zinc-400 uppercase text-[10px] tracking-wider block mb-1">Uploaded Verification Documents</span>
+                  {kyc.documents && kyc.documents.length > 0 ? (
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      {kyc.documents.map((doc: string, idx: number) => (
+                        <div key={idx} className="bg-white dark:bg-zinc-950 p-2 border border-zinc-200 dark:border-zinc-800 rounded-xl">
+                          {doc.endsWith('.pdf') ? (
+                            <a href={doc} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline break-all font-mono text-xs">View Document {idx + 1} (PDF)</a>
+                          ) : (
+                            <img 
+                              src={doc} 
+                              alt={`Verification Doc ${idx + 1}`} 
+                              className="max-h-64 object-contain rounded mx-auto"
+                            />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : kyc.aadharUrl ? (
+                    <div className="mt-1">
+                      <a href={kyc.aadharUrl} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline break-all font-medium">View Uploaded Aadhar / Verification Attachment</a>
+                    </div>
+                  ) : (
+                    <p className="text-zinc-500 italic mt-1 text-xs">No scanned document file upload attached.</p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* MESSAGE SELLER MODAL */}
       {messageSeller && (
@@ -772,6 +952,65 @@ export const AdminSellers: React.FC<AdminSellersProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* REJECT MERCHANT REASON MODAL */}
+      {showRejectModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-[#15131b] border border-[#e8e1dd] dark:border-[#2f2b3b] rounded-2xl w-full max-w-md p-6 shadow-2xl relative text-zinc-900 dark:text-zinc-100">
+            <div className="flex justify-between items-center mb-4 border-b border-zinc-200 dark:border-zinc-800 pb-3">
+              <h3 className="text-lg font-bold font-heading text-red-600 flex items-center gap-2">
+                <span>⚠️</span> Reject Merchant Store
+              </h3>
+              <button 
+                onClick={() => { setShowRejectModal(false); setRejectSellerId(null); setSellerRejectionReason(''); }}
+                className="text-zinc-400 hover:text-zinc-600 font-bold text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <span className="text-xs text-zinc-500 block mb-1">Merchant Store:</span>
+              <div className="p-2.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-xs font-bold">
+                {rejectSellerName}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1">
+                  Admin Rejection Reason <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  rows={4}
+                  value={sellerRejectionReason}
+                  onChange={(e) => setSellerRejectionReason(e.target.value)}
+                  placeholder="Please enter the reason for rejecting this merchant (e.g. Invalid GSTIN/PAN, failed KYC verification)..."
+                  className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-xl text-xs outline-none focus:border-red-500"
+                  required
+                />
+              </div>
+
+              <div className="flex gap-3 justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setShowRejectModal(false); setRejectSellerId(null); setSellerRejectionReason(''); }}
+                  className="px-4 py-2 border border-zinc-300 dark:border-zinc-800 rounded-lg text-xs font-bold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRejectSellerSubmit}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold shadow-md transition-all"
+                >
+                  Confirm Rejection
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

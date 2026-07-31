@@ -166,6 +166,7 @@ export interface Product {
   created_at: string;
   is_approved?: boolean;
   rejection_reason?: string;
+  status?: string;
 }
 
 export interface WishlistItem {
@@ -288,7 +289,7 @@ export const createAddress = async (userId: string, data: any) => {
   return res.json();
 };
 
-export const updateAddress = async (addressId: number, data: any) => {
+export const updateAddress = async (addressId: number | string, data: any) => {
   const res = await fetch(`${API_BASE_URL}/api/addresses/${addressId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -298,7 +299,7 @@ export const updateAddress = async (addressId: number, data: any) => {
   return res.json();
 };
 
-export const deleteAddress = async (addressId: number) => {
+export const deleteAddress = async (addressId: number | string) => {
   const res = await fetch(`${API_BASE_URL}/api/addresses/${addressId}`, {
     method: 'DELETE'
   });
@@ -362,8 +363,9 @@ export async function checkFraud(orderId: string, userId: string, amount: number
   return parseJsonResponse(response);
 }
 
-export async function fetchCategories(): Promise<Category[]> {
-  const response = await fetch(buildUrl('/api/categories/'));
+export async function fetchCategories(approvedOnly: boolean = true): Promise<Category[]> {
+  const url = approvedOnly ? '/api/categories/?approved_only=true' : '/api/categories/';
+  const response = await fetch(buildUrl(url));
   return parseJsonResponse(response);
 }
 
@@ -535,7 +537,47 @@ export async function unfollowSeller(sellerId: string, userId: string): Promise<
 }
 
 export async function fetchSellerReviews(sellerId: string): Promise<any[]> {
-  const response = await fetch(buildUrl(`/api/reviews/?seller_id=${sellerId}`));
+  const response = await fetch(buildUrl(`/api/sellers/${sellerId}/reviews`));
+  return parseJsonResponse(response);
+}
+
+export async function requestCategory(payload: { name: string; description?: string; icon?: string; seller_id?: string }): Promise<any> {
+  const response = await fetch(buildUrl('/api/categories/request'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return parseJsonResponse(response);
+}
+
+export async function fetchInvoices(userId?: string): Promise<any[]> {
+  const url = userId ? buildUrl(`/api/invoices/?user_id=${userId}`) : buildUrl('/api/invoices/');
+  const response = await fetch(url);
+  return parseJsonResponse(response);
+}
+
+export async function createInvoice(payload: any): Promise<any> {
+  const response = await fetch(buildUrl('/api/invoices/'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return parseJsonResponse(response);
+}
+
+export async function updateInvoice(invoiceId: string, payload: any): Promise<any> {
+  const response = await fetch(buildUrl(`/api/invoices/${invoiceId}`), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return parseJsonResponse(response);
+}
+
+export async function deleteInvoice(invoiceId: string): Promise<any> {
+  const response = await fetch(buildUrl(`/api/invoices/${invoiceId}`), {
+    method: 'DELETE',
+  });
   return parseJsonResponse(response);
 }
 

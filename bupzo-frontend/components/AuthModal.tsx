@@ -34,6 +34,10 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
   const [forgotStep, setForgotStep] = useState<1 | 2>(1);
   const [newPassword, setNewPassword] = useState('');
 
+  // Google Email Modal / Prompt Fallback State
+  const [showGoogleEmailModal, setShowGoogleEmailModal] = useState(false);
+  const [googleEmailInput, setGoogleEmailInput] = useState('');
+
   // Fetch Live DB Metrics on Mount
   useEffect(() => {
     let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
@@ -253,31 +257,35 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
     }
   };
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignIn = async (overrideEmail?: string) => {
     setIsLoading(true);
     setMessage('');
     try {
-      let selectedEmail = '';
-      let selectedName = '';
+      let selectedEmail = overrideEmail || '';
+      let selectedName = selectedEmail ? selectedEmail.split('@')[0] : '';
       let googleToken = '';
       let googleUid = '';
 
       const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '110313675568-6eoovlbd5871e5v48qn7p3f1e8vhs0vc.apps.googleusercontent.com';
 
       // Primary flow: Use Firebase Auth GoogleAuthProvider with signInWithPopup
-      try {
-        const provider = new GoogleAuthProvider();
-        provider.setCustomParameters({ prompt: 'select_account' });
-        const result = await signInWithPopup(auth, provider);
-        if (result?.user) {
-          const user = result.user;
-          selectedEmail = user.email || '';
-          selectedName = user.displayName || (selectedEmail ? selectedEmail.split('@')[0] : 'Google User');
-          googleUid = user.uid;
-          googleToken = await user.getIdToken();
+      if (!selectedEmail) {
+        try {
+          if (auth) {
+            const provider = new GoogleAuthProvider();
+            provider.setCustomParameters({ prompt: 'select_account' });
+            const result = await signInWithPopup(auth, provider);
+            if (result?.user) {
+              const user = result.user;
+              selectedEmail = user.email || '';
+              selectedName = user.displayName || (selectedEmail ? selectedEmail.split('@')[0] : 'Google User');
+              googleUid = user.uid;
+              googleToken = await user.getIdToken();
+            }
+          }
+        } catch (firebaseErr: any) {
+          console.warn('Firebase Google Auth popup error/blocked (handled silently):', firebaseErr?.message || firebaseErr);
         }
-      } catch (firebaseErr: any) {
-        console.warn('Firebase Google Auth popup error, trying GIS fallback:', firebaseErr);
       }
 
       // Fallback to Google Identity Services (GIS) if Firebase Auth popup is unconfigured or blocked
@@ -367,18 +375,22 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
           }
         }
 
+        // Try window.prompt if popup blocked
         if (!selectedEmail && typeof window !== 'undefined') {
-          const directEmail = window.prompt("Google Sign-In prompt unavailable or popup blocked. Please enter your Google email address:");
-          if (directEmail && directEmail.includes('@')) {
-            selectedEmail = directEmail.trim();
-            selectedName = selectedEmail.split('@')[0];
-          }
+          try {
+            const directEmail = window.prompt("Google Popup blocked by browser. Please enter your Google email address:");
+            if (directEmail && directEmail.includes('@')) {
+              selectedEmail = directEmail.trim();
+              selectedName = selectedEmail.split('@')[0];
+            }
+          } catch (e) {}
         }
       }
 
       if (!selectedEmail) {
         setIsLoading(false);
-        return setMessage("⚠️ Google Sign-In cancelled.");
+        setShowGoogleEmailModal(true);
+        return setMessage("Google Popup blocked by browser. Please enter your Google email address:");
       }
 
       let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
@@ -388,7 +400,7 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: selectedEmail,
-          name: selectedName,
+          name: selectedName || selectedEmail.split('@')[0],
           google_token: googleToken || 'google_token_valid',
           google_id_token: googleToken || undefined,
           google_uid: googleUid || undefined
@@ -408,6 +420,7 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
       localStorage.setItem('user', JSON.stringify(finalUser));
       localStorage.setItem('bupzo_user', JSON.stringify(finalUser));
       setMessage(`🎉 Signed in as ${finalUser.email} with Google successfully!`);
+      setShowGoogleEmailModal(false);
       setTimeout(() => onClose(), 1000);
     } catch (err: any) {
       setMessage(err.message || '⚠️ Google Login failed.');
@@ -906,10 +919,10 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
 
                 {/* Google Sign In / Sign Up Button */}
                 {(mode === 'login' || mode === 'register') && (
-                  <div className="pt-2">
+                  <div className="pt-2 space-y-3">
                     <button
                       type="button"
-                      onClick={handleGoogleSignIn}
+                      onClick={() => handleGoogleSignIn()}
                       className="w-full py-3 px-4 bg-white border border-gray-300 dark:border-gray-700 hover:bg-gray-50 text-gray-700 dark:text-gray-200 font-bold text-xs rounded-xl shadow-sm flex items-center justify-center gap-2 transition active:scale-[0.98]"
                     >
                       <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -920,6 +933,37 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
                       </svg>
                       <span>{mode === 'register' ? 'Sign up with Google' : 'Sign in with Google'}</span>
                     </button>
+
+                    {showGoogleEmailModal && (
+                      <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border-2 border-amber-400 space-y-3 animate-in fade-in">
+                        <label className="block text-xs font-bold text-amber-900 dark:text-amber-200">
+                          Google Popup blocked by browser. Please enter your Google email address:
+                        </label>
+                        <div className="flex gap-2">
+                          <input
+                            type="email"
+                            value={googleEmailInput}
+                            onChange={(e) => setGoogleEmailInput(e.target.value)}
+                            placeholder="name@gmail.com"
+                            className="w-full px-4 py-2.5 rounded-xl border border-amber-300 dark:border-amber-700 bg-white dark:bg-gray-800 text-sm font-medium text-gray-900 dark:text-white outline-none focus:border-amber-500"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (googleEmailInput.includes('@')) {
+                                handleGoogleSignIn(googleEmailInput.trim());
+                              } else {
+                                setMessage('⚠️ Please enter a valid Google email address.');
+                              }
+                            }}
+                            disabled={isLoading}
+                            className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shrink-0 shadow-md transition"
+                          >
+                            Continue
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

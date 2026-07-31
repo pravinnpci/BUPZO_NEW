@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Depends, status, UploadFile, File, Request, Query, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Depends, status, UploadFile, File, Request, Query, WebSocket, WebSocketDisconnect, Body
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer
@@ -105,7 +105,13 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def verify_password(plain_password, hashed_password):
     if not hashed_password: return False
-    return pwd_context.verify(plain_password, hashed_password)
+    if len(hashed_password) == 64:
+        import hashlib
+        return hashlib.sha256(plain_password.encode()).hexdigest() == hashed_password
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except Exception:
+        return False
 
 def get_password_hash(password):
     return pwd_context.hash(password)
@@ -189,7 +195,8 @@ async def get_user_by_id(user_id: UUID):
            COALESCE(u.phone_verified, FALSE) as phone_verified,
            COALESCE(u.google_verified, FALSE) as google_verified,
            CASE WHEN s.status = 'APPROVED' OR s.id IS NOT NULL THEN TRUE ELSE FALSE END AS is_seller,
-           s.status as seller_status
+           s.status as seller_status,
+           CASE WHEN u.password_hash IS NOT NULL AND u.password_hash != '' THEN TRUE ELSE FALSE END AS has_password
     FROM users u
     LEFT JOIN sellers s ON s.user_id = u.id
     WHERE u.id = $1
@@ -259,17 +266,77 @@ async def startup_event():
         await conn.execute("ALTER TABLE wallet_transactions DROP CONSTRAINT IF EXISTS wallet_transactions_type_check;")
         await conn.execute("ALTER TABLE wallet_transactions ADD CONSTRAINT wallet_transactions_type_check CHECK (type IN ('REFERRAL','PURCHASE','TOPUP','REFUND','ADMIN_ADJUSTMENT','ADMIN_REFUND','SALE','PAYOUT'));")
         
+        await conn.execute("ALTER TABLE categories ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'APPROVED';")
+        await conn.execute("ALTER TABLE categories ADD COLUMN IF NOT EXISTS icon VARCHAR(100) DEFAULT 'category';")
+        await conn.execute("UPDATE categories SET status = 'APPROVED' WHERE status IS NULL;")
+        
+        # Additional DB Schema Migrations for Approval Queues
+        await conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS rejection_reason TEXT;")
+        await conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'PENDING';")
+        await conn.execute("ALTER TABLE categories ADD COLUMN IF NOT EXISTS rejection_reason TEXT;")
+        await conn.execute("ALTER TABLE categories ADD COLUMN IF NOT EXISTS description TEXT;")
+        await conn.execute("ALTER TABLE categories ADD COLUMN IF NOT EXISTS requested_by_seller_id UUID;")
+        await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS rejection_reason TEXT;")
+        await conn.execute("ALTER TABLE seller_reviews ADD COLUMN IF NOT EXISTS reply TEXT;")
+        await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS address TEXT;")
+        await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS bank_name VARCHAR(255);")
+        await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS account_number VARCHAR(100);")
+        await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS ifsc VARCHAR(50);")
+        await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS gstin VARCHAR(100);")
+        await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS pan VARCHAR(100);")
+        await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS fssai VARCHAR(100);")
+        await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS email VARCHAR(255);")
+        await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS phone VARCHAR(50);")
+        
         # Product images support
         await conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]'::jsonb;")
         
-        # Ensure seller_followers table exists in PostgreSQL database
+        # Ensure seller_followers, seller_reviews, and invoices tables exist
         await conn.execute("""
             CREATE TABLE IF NOT EXISTS seller_followers (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                seller_id UUID NOT NULL REFERENCES sellers(id) ON DELETE CASCADE,
-                user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                CONSTRAINT unique_seller_user_follow UNIQUE(seller_id, user_id)
+                seller_id UUID REFERENCES sellers(id) ON DELETE CASCADE,
+                user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+                created_at TIMESTAMP DEFAULT NOW(),
+                UNIQUE(seller_id, user_id)
+            );
+        """)
+
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS messages (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                sender_id UUID REFERENCES users(id) ON DELETE SET NULL,
+                receiver_id UUID REFERENCES users(id) ON DELETE SET NULL,
+                order_id UUID,
+                subject VARCHAR(255),
+                content TEXT,
+                read BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT NOW()
+            );
+        """)
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS seller_reviews (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                seller_id UUID REFERENCES sellers(id) ON DELETE CASCADE,
+                user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+                rating INT CHECK (rating >= 1 AND rating <= 5),
+                comment TEXT,
+                created_at TIMESTAMP DEFAULT NOW()
+            );
+        """)
+
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS invoices (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                invoice_number VARCHAR(50) UNIQUE,
+                order_id UUID,
+                seller_id UUID,
+                user_id UUID,
+                amount DECIMAL(10,2),
+                tax_amount DECIMAL(10,2),
+                status VARCHAR(20) DEFAULT 'PAID',
+                due_date TIMESTAMP,
+                created_at TIMESTAMP DEFAULT NOW()
             );
         """)
         
@@ -444,6 +511,7 @@ class UserResponse(BaseModel):
     pincode: Optional[str] = None
     is_seller: bool = False
     is_admin: bool = False
+    has_password: bool = False
 
     class Config:
         from_attributes = True
@@ -463,6 +531,29 @@ class UserUpdate(BaseModel):
     wallet_balance: Optional[float] = None
     address: Optional[str] = None
     pincode: Optional[str] = None
+
+class UserProfileUpdateRequest(BaseModel):
+    user_id: Optional[Any] = None
+    name: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    state: Optional[str] = None
+    pincode: Optional[str] = None
+    country: Optional[str] = None
+    organization: Optional[str] = None
+    store_name: Optional[str] = None
+    address_lat: Optional[Any] = None
+    address_lng: Optional[Any] = None
+    phone_verified: Optional[bool] = None
+    email_verified: Optional[bool] = None
+    is_premium: Optional[bool] = None
+    wallet_balance: Optional[float] = None
+
+    class Config:
+        extra = "ignore"
 
 # Dispute Pydantic Models
 class DisputeResponse(BaseModel):
@@ -509,7 +600,13 @@ class CategoryResponse(BaseModel):
     id: UUID
     name: str
     description: Optional[str] = None
-    created_at: datetime
+    icon: Optional[str] = "category"
+    status: Optional[str] = "APPROVED"
+    rejection_reason: Optional[str] = None
+    requested_by_seller_id: Optional[UUID] = None
+    seller_name: Optional[str] = None
+    seller_store_name: Optional[str] = None
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -594,6 +691,7 @@ class ProductResponse(BaseModel):
     description: Optional[str] = None
     created_at: datetime
     is_approved: Optional[bool] = None
+    status: Optional[str] = "PENDING"
     rejection_reason: Optional[str] = None
 
     class Config:
@@ -784,7 +882,7 @@ async def create_user(user: UserCreate):
         return existing_user
     except asyncpg.exceptions.UniqueViolationError:
         existing_user = await execute_query_one(
-            "SELECT u.id, u.name, u.phone, u.email, u.is_premium, u.signup_platform, u.wallet_balance, u.privacy_accepted, u.created_at, u.address, u.pincode, CASE WHEN s.id IS NOT NULL THEN TRUE ELSE FALSE END AS is_seller FROM users u LEFT JOIN sellers s ON s.user_id = u.id WHERE u.phone = $1",
+            "SELECT u.id, u.name, u.phone, u.email, u.is_premium, u.signup_platform, u.wallet_balance, u.privacy_accepted, u.created_at, u.address, u.pincode, CASE WHEN s.id IS NOT NULL THEN TRUE ELSE FALSE END AS is_seller, CASE WHEN u.password_hash IS NOT NULL AND u.password_hash != '' THEN TRUE ELSE FALSE END AS has_password FROM users u LEFT JOIN sellers s ON s.user_id = u.id WHERE u.phone = $1",
             user.phone
         )
         if existing_user:
@@ -797,7 +895,8 @@ async def read_users():
     SELECT
         u.id, u.name, u.phone, u.email, u.is_premium, u.signup_platform,
         u.wallet_balance, u.privacy_accepted, u.created_at, u.address, u.pincode,
-        CASE WHEN s.id IS NOT NULL THEN TRUE ELSE FALSE END AS is_seller
+        CASE WHEN s.id IS NOT NULL THEN TRUE ELSE FALSE END AS is_seller,
+        CASE WHEN u.password_hash IS NOT NULL AND u.password_hash != '' THEN TRUE ELSE FALSE END AS has_password
     FROM users u
     LEFT JOIN sellers s ON s.user_id = u.id
     ORDER BY u.created_at DESC
@@ -810,29 +909,82 @@ async def read_users():
         result.append(d)
     return result
 
-@app.put("/api/users/{user_id}", response_model=UserResponse)
-async def update_user(user_id: UUID, payload: UserUpdate):
-    # Verify user exists
-    u_check = await execute_query_one("SELECT id FROM users WHERE id = $1", user_id)
-    if not u_check:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    # Dynamically build UPDATE query
+@app.put("/api/users/profile")
+@app.put("/api/users/{user_id}")
+async def update_user_profile(request: Request, payload: UserProfileUpdateRequest, user_id: Optional[str] = None):
+    # Handle user_id from path or payload
+    uid = user_id if (user_id and user_id != "profile") else getattr(payload, 'user_id', None)
+    if not uid:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+            try:
+                payload_jwt = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+                uid = payload_jwt.get("user_id")
+            except Exception:
+                pass
+    if not uid:
+        raise HTTPException(status_code=400, detail="User ID is required")
+
+    uid_str = str(uid).strip()
+
+    name_to_update = payload.name
+    if not name_to_update and (payload.first_name or payload.last_name):
+        name_to_update = f"{payload.first_name or ''} {payload.last_name or ''}".strip()
+
     fields = []
     values = []
     counter = 1
-    
-    if payload.name is not None:
+
+    if name_to_update is not None and str(name_to_update).strip():
         fields.append(f"name = ${counter}")
-        values.append(payload.name)
+        values.append(str(name_to_update).strip())
         counter += 1
-    if payload.phone is not None:
-        fields.append(f"phone = ${counter}")
-        values.append(payload.phone)
-        counter += 1
-    if payload.email is not None:
+    if payload.email is not None and str(payload.email).strip():
         fields.append(f"email = ${counter}")
-        values.append(payload.email)
+        values.append(str(payload.email).strip())
+        counter += 1
+    if payload.phone is not None and str(payload.phone).strip():
+        fields.append(f"phone = ${counter}")
+        values.append(str(payload.phone).strip())
+        counter += 1
+    if payload.address is not None:
+        fields.append(f"address = ${counter}")
+        values.append(str(payload.address))
+        counter += 1
+    if payload.state is not None:
+        fields.append(f"state = ${counter}")
+        values.append(str(payload.state))
+        counter += 1
+    if payload.pincode is not None:
+        fields.append(f"pincode = ${counter}")
+        values.append(str(payload.pincode))
+        counter += 1
+    if payload.country is not None:
+        fields.append(f"country = ${counter}")
+        values.append(str(payload.country))
+        counter += 1
+    if payload.address_lat is not None:
+        try:
+            fields.append(f"address_lat = ${counter}")
+            values.append(float(payload.address_lat))
+            counter += 1
+        except Exception:
+            pass
+    if payload.address_lng is not None:
+        try:
+            fields.append(f"address_lng = ${counter}")
+            values.append(float(payload.address_lng))
+            counter += 1
+        except Exception:
+            pass
+    if payload.phone_verified is not None:
+        fields.append(f"phone_verified = ${counter}")
+        values.append(payload.phone_verified)
+        counter += 1
+    if payload.email_verified is not None:
+        fields.append(f"email_verified = ${counter}")
+        values.append(payload.email_verified)
         counter += 1
     if payload.is_premium is not None:
         fields.append(f"is_premium = ${counter}")
@@ -840,32 +992,46 @@ async def update_user(user_id: UUID, payload: UserUpdate):
         counter += 1
     if payload.wallet_balance is not None:
         fields.append(f"wallet_balance = ${counter}")
-        values.append(payload.wallet_balance)
+        values.append(float(payload.wallet_balance))
         counter += 1
+
+    if fields:
+        values.append(uid_str)
+        query = f"UPDATE users SET {', '.join(fields)} WHERE id::text = ${counter}"
+        async with pool.acquire() as conn:
+            await conn.execute(query, *values)
+
+    async with pool.acquire() as conn:
+        updated_user = await conn.fetchrow("""
+            SELECT u.id, u.name, u.phone, u.email, u.is_premium, u.signup_platform, u.wallet_balance, u.privacy_accepted, u.created_at, u.address, u.pincode, u.state, u.country, u.address_lat, u.address_lng,
+                   COALESCE(u.email_verified, FALSE) as email_verified,
+                   COALESCE(u.phone_verified, FALSE) as phone_verified,
+                   COALESCE(u.google_verified, FALSE) as google_verified,
+                   CASE WHEN s.status = 'APPROVED' OR s.id IS NOT NULL THEN TRUE ELSE FALSE END AS is_seller,
+                   s.status as seller_status
+            FROM users u
+            LEFT JOIN sellers s ON s.user_id = u.id
+            WHERE u.id::text = $1
+        """, uid_str)
+
+        if not updated_user:
+            raise HTTPException(status_code=404, detail="User not found")
         
-    if payload.address is not None:
-        fields.append(f"address = ${counter}")
-        values.append(payload.address)
-        counter += 1
-    if payload.pincode is not None:
-        fields.append(f"pincode = ${counter}")
-        values.append(payload.pincode)
-        counter += 1
-        
-    if not fields:
-        raise HTTPException(status_code=400, detail="No fields provided to update")
-        
-    values.append(user_id)
-    query = f"UPDATE users SET {', '.join(fields)} WHERE id = ${counter} RETURNING id, name, phone, email, is_premium, signup_platform, wallet_balance, privacy_accepted, created_at, address, pincode"
-    
-    res = await execute_query_one(query, *values)
-    return res
+        user_dict = dict(updated_user)
+        user_dict['is_admin'] = user_dict.get('phone', '') in ADMIN_PHONES
+        await invalidate_cache(["cache:users"])
+        res_dict = user_dict.copy()
+        res_dict['status'] = 'success'
+        res_dict['user'] = user_dict
+        res_dict['message'] = 'Profile updated successfully'
+        return res_dict
 
 @app.get("/api/users/{user_id}", response_model=UserResponse)
 async def read_user(user_id: UUID):
     query = """
     SELECT u.id, u.name, u.phone, u.email, u.is_premium, u.signup_platform, u.wallet_balance, u.privacy_accepted, u.created_at, u.address, u.pincode,
-           CASE WHEN s.id IS NOT NULL THEN TRUE ELSE FALSE END AS is_seller
+           CASE WHEN s.id IS NOT NULL THEN TRUE ELSE FALSE END AS is_seller,
+           CASE WHEN u.password_hash IS NOT NULL AND u.password_hash != '' THEN TRUE ELSE FALSE END AS has_password
     FROM users u
     LEFT JOIN sellers s ON s.user_id = u.id
     WHERE u.id = $1
@@ -1038,22 +1204,46 @@ async def auth_google(payload: AuthGoogleRequest):
         "user": full_user
     }
 
-class UserProfileUpdateRequest(BaseModel):
-    user_id: Optional[Any] = None
-    name: Optional[str] = None
-    first_name: Optional[str] = None
-    last_name: Optional[str] = None
-    email: Optional[str] = None
+class ProductRejectRequest(BaseModel):
+    reason: Optional[str] = "No reason provided"
+
+    class Config:
+        extra = "ignore"
+
+class CategoryRequestPayload(BaseModel):
+    name: str
+    description: Optional[str] = None
+    seller_id: Optional[str] = None
+
+    class Config:
+        extra = "ignore"
+
+class CategoryRejectPayload(BaseModel):
+    reason: Optional[str] = "No reason provided"
+
+    class Config:
+        extra = "ignore"
+
+class SellerApplyRequest(BaseModel):
+    user_id: Optional[str] = None
     phone: Optional[str] = None
+    email: Optional[str] = None
+    business_name: Optional[str] = None
+    commission_rate: Optional[float] = 10.0
+    kyc_details: Optional[Dict[str, Any]] = None
     address: Optional[str] = None
-    state: Optional[str] = None
-    pincode: Optional[str] = None
-    country: Optional[str] = None
-    organization: Optional[str] = None
-    address_lat: Optional[Any] = None
-    address_lng: Optional[Any] = None
-    phone_verified: Optional[bool] = None
-    email_verified: Optional[bool] = None
+    bank_name: Optional[str] = None
+    account_number: Optional[str] = None
+    ifsc: Optional[str] = None
+    gstin: Optional[str] = None
+    pan: Optional[str] = None
+    fssai: Optional[str] = None
+
+    class Config:
+        extra = "ignore"
+
+class SellerRejectRequest(BaseModel):
+    reason: Optional[str] = "No reason provided"
 
     class Config:
         extra = "ignore"
@@ -1098,51 +1288,7 @@ async def check_availability(payload: CheckAvailabilityPayload):
                 return {"available": False, "message": f"⚠️ Mobile number '{val}' is already registered with another account."}
     return {"available": True, "message": "Available"}
 
-@app.put("/api/users/profile")
-async def update_user_profile(payload: UserProfileUpdateRequest, current_user: dict = Depends(get_current_user)):
-    user_id = current_user['id']
-    async with pool.acquire() as conn:
-        if payload.name is not None and payload.name.strip():
-            await conn.execute("UPDATE users SET name = $1 WHERE id = $2", payload.name.strip(), user_id)
-        if payload.email is not None and payload.email.strip():
-            await conn.execute("UPDATE users SET email = $1 WHERE id = $2", payload.email.strip(), user_id)
-        if payload.phone is not None and payload.phone.strip():
-            await conn.execute("UPDATE users SET phone = $1 WHERE id = $2", payload.phone.strip(), user_id)
-        if payload.address is not None:
-            await conn.execute("UPDATE users SET address = $1 WHERE id = $2", payload.address, user_id)
-        if payload.state is not None:
-            await conn.execute("UPDATE users SET state = $1 WHERE id = $2", payload.state, user_id)
-        if payload.pincode is not None:
-            await conn.execute("UPDATE users SET pincode = $1 WHERE id = $2", payload.pincode, user_id)
-        if payload.country is not None:
-            await conn.execute("UPDATE users SET country = $1 WHERE id = $2", payload.country, user_id)
-        
-        if payload.address_lat is not None:
-            try:
-                await conn.execute("UPDATE users SET address_lat = $1::text WHERE id = $2", str(payload.address_lat), user_id)
-            except Exception:
-                pass
 
-        if payload.address_lng is not None:
-            try:
-                await conn.execute("UPDATE users SET address_lng = $1::text WHERE id = $2", str(payload.address_lng), user_id)
-            except Exception:
-                pass
-
-        if payload.phone_verified is not None:
-            try:
-                await conn.execute("UPDATE users SET phone_verified = $1 WHERE id = $2", bool(payload.phone_verified), user_id)
-            except Exception:
-                pass
-
-        if payload.email_verified is not None:
-            try:
-                await conn.execute("UPDATE users SET email_verified = $1 WHERE id = $2", bool(payload.email_verified), user_id)
-            except Exception:
-                pass
-        
-        updated_user = await get_user_by_id(user_id)
-        return {"success": True, "user": updated_user}
 
 @app.post("/api/auth/refresh", response_model=TokenResponse)
 async def auth_refresh(payload: dict):
@@ -1174,6 +1320,39 @@ async def auth_refresh(payload: dict):
 async def auth_me(current_user: dict = Depends(get_current_user)):
     return current_user
 
+@app.post("/api/auth/set-password-with-otp")
+async def set_password_with_otp(payload: dict):
+    user_id = payload.get("user_id")
+    email = (payload.get("email") or "").strip()
+    otp_entered = (payload.get("otp") or "").strip()
+    new_password = (payload.get("new_password") or "").strip()
+
+    if not new_password or len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="New password must be at least 6 characters long.")
+
+    async with pool.acquire() as conn:
+        user = None
+        if user_id:
+            user = await conn.fetchrow("SELECT id, email, phone FROM users WHERE id::text = $1::text", str(user_id))
+        if not user and email:
+            user = await conn.fetchrow("SELECT id, email, phone FROM users WHERE LOWER(email) = LOWER($1)", email)
+
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found.")
+
+        # Hash new password
+        import hashlib
+        hashed_password = hashlib.sha256(new_password.encode()).hexdigest()
+
+        await conn.execute("UPDATE users SET password_hash = $1 WHERE id = $2", hashed_password, user['id'])
+        
+        updated_user = await get_user_by_id(user['id'])
+        return {
+            "success": True, 
+            "message": "🎉 Password set successfully! You can now log in using your email and new password.",
+            "user": updated_user
+        }
+
 @app.post("/api/products/", response_model=ProductResponse)
 async def create_product(product: ProductCreate):
     # Verify category and seller
@@ -1189,9 +1368,9 @@ async def create_product(product: ProductCreate):
 
     product_id = uuid4()
     query = """
-    INSERT INTO products (id, name, category_id, price, weight_grams, image_url, images, is_combo, stock_quantity, seller_id, description, is_approved) 
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NULL)
-    RETURNING id, name, category_id, price, weight_grams, image_url, images, is_combo, stock_quantity, seller_id, description, created_at, is_approved, rejection_reason
+    INSERT INTO products (id, name, category_id, price, weight_grams, image_url, images, is_combo, stock_quantity, seller_id, description, is_approved, status) 
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, FALSE, 'PENDING')
+    RETURNING id, name, category_id, price, weight_grams, image_url, images, is_combo, stock_quantity, seller_id, description, created_at, is_approved, status, rejection_reason
     """
     values = (
         str(product_id),
@@ -1230,25 +1409,24 @@ async def create_product(product: ProductCreate):
     return result
 
 @app.get("/api/products/", response_model=List[ProductResponse])
-async def read_products(seller_id: Optional[UUID] = None, all: Optional[bool] = False):
-    if seller_id:
-        query = """
-        SELECT id, name, category_id, price, weight_grams, image_url, images, is_combo, stock_quantity, seller_id, description, created_at, is_approved, rejection_reason
-        FROM products WHERE seller_id = $1
-        """
-        results = await execute_query(query, seller_id)
-    else:
-        if all:
-            query = """
-            SELECT id, name, category_id, price, weight_grams, image_url, images, is_combo, stock_quantity, seller_id, description, created_at, is_approved, rejection_reason
-            FROM products
-            """
+async def read_products(seller_id: Optional[str] = Query(None), all: Optional[bool] = Query(False)):
+    async with pool.acquire() as conn:
+        if seller_id and str(seller_id).strip():
+            rows = await conn.fetch("""
+            SELECT p.id, p.name, p.category_id, p.price, p.weight_grams, p.image_url, p.images, p.is_combo, p.stock_quantity, p.seller_id, p.description, p.created_at, p.is_approved, p.status, p.rejection_reason
+            FROM products p WHERE p.seller_id::text = $1::text
+            """, str(seller_id).strip())
+        elif all:
+            rows = await conn.fetch("""
+            SELECT p.id, p.name, p.category_id, p.price, p.weight_grams, p.image_url, p.images, p.is_combo, p.stock_quantity, p.seller_id, p.description, p.created_at, p.is_approved, p.status, p.rejection_reason
+            FROM products p
+            """)
         else:
-            query = """
-            SELECT id, name, category_id, price, weight_grams, image_url, images, is_combo, stock_quantity, seller_id, description, created_at, is_approved, rejection_reason
-            FROM products WHERE is_approved = TRUE
-            """
-        results = await execute_query(query)
+            rows = await conn.fetch("""
+            SELECT p.id, p.name, p.category_id, p.price, p.weight_grams, p.image_url, p.images, p.is_combo, p.stock_quantity, p.seller_id, p.description, p.created_at, p.is_approved, p.status, p.rejection_reason
+            FROM products p WHERE p.is_approved = TRUE
+            """)
+        results = [dict(r) for r in rows]
     import json
     parsed_results = []
     for r in results:
@@ -1256,12 +1434,37 @@ async def read_products(seller_id: Optional[UUID] = None, all: Optional[bool] = 
         if isinstance(r_dict.get('images'), str):
             try:
                 r_dict['images'] = json.loads(r_dict['images'])
-            except:
+            except Exception:
                 r_dict['images'] = []
         elif r_dict.get('images') is None:
             r_dict['images'] = []
         parsed_results.append(r_dict)
     return parsed_results
+
+@app.get("/api/products/pending")
+async def get_pending_products():
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("""
+            SELECT p.*, 
+                   COALESCE(s.business_name, 'Store Merchant') as seller_name,
+                   COALESCE(s.business_name, 'Store Merchant') as seller_store_name
+            FROM products p
+            LEFT JOIN sellers s ON p.seller_id = s.id
+            WHERE p.is_approved = FALSE OR p.status = 'PENDING' OR p.is_approved IS NULL
+            ORDER BY p.created_at DESC
+        """)
+        results = []
+        for r in rows:
+            d = dict(r)
+            if isinstance(d.get('images'), str):
+                try:
+                    d['images'] = json.loads(d['images'])
+                except Exception:
+                    d['images'] = []
+            elif d.get('images') is None:
+                d['images'] = []
+            results.append(d)
+        return results
 
 @app.get("/api/products/{product_id}", response_model=ProductResponse)
 async def read_product(product_id: UUID):
@@ -1275,19 +1478,47 @@ async def read_product(product_id: UUID):
       raise HTTPException(status_code=404, detail="Product not found")
     return result
 
-@app.put("/api/products/{product_id}/approve", response_model=dict)
-async def approve_product(product_id: UUID, payload: ProductApprovalUpdate):
+@app.post("/api/products/{product_id}/approve")
+@app.put("/api/products/{product_id}/approve")
+async def approve_product(product_id: str):
     async with pool.acquire() as conn:
-        result = await conn.execute(
-            "UPDATE products SET is_approved = $1, rejection_reason = $2 WHERE id = $3", 
-            payload.is_approved, payload.rejection_reason, str(product_id)
+        res = await conn.execute(
+            """
+            UPDATE products 
+            SET is_approved = TRUE, status = 'APPROVED', rejection_reason = NULL 
+            WHERE id::text = $1::text
+            """, 
+            str(product_id)
         )
-        if result == "UPDATE 0":
+        if res == "UPDATE 0":
             raise HTTPException(status_code=404, detail="Product not found")
-        status_text = "Approved" if payload.is_approved else ("Rejected" if payload.is_approved is False else "Pending")
         nid = str(uuid4())
-        await conn.execute("INSERT INTO notifications (id, title, body, target_tab, target_id) VALUES ($1, $2, $3, $4, $5)", nid, "Product Status Changed", f"Product ID {product_id} was marked as {status_text}.", "products", str(product_id))
-        return {"success": True, "is_approved": payload.is_approved, "rejection_reason": payload.rejection_reason}
+        await conn.execute("INSERT INTO notifications (id, title, body, target_tab, target_id) VALUES ($1, $2, $3, $4, $5)", nid, "Product Status Changed", f"Product ID {product_id} was marked as Approved.", "products", str(product_id))
+        await invalidate_cache(["cache:products"])
+        return {"success": True, "status": "APPROVED", "is_approved": True, "rejection_reason": None}
+
+@app.post("/api/products/{product_id}/reject")
+async def reject_product(product_id: str, payload: Optional[dict] = Body(None)):
+    reason = None
+    if payload:
+        reason = payload.get("reason") or payload.get("rejection_reason")
+    if not reason:
+        reason = "No reason provided"
+    async with pool.acquire() as conn:
+        res = await conn.execute(
+            """
+            UPDATE products 
+            SET is_approved = FALSE, status = 'REJECTED', rejection_reason = $1 
+            WHERE id::text = $2::text
+            """, 
+            reason, str(product_id)
+        )
+        if res == "UPDATE 0":
+            raise HTTPException(status_code=404, detail="Product not found")
+        nid = str(uuid4())
+        await conn.execute("INSERT INTO notifications (id, title, body, target_tab, target_id) VALUES ($1, $2, $3, $4, $5)", nid, "Product Status Changed", f"Product ID {product_id} was marked as Rejected. Reason: {reason}", "products", str(product_id))
+        await invalidate_cache(["cache:products"])
+        return {"success": True, "status": "REJECTED", "is_approved": False, "rejection_reason": reason}
 
 @app.delete("/api/products/{product_id}")
 async def delete_product(product_id: UUID):
@@ -1847,6 +2078,28 @@ async def send_email_otp_endpoint(req: EmailOTPRequest):
         "message": f"✨ 6-Digit Email Verification OTP sent to {target_email}!"
     }
 
+@app.post("/api/auth/verify-email-otp")
+async def verify_email_otp(payload: dict):
+    email = payload.get("email", "").strip()
+    user_id = payload.get("user_id")
+    async with pool.acquire() as conn:
+        if user_id:
+            await conn.execute("UPDATE users SET email_verified = TRUE, email = COALESCE(NULLIF($1, ''), email) WHERE id::text = $2::text", email, str(user_id))
+            user = await get_user_by_id(UUID(str(user_id)))
+            return {"success": True, "message": "Email verified successfully", "user": user}
+    return {"success": True, "message": "Email verified successfully"}
+
+@app.post("/api/auth/verify-phone-otp")
+async def verify_phone_otp(payload: dict):
+    phone = payload.get("phone", "").strip()
+    user_id = payload.get("user_id")
+    async with pool.acquire() as conn:
+        if user_id:
+            await conn.execute("UPDATE users SET phone_verified = TRUE, phone = COALESCE(NULLIF($1, ''), phone) WHERE id::text = $2::text", phone, str(user_id))
+            user = await get_user_by_id(UUID(str(user_id)))
+            return {"success": True, "message": "Mobile number verified successfully", "user": user}
+    return {"success": True, "message": "Mobile number verified successfully"}
+
 whatsapp_otps: Dict[str, str] = {}
 
 class WhatsAppOTPRequest(BaseModel):
@@ -2154,6 +2407,148 @@ async def get_all_followers():
         except Exception:
             return []
 
+@app.get("/api/sellers/status/{user_id}")
+async def get_seller_status(user_id: str):
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT s.id, s.user_id, s.business_name, s.status, s.rejection_reason, s.kyc_details, 
+                   s.address as s_address, s.bank_name as s_bank_name, s.account_number as s_account_number, 
+                   s.ifsc as s_ifsc, s.gstin as s_gstin, s.pan as s_pan, s.fssai as s_fssai, s.email as s_email, s.phone as s_phone,
+                   u.email as user_email, u.phone as user_phone, u.address as user_address 
+            FROM sellers s 
+            LEFT JOIN users u ON s.user_id = u.id 
+            WHERE s.user_id::text = $1::text OR s.id::text = $1::text 
+            LIMIT 1
+            """,
+            str(user_id)
+        )
+        if not row:
+            return {"is_seller": False, "status": "NOT_APPLIED", "rejection_reason": None}
+        
+        kyc = row['kyc_details'] or {}
+        if isinstance(kyc, str):
+            try:
+                kyc = json.loads(kyc)
+            except Exception:
+                kyc = {}
+
+        return {
+            "is_seller": row['status'] == 'APPROVED',
+            "status": row['status'],
+            "rejection_reason": row['rejection_reason'],
+            "business_name": row['business_name'],
+            "store_name": row['business_name'],
+            "seller_id": row['id'],
+            "user_id": row['user_id'],
+            "email": row['s_email'] or kyc.get('email') or row['user_email'],
+            "phone": row['s_phone'] or kyc.get('phone') or row['user_phone'],
+            "address": row['s_address'] or kyc.get('address') or row['user_address'],
+            "bank_name": row['s_bank_name'] or kyc.get('bank_name'),
+            "account_number": row['s_account_number'] or kyc.get('account_number') or kyc.get('account_no'),
+            "ifsc": row['s_ifsc'] or kyc.get('ifsc') or kyc.get('ifsc_code'),
+            "gstin": row['s_gstin'] or kyc.get('gstin'),
+            "pan": row['s_pan'] or kyc.get('pan'),
+            "fssai": row['s_fssai'] or kyc.get('fssai'),
+            "kyc_details": kyc
+        }
+
+@app.post("/api/sellers/apply")
+async def apply_seller(payload: Optional[SellerApplyRequest] = None, body: Optional[dict] = Body(None)):
+    user_id_str = payload.user_id if payload else (body.get("user_id") if body else None)
+    phone = payload.phone if payload else (body.get("phone") if body else None)
+    email = payload.email if payload else (body.get("email") if body else None)
+    business_name = payload.business_name if payload else (body.get("business_name") if body else None)
+    commission_rate = payload.commission_rate if payload else (body.get("commission_rate", 10.0) if body else 10.0)
+    
+    # Get extra fields
+    address = payload.address if payload else (body.get("address") if body else None)
+    bank_name = payload.bank_name if payload else (body.get("bank_name") if body else None)
+    account_number = payload.account_number if payload else (body.get("account_number") if body else None)
+    ifsc = payload.ifsc if payload else (body.get("ifsc") if body else None)
+    gstin = payload.gstin if payload else (body.get("gstin") if body else None)
+    pan = payload.pan if payload else (body.get("pan") if body else None)
+    fssai = payload.fssai if payload else (body.get("fssai") if body else None)
+
+    kyc_details = payload.kyc_details if payload and payload.kyc_details else (body.get("kyc_details", {}) if body else {})
+    if not kyc_details:
+        kyc_details = {}
+    
+    if bank_name: kyc_details["bank_name"] = bank_name
+    if account_number: kyc_details["account_number"] = account_number
+    if ifsc: kyc_details["ifsc"] = ifsc
+    if gstin: kyc_details["gstin"] = gstin
+    if pan: kyc_details["pan"] = pan
+    if fssai: kyc_details["fssai"] = fssai
+
+    async with pool.acquire() as conn:
+        user = None
+        if user_id_str:
+            user = await conn.fetchrow("SELECT id, email, phone FROM users WHERE id::text = $1", str(user_id_str))
+        if not user and email:
+            user = await conn.fetchrow("SELECT id, email, phone FROM users WHERE LOWER(email) = LOWER($1)", str(email).strip())
+        if not user and phone:
+            user = await conn.fetchrow("SELECT id, email, phone FROM users WHERE phone = $1", str(phone).strip())
+
+        if not user:
+            user_id = uuid4()
+            await conn.execute(
+                "INSERT INTO users (id, phone, email, signup_platform) VALUES ($1, $2, $3, 'WEB')",
+                user_id, phone or f"+91000{str(uuid4())[:8]}", email
+            )
+        else:
+            user_id = user['id']
+
+        biz_name = business_name or f"Store {str(user_id)[:8]}"
+        kyc_payload = json.dumps(kyc_details)
+
+        existing_seller = await conn.fetchrow(
+            "SELECT id FROM sellers WHERE user_id = $1 OR business_name = $2",
+            user_id, biz_name
+        )
+
+        if existing_seller:
+            seller_id = existing_seller['id']
+            row = await conn.fetchrow(
+                """
+                UPDATE sellers 
+                SET status = 'PENDING', rejection_reason = NULL, business_name = $1, kyc_details = $2, updated_at = NOW(),
+                    address = $4, bank_name = $5, account_number = $6, ifsc = $7, gstin = $8, pan = $9, fssai = $10, email = $11, phone = $12
+                WHERE id = $3
+                RETURNING id, user_id, business_name, commission_rate, status, rejection_reason, kyc_details, created_at, updated_at
+                """,
+                biz_name, kyc_payload, seller_id, address, bank_name, account_number, ifsc, gstin, pan, fssai, email, phone
+            )
+        else:
+            seller_id = uuid4()
+            row = await conn.fetchrow(
+                """
+                INSERT INTO sellers (id, user_id, business_name, commission_rate, status, rejection_reason, kyc_details, address, bank_name, account_number, ifsc, gstin, pan, fssai, email, phone)
+                VALUES ($1, $2, $3, $4, 'PENDING', NULL, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+                RETURNING id, user_id, business_name, commission_rate, status, rejection_reason, kyc_details, created_at, updated_at
+                """,
+                seller_id, user_id, biz_name, float(commission_rate or 10.0), kyc_payload, address, bank_name, account_number, ifsc, gstin, pan, fssai, email, phone
+            )
+
+        # Notify Admin
+        await conn.execute(
+            """INSERT INTO notifications (id, title, body, target_tab, read, created_at)
+            VALUES ($1, $2, $3, $4, FALSE, NOW())""",
+            str(uuid4()),
+            "Seller Application Submitted",
+            f"Merchant store '{biz_name}' has applied/resubmitted.",
+            "merchants"
+        )
+        await clear_cache_keys("cache:notifications")
+        
+        seller_dict = dict(row) if row else {}
+        if isinstance(seller_dict.get('kyc_details'), str):
+            try:
+                seller_dict['kyc_details'] = json.loads(seller_dict['kyc_details'])
+            except Exception:
+                pass
+        return {"success": True, "status": "PENDING", "seller": seller_dict, "message": "Seller application submitted successfully"}
+
 @app.get("/api/sellers/{seller_id}", response_model=SellerResponse)
 async def read_seller(seller_id: str):
     import json
@@ -2256,20 +2651,45 @@ async def register_seller(payload: SellerRegisterRequest):
             raise HTTPException(status_code=400, detail="Store/Business name already exists.")
 
 @app.post("/api/sellers/{seller_id}/approve")
-async def approve_seller(seller_id: UUID):
-    query = "UPDATE sellers SET status = 'APPROVED', updated_at = NOW() WHERE id = $1 RETURNING id, status"
-    res = await execute_query_one(query, seller_id)
-    if not res:
-        raise HTTPException(status_code=404, detail="Seller not found")
-    return {"success": True, "seller_id": res['id'], "status": res['status']}
+async def approve_seller(seller_id: str):
+    async with pool.acquire() as conn:
+        res = await conn.fetchrow(
+            """
+            UPDATE sellers 
+            SET status = 'APPROVED', rejection_reason = NULL, updated_at = NOW() 
+            WHERE id::text = $1::text OR user_id::text = $1::text 
+            RETURNING id, user_id, status, rejection_reason
+            """,
+            str(seller_id)
+        )
+        if not res:
+            raise HTTPException(status_code=404, detail="Seller not found")
+        await conn.execute("UPDATE users SET is_seller = TRUE WHERE id = $1", res['user_id'])
+        await invalidate_cache(["cache:users"])
+        return {"success": True, "seller_id": res['id'], "status": res['status'], "rejection_reason": res['rejection_reason']}
 
 @app.post("/api/sellers/{seller_id}/reject")
-async def reject_seller(seller_id: UUID):
-    query = "UPDATE sellers SET status = 'REJECTED', updated_at = NOW() WHERE id = $1 RETURNING id, status"
-    res = await execute_query_one(query, seller_id)
-    if not res:
-        raise HTTPException(status_code=404, detail="Seller not found")
-    return {"success": True, "seller_id": res['id'], "status": res['status']}
+async def reject_seller(seller_id: str, payload: Optional[dict] = Body(None)):
+    reason = None
+    if payload:
+        reason = payload.get("reason") or payload.get("rejection_reason")
+    if not reason:
+        reason = "No reason provided"
+    async with pool.acquire() as conn:
+        res = await conn.fetchrow(
+            """
+            UPDATE sellers 
+            SET status = 'REJECTED', rejection_reason = $1, updated_at = NOW() 
+            WHERE id::text = $2::text OR user_id::text = $2::text 
+            RETURNING id, user_id, status, rejection_reason
+            """,
+            reason, str(seller_id)
+        )
+        if not res:
+            raise HTTPException(status_code=404, detail="Seller not found")
+        await conn.execute("UPDATE users SET is_seller = FALSE WHERE id = $1", res['user_id'])
+        await invalidate_cache(["cache:users"])
+        return {"success": True, "seller_id": res['id'], "status": res['status'], "rejection_reason": reason}
 
 class SellerUpdate(BaseModel):
     business_name: str
@@ -2384,10 +2804,99 @@ async def adjust_wallet(user_id: UUID, payload: WalletAdjustmentRequest):
     return {"success": True, "user_id": user_id, "new_balance": new_balance}
 
 # Category Management
-@app.get("/api/categories/", response_model=List[CategoryResponse])
-async def read_categories():
-    query = "SELECT id, name, description, created_at FROM categories"
-    return await execute_query(query)
+@app.get("/api/categories/")
+async def read_categories(approved_only: bool = Query(False), seller_id: Optional[str] = Query(None)):
+    async with pool.acquire() as conn:
+        if approved_only:
+            rows = await conn.fetch("SELECT c.*, s.business_name AS seller_store_name, s.business_name AS seller_name FROM categories c LEFT JOIN sellers s ON c.requested_by_seller_id = s.id WHERE c.status = 'APPROVED' OR c.status IS NULL ORDER BY c.name ASC")
+        elif seller_id:
+            rows = await conn.fetch("SELECT c.*, s.business_name AS seller_store_name, s.business_name AS seller_name FROM categories c LEFT JOIN sellers s ON c.requested_by_seller_id = s.id WHERE c.requested_by_seller_id::text = $1 OR c.status = 'APPROVED' ORDER BY c.created_at DESC, c.name ASC", str(seller_id))
+        else:
+            rows = await conn.fetch("SELECT c.*, s.business_name AS seller_store_name, s.business_name AS seller_name FROM categories c LEFT JOIN sellers s ON c.requested_by_seller_id = s.id ORDER BY c.created_at DESC, c.name ASC")
+        return [dict(row) for row in rows]
+
+@app.post("/api/categories/request")
+async def request_category(payload: Optional[CategoryRequestPayload] = None, body: Optional[dict] = Body(None)):
+    name = (payload.name if payload else (body.get("name") if body else "")).strip() if ((payload and payload.name) or (body and body.get("name"))) else ""
+    if not name:
+        raise HTTPException(status_code=400, detail="Category name is required")
+    description = payload.description if payload else (body.get("description") if body else None)
+    seller_id_val = payload.seller_id if payload else (body.get("seller_id") if body else None)
+    
+    seller_uuid = None
+    if seller_id_val:
+        try:
+            seller_uuid = UUID(str(seller_id_val))
+        except Exception:
+            seller_uuid = None
+
+    async with pool.acquire() as conn:
+        cat_id = uuid4()
+        row = await conn.fetchrow(
+            """
+            INSERT INTO categories (id, name, description, requested_by_seller_id, status)
+            VALUES ($1, $2, $3, $4, 'PENDING')
+            ON CONFLICT (name) DO UPDATE SET 
+                description = COALESCE(EXCLUDED.description, categories.description),
+                requested_by_seller_id = COALESCE(EXCLUDED.requested_by_seller_id, categories.requested_by_seller_id),
+                status = 'PENDING'
+            RETURNING *
+            """,
+            cat_id, name, description, seller_uuid
+        )
+        await invalidate_cache(["cache:categories"])
+        return {"success": True, "category": dict(row) if row else {}}
+
+@app.post("/api/categories/{cat_id}/approve")
+async def approve_category(cat_id: str):
+    async with pool.acquire() as conn:
+        res = await conn.execute(
+            """
+            UPDATE categories 
+            SET status = 'APPROVED', rejection_reason = NULL 
+            WHERE id::text = $1::text OR name ILIKE $1::text
+            """,
+            str(cat_id)
+        )
+        if res == "UPDATE 0":
+            raise HTTPException(status_code=404, detail="Category not found")
+        await invalidate_cache(["cache:categories"])
+        return {"success": True, "status": "APPROVED", "message": "Category approved"}
+
+@app.post("/api/categories/{cat_id}/reject")
+async def reject_category(cat_id: str, payload: Optional[dict] = Body(None)):
+    reason = None
+    if payload:
+        reason = payload.get("reason") or payload.get("rejection_reason")
+    if not reason:
+        reason = "No reason provided"
+    async with pool.acquire() as conn:
+        res = await conn.execute(
+            """
+            UPDATE categories 
+            SET status = 'REJECTED', rejection_reason = $1 
+            WHERE id::text = $2::text OR name ILIKE $2::text
+            """,
+            reason, str(cat_id)
+        )
+        if res == "UPDATE 0":
+            raise HTTPException(status_code=404, detail="Category not found")
+        await invalidate_cache(["cache:categories"])
+        return {"success": True, "status": "REJECTED", "rejection_reason": reason, "message": "Category rejected"}
+
+@app.get("/api/sellers/{seller_id}/category-requests")
+async def get_seller_category_requests(seller_id: str):
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT * FROM categories 
+            WHERE requested_by_seller_id::text = $1::text 
+               OR requested_by_seller_id IN (SELECT id FROM sellers WHERE user_id::text = $1::text)
+            ORDER BY name ASC
+            """,
+            str(seller_id)
+        )
+        return [dict(row) for row in rows]
 
 @app.post("/api/categories/", response_model=CategoryResponse)
 async def create_category(payload: CategoryCreate):
@@ -2565,9 +3074,9 @@ async def update_product(product_id: UUID, payload: ProductUpdate):
 
     query_update = """
     UPDATE products 
-    SET name = $1, category_id = $2, price = $3, weight_grams = $4, image_url = $5, images = $6::jsonb, is_combo = $7, stock_quantity = $8, description = $9, seller_id = $10 
+    SET name = $1, category_id = $2, price = $3, weight_grams = $4, image_url = $5, images = $6::jsonb, is_combo = $7, stock_quantity = $8, description = $9, seller_id = $10, is_approved = FALSE, status = 'PENDING', rejection_reason = NULL 
     WHERE id = $11 
-    RETURNING id, name, category_id, price, weight_grams, image_url, images, is_combo, stock_quantity, seller_id, description, created_at
+    RETURNING id, name, category_id, price, weight_grams, image_url, images, is_combo, stock_quantity, seller_id, description, created_at, is_approved, status, rejection_reason
     """
     res = await execute_query_one(query_update, name, category_id, price, weight_grams, image_url, images, is_combo, stock_quantity, description, str(seller_id), product_id)
     
@@ -2963,15 +3472,23 @@ class AddressUpdatePayload(BaseModel):
     city: Optional[str] = None
     state: Optional[str] = None
     pincode: Optional[str] = None
+    zip_code: Optional[str] = None
     country: Optional[str] = "India"
     lat: Optional[float] = None
     lng: Optional[float] = None
+    address_lat: Optional[float] = None
+    address_lng: Optional[float] = None
 
 @app.put("/api/addresses/{address_id}")
 @app.put("/api/users/addresses/{address_id}")
 async def update_address(address_id: str, payload: AddressUpdatePayload):
     async with pool.acquire() as conn:
-        addr_text = payload.address or payload.street or ""
+        addr_text = payload.address or payload.street
+        pin_text = payload.pincode or payload.zip_code
+        lat_val = payload.lat if payload.lat is not None else payload.address_lat
+        lng_val = payload.lng if payload.lng is not None else payload.address_lng
+        row = None
+
         try:
             await conn.execute("""
                 UPDATE user_addresses
@@ -2987,7 +3504,7 @@ async def update_address(address_id: str, payload: AddressUpdatePayload):
                     lng = COALESCE($10, lng),
                     updated_at = NOW()
                 WHERE id::text = $11::text
-            """, payload.title, payload.name, payload.phone, addr_text, payload.city, payload.state, payload.pincode, payload.country, payload.lat, payload.lng, str(address_id))
+            """, payload.title, payload.name, payload.phone, addr_text, payload.city, payload.state, pin_text, payload.country, lat_val, lng_val, str(address_id))
             row = await conn.fetchrow("SELECT * FROM user_addresses WHERE id::text = $1::text", str(address_id))
         except Exception:
             row = None
@@ -3000,9 +3517,11 @@ async def update_address(address_id: str, payload: AddressUpdatePayload):
                         street = COALESCE($2, street),
                         city = COALESCE($3, city),
                         state = COALESCE($4, state),
-                        zip_code = COALESCE($5, zip_code)
-                    WHERE id::text = $6::text
-                """, payload.name, addr_text, payload.city, payload.state, payload.pincode, str(address_id))
+                        zip_code = COALESCE($5, zip_code),
+                        address_lat = COALESCE($6, address_lat),
+                        address_lng = COALESCE($7, address_lng)
+                    WHERE id::text = $8::text
+                """, payload.name, addr_text, payload.city, payload.state, pin_text, lat_val, lng_val, str(address_id))
                 row = await conn.fetchrow("SELECT * FROM addresses WHERE id::text = $1::text", str(address_id))
             except Exception:
                 row = None
@@ -3156,27 +3675,68 @@ async def get_all_reviews(product_id: Optional[str] = None, seller_id: Optional[
             results.append(d)
         return results
 
+@app.get("/api/sellers/{seller_id}/reviews")
+async def get_seller_reviews_route(seller_id: str):
+    return await get_all_reviews(seller_id=seller_id)
+
+@app.post("/api/reviews/{review_id}/reply")
+@app.put("/api/reviews/{review_id}/reply")
+async def reply_review(review_id: str, payload: dict = Body(...)):
+    reply_text = payload.get("reply") or payload.get("comment") or ""
+    async with pool.acquire() as conn:
+        try:
+            rid = UUID(review_id)
+            await conn.execute("UPDATE reviews SET reply = $1 WHERE id = $2", reply_text, rid)
+            await conn.execute("UPDATE seller_reviews SET reply = $1 WHERE id = $2", reply_text, rid)
+        except Exception:
+            await conn.execute("UPDATE reviews SET reply = $1 WHERE id::text = $2", reply_text, str(review_id))
+            await conn.execute("UPDATE seller_reviews SET reply = $1 WHERE id::text = $2", reply_text, str(review_id))
+        return {"success": True, "message": "Reply saved successfully", "reply": reply_text}
+
 @app.get("/api/sellers/{seller_id}/followers")
 async def get_seller_followers(seller_id: str):
     async with pool.acquire() as conn:
         try:
-            sid = UUID(seller_id)
-            rows = await conn.fetch(
-                """
-                SELECT u.id, u.name, u.email, sf.created_at
-                FROM seller_followers sf
-                JOIN users u ON sf.user_id = u.id
-                WHERE sf.seller_id = $1
-                ORDER BY sf.created_at DESC
-                """, sid
-            )
+            try:
+                sid = UUID(seller_id)
+            except Exception:
+                row = await conn.fetchrow("SELECT id FROM sellers WHERE id::text = $1 OR business_name ILIKE $1", seller_id)
+                sid = row['id'] if row else None
+
+            if sid:
+                rows = await conn.fetch(
+                    """
+                    SELECT u.id, u.name, u.name as user_name, u.email, u.email as user_email, sf.created_at as follow_date, sf.created_at,
+                           (SELECT COUNT(*) FROM orders o WHERE o.user_id = u.id) as total_orders
+                    FROM seller_followers sf
+                    JOIN users u ON sf.user_id = u.id
+                    WHERE sf.seller_id = $1
+                    ORDER BY sf.created_at DESC
+                    """, sid
+                )
+            else:
+                rows = await conn.fetch(
+                    """
+                    SELECT u.id, u.name, u.name as user_name, u.email, u.email as user_email, sf.created_at as follow_date, sf.created_at,
+                           (SELECT COUNT(*) FROM orders o WHERE o.user_id = u.id) as total_orders
+                    FROM seller_followers sf
+                    JOIN users u ON sf.user_id = u.id
+                    WHERE sf.seller_id::text = $1
+                    ORDER BY sf.created_at DESC
+                    """, seller_id
+                )
             count = len(rows)
             return {"count": count, "followers": [dict(r) for r in rows]}
-        except Exception:
+        except Exception as e:
+            print("Error getting seller followers:", e)
             return {"count": 0, "followers": []}
 
 @app.post("/api/sellers/{seller_id}/follow")
-async def follow_seller(seller_id: str, user_id: str):
+async def follow_seller(seller_id: str, user_id: Optional[str] = Query(None), payload: Optional[dict] = None):
+    target_user_id = user_id
+    if not target_user_id and payload and isinstance(payload, dict):
+        target_user_id = payload.get("user_id")
+
     async with pool.acquire() as conn:
         try:
             try:
@@ -3186,9 +3746,9 @@ async def follow_seller(seller_id: str, user_id: str):
                 sid = row['id'] if row else None
             
             try:
-                uid = UUID(user_id)
+                uid = UUID(str(target_user_id)) if target_user_id else None
             except Exception:
-                row = await conn.fetchrow("SELECT id FROM users WHERE id::text = $1", user_id)
+                row = await conn.fetchrow("SELECT id FROM users WHERE id::text = $1", str(target_user_id))
                 uid = row['id'] if row else None
 
             if sid and uid:
@@ -3197,7 +3757,7 @@ async def follow_seller(seller_id: str, user_id: str):
                     """
                     INSERT INTO seller_followers (id, user_id, seller_id)
                     VALUES ($1, $2, $3)
-                    ON CONFLICT DO NOTHING
+                    ON CONFLICT (seller_id, user_id) DO NOTHING
                     """, fid, uid, sid
                 )
                 await conn.execute(
@@ -3232,8 +3792,14 @@ async def follow_seller(seller_id: str, user_id: str):
         except Exception as e:
             return {"success": True, "message": "Store followed", "is_following": True}
 
+@app.post("/api/sellers/{seller_id}/unfollow")
 @app.delete("/api/sellers/{seller_id}/follow")
-async def unfollow_seller(seller_id: str, user_id: str):
+@app.delete("/api/sellers/{seller_id}/unfollow")
+async def unfollow_seller(seller_id: str, user_id: Optional[str] = Query(None), payload: Optional[dict] = None):
+    target_user_id = user_id
+    if not target_user_id and payload and isinstance(payload, dict):
+        target_user_id = payload.get("user_id")
+
     async with pool.acquire() as conn:
         try:
             try:
@@ -3243,9 +3809,9 @@ async def unfollow_seller(seller_id: str, user_id: str):
                 sid = row['id'] if row else None
             
             try:
-                uid = UUID(user_id)
+                uid = UUID(str(target_user_id)) if target_user_id else None
             except Exception:
-                row = await conn.fetchrow("SELECT id FROM users WHERE id::text = $1", user_id)
+                row = await conn.fetchrow("SELECT id FROM users WHERE id::text = $1", str(target_user_id))
                 uid = row['id'] if row else None
 
             if sid and uid:
@@ -3510,6 +4076,49 @@ async def change_user_password(req: ChangePasswordRequest, current_user: dict = 
         await conn.execute("UPDATE users SET password_hash = $1 WHERE id = $2", hashed, user_id)
         return {"success": True, "message": "🎉 Password updated successfully in Database!"}
 
+class SetPasswordWithOTPRequest(BaseModel):
+    user_id: Optional[str] = None
+    email: str
+    otp: str
+    new_password: str
+
+@app.post("/api/auth/set-password-with-otp")
+async def set_password_with_otp(req: SetPasswordWithOTPRequest):
+    email = req.email.strip()
+    new_password = req.new_password
+    otp = req.otp.strip()
+
+    if not otp:
+        raise HTTPException(status_code=400, detail="⚠️ OTP code is required.")
+
+    np = new_password
+    if len(np) < 8 or not any(c.islower() for c in np) or not any(c.isdigit() or c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in np):
+        raise HTTPException(status_code=400, detail="⚠️ New password does not meet requirements (Min 8 chars, 1 lowercase letter, 1 number/symbol).")
+
+    hashed = pwd_context.hash(np)
+    async with pool.acquire() as conn:
+        if req.user_id:
+            await conn.execute("UPDATE users SET password_hash = $1 WHERE id::text = $2", hashed, str(req.user_id))
+        else:
+            await conn.execute("UPDATE users SET password_hash = $1 WHERE email = $2", hashed, email)
+
+        user = None
+        if req.user_id:
+            try:
+                user = await get_user_by_id(UUID(str(req.user_id)))
+            except Exception:
+                pass
+        elif email:
+            user_row = await conn.fetchrow("SELECT id FROM users WHERE email = $1", email)
+            if user_row:
+                user = await get_user_by_id(user_row['id'])
+
+    return {
+        "success": True,
+        "message": "🎉 Password created successfully!",
+        "user": user
+    }
+
 class TwoFAToggleRequest(BaseModel):
     user_id: str
     enabled: bool
@@ -3531,57 +4140,123 @@ async def list_all_invoices(user_id: Optional[str] = None):
     async with pool.acquire() as conn:
         try:
             if user_id:
+                try:
+                    uid = UUID(user_id)
+                except Exception:
+                    uid = None
                 rows = await conn.fetch(
                     """
-                    SELECT o.id, o.total_amount, o.status, o.created_at, o.payment_status,
+                    SELECT i.id, i.invoice_number, i.order_id, i.seller_id, i.user_id,
+                           i.amount, i.tax_amount, i.status, i.due_date, i.created_at,
                            u.name as customer_name, u.email as customer_email,
-                           s.business_name as seller_name
-                    FROM orders o
-                    LEFT JOIN users u ON o.user_id = u.id
-                    LEFT JOIN sellers s ON o.seller_id = s.id
-                    WHERE o.user_id = $1::uuid OR s.user_id = $1::uuid
-                    ORDER BY o.created_at DESC
-                    """,
-                    user_id
+                           s.business_name as seller_name,
+                           o.total_amount as order_total, o.status as order_status
+                    FROM invoices i
+                    LEFT JOIN users u ON i.user_id = u.id
+                    LEFT JOIN orders o ON i.order_id = o.id
+                    LEFT JOIN sellers s ON i.seller_id = s.id
+                    WHERE i.user_id = $1 OR i.seller_id = $1
+                    ORDER BY i.created_at DESC
+                    """, uid
                 )
             else:
                 rows = await conn.fetch(
                     """
-                    SELECT o.id, o.total_amount, o.status, o.created_at, o.payment_status,
+                    SELECT i.id, i.invoice_number, i.order_id, i.seller_id, i.user_id,
+                           i.amount, i.tax_amount, i.status, i.due_date, i.created_at,
                            u.name as customer_name, u.email as customer_email,
-                           s.business_name as seller_name
-                    FROM orders o
-                    LEFT JOIN users u ON o.user_id = u.id
-                    LEFT JOIN sellers s ON o.seller_id = s.id
-                    ORDER BY o.created_at DESC
+                           s.business_name as seller_name,
+                           o.total_amount as order_total, o.status as order_status
+                    FROM invoices i
+                    LEFT JOIN users u ON i.user_id = u.id
+                    LEFT JOIN orders o ON i.order_id = o.id
+                    LEFT JOIN sellers s ON i.seller_id = s.id
+                    ORDER BY i.created_at DESC
                     """
                 )
 
             invoices = []
-            for idx, r in enumerate(rows):
-                order_id_short = str(r['id'])[:8].upper()
+            for r in rows:
                 invoices.append({
                     "id": str(r['id']),
-                    "invoice_number": f"#INV-{order_id_short}",
+                    "invoice_number": r['invoice_number'] or f"#INV-{str(r['id'])[:8].upper()}",
+                    "order_id": str(r['order_id']) if r['order_id'] else None,
+                    "seller_id": str(r['seller_id']) if r['seller_id'] else None,
+                    "user_id": str(r['user_id']) if r['user_id'] else None,
                     "customer_name": r['customer_name'] or "Customer Account",
                     "customer_email": r['customer_email'] or "customer@bupzo.com",
                     "seller_name": r['seller_name'] or "Bupzo Store",
-                    "total_amount": float(r['total_amount'] or 0.0),
-                    "status": "PAID" if (r['payment_status'] == 'COMPLETED' or r['status'] == 'DELIVERED') else "PENDING",
+                    "amount": float(r['amount'] or 0.0),
+                    "tax_amount": float(r['tax_amount'] or 0.0),
+                    "total_amount": float(r['amount'] or 0.0),
+                    "status": r['status'] or "PAID",
                     "issued_date": r['created_at'].strftime("%Y-%m-%d") if r['created_at'] else "2026-07-25",
-                    "due_date": (r['created_at'] + timedelta(days=15)).strftime("%Y-%m-%d") if r['created_at'] else "2026-08-09"
+                    "due_date": r['due_date'].strftime("%Y-%m-%d") if r['due_date'] else "2026-08-09"
                 })
 
             if not invoices:
-                # Return real fallback invoices from system users if no orders yet
+                if user_id:
+                    try:
+                        uid = UUID(user_id)
+                    except Exception:
+                        uid = None
+                    order_rows = await conn.fetch(
+                        """
+                        SELECT o.id, o.total_amount, o.status, o.created_at, o.payment_status, o.user_id, o.seller_id,
+                               u.name as customer_name, u.email as customer_email,
+                               s.business_name as seller_name
+                        FROM orders o
+                        LEFT JOIN users u ON o.user_id = u.id
+                        LEFT JOIN sellers s ON o.seller_id = s.id
+                        WHERE o.user_id = $1 OR s.user_id = $1
+                        ORDER BY o.created_at DESC
+                        """, uid
+                    )
+                else:
+                    order_rows = await conn.fetch(
+                        """
+                        SELECT o.id, o.total_amount, o.status, o.created_at, o.payment_status, o.user_id, o.seller_id,
+                               u.name as customer_name, u.email as customer_email,
+                               s.business_name as seller_name
+                        FROM orders o
+                        LEFT JOIN users u ON o.user_id = u.id
+                        LEFT JOIN sellers s ON o.seller_id = s.id
+                        ORDER BY o.created_at DESC
+                        """
+                    )
+                for idx, r in enumerate(order_rows):
+                    order_id_short = str(r['id'])[:8].upper()
+                    invoices.append({
+                        "id": str(r['id']),
+                        "invoice_number": f"#INV-{order_id_short}",
+                        "order_id": str(r['id']),
+                        "seller_id": str(r['seller_id']) if r['seller_id'] else None,
+                        "user_id": str(r['user_id']) if r['user_id'] else None,
+                        "customer_name": r['customer_name'] or "Customer Account",
+                        "customer_email": r['customer_email'] or "customer@bupzo.com",
+                        "seller_name": r['seller_name'] or "Bupzo Store",
+                        "amount": float(r['total_amount'] or 0.0),
+                        "tax_amount": 0.0,
+                        "total_amount": float(r['total_amount'] or 0.0),
+                        "status": "PAID" if (r['payment_status'] == 'COMPLETED' or r['status'] == 'DELIVERED') else "PENDING",
+                        "issued_date": r['created_at'].strftime("%Y-%m-%d") if r['created_at'] else "2026-07-25",
+                        "due_date": (r['created_at'] + timedelta(days=15)).strftime("%Y-%m-%d") if r['created_at'] else "2026-08-09"
+                    })
+
+            if not invoices:
                 u_rows = await conn.fetch("SELECT id, name, email, created_at FROM users LIMIT 5")
                 for idx, u in enumerate(u_rows):
                     invoices.append({
                         "id": str(u['id']),
                         "invoice_number": f"#INV-100{idx+1}",
+                        "order_id": None,
+                        "seller_id": None,
+                        "user_id": str(u['id']),
                         "customer_name": u['name'] or "Customer Account",
                         "customer_email": u['email'] or "customer@bupzo.com",
                         "seller_name": "Bupzo Official Store",
+                        "amount": float(1250.00 * (idx + 1)),
+                        "tax_amount": 0.0,
                         "total_amount": float(1250.00 * (idx + 1)),
                         "status": "PAID" if idx % 2 == 0 else "PENDING",
                         "issued_date": u['created_at'].strftime("%Y-%m-%d") if u['created_at'] else "2026-07-25",
@@ -3592,6 +4267,127 @@ async def list_all_invoices(user_id: Optional[str] = None):
         except Exception as e:
             print("Error fetching invoices:", e)
             return []
+
+@app.post("/api/invoices/")
+async def create_invoice(payload: dict):
+    inv_number = payload.get("invoice_number")
+    if not inv_number:
+        inv_number = f"INV-{uuid4().hex[:8].upper()}"
+    
+    order_id_str = payload.get("order_id")
+    seller_id_str = payload.get("seller_id")
+    user_id_str = payload.get("user_id")
+    
+    def to_uuid(val):
+        if not val:
+            return None
+        try:
+            return UUID(str(val))
+        except Exception:
+            return None
+
+    order_id = to_uuid(order_id_str)
+    seller_id = to_uuid(seller_id_str)
+    user_id = to_uuid(user_id_str)
+    
+    amount = float(payload.get("amount", 0.0))
+    tax_amount = float(payload.get("tax_amount", 0.0))
+    status_val = payload.get("status", "PAID")
+    
+    due_date_raw = payload.get("due_date")
+    due_date = None
+    if due_date_raw:
+        if isinstance(due_date_raw, str):
+            try:
+                due_date = datetime.fromisoformat(due_date_raw.replace("Z", "+00:00"))
+            except Exception:
+                due_date = datetime.utcnow() + timedelta(days=15)
+        elif isinstance(due_date_raw, datetime):
+            due_date = due_date_raw
+    if not due_date:
+        due_date = datetime.utcnow() + timedelta(days=15)
+
+    async with pool.acquire() as conn:
+        inv_id = uuid4()
+        row = await conn.fetchrow(
+            """
+            INSERT INTO invoices (id, invoice_number, order_id, seller_id, user_id, amount, tax_amount, status, due_date)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            RETURNING id, invoice_number, order_id, seller_id, user_id, amount, tax_amount, status, due_date, created_at
+            """,
+            inv_id, inv_number, order_id, seller_id, user_id, amount, tax_amount, status_val, due_date
+        )
+        res = dict(row)
+        res['id'] = str(res['id'])
+        res['order_id'] = str(res['order_id']) if res['order_id'] else None
+        res['seller_id'] = str(res['seller_id']) if res['seller_id'] else None
+        res['user_id'] = str(res['user_id']) if res['user_id'] else None
+        res['amount'] = float(res['amount']) if res['amount'] is not None else 0.0
+        res['tax_amount'] = float(res['tax_amount']) if res['tax_amount'] is not None else 0.0
+        return {"success": True, "invoice": res}
+
+@app.put("/api/invoices/{invoice_id}")
+async def update_invoice(invoice_id: str, payload: dict):
+    async with pool.acquire() as conn:
+        inv = await conn.fetchrow("SELECT * FROM invoices WHERE id::text = $1::text OR invoice_number = $1", str(invoice_id))
+        if not inv:
+            raise HTTPException(status_code=404, detail="Invoice not found")
+        
+        status_val = payload.get("status")
+        amount = payload.get("amount")
+        tax_amount = payload.get("tax_amount")
+        due_date_raw = payload.get("due_date")
+        
+        updates = []
+        params = [inv['id']]
+        idx = 2
+        
+        if status_val is not None:
+            updates.append(f"status = ${idx}")
+            params.append(status_val)
+            idx += 1
+        if amount is not None:
+            updates.append(f"amount = ${idx}")
+            params.append(float(amount))
+            idx += 1
+        if tax_amount is not None:
+            updates.append(f"tax_amount = ${idx}")
+            params.append(float(tax_amount))
+            idx += 1
+        if due_date_raw is not None:
+            due_date = None
+            if isinstance(due_date_raw, str):
+                try:
+                    due_date = datetime.fromisoformat(due_date_raw.replace("Z", "+00:00"))
+                except Exception:
+                    pass
+            elif isinstance(due_date_raw, datetime):
+                due_date = due_date_raw
+            if due_date:
+                updates.append(f"due_date = ${idx}")
+                params.append(due_date)
+                idx += 1
+                
+        if updates:
+            query = f"UPDATE invoices SET {', '.join(updates)} WHERE id = $1 RETURNING *"
+            updated_row = await conn.fetchrow(query, *params)
+            res = dict(updated_row)
+        else:
+            res = dict(inv)
+            
+        res['id'] = str(res['id'])
+        res['order_id'] = str(res['order_id']) if res.get('order_id') else None
+        res['seller_id'] = str(res['seller_id']) if res.get('seller_id') else None
+        res['user_id'] = str(res['user_id']) if res.get('user_id') else None
+        res['amount'] = float(res['amount']) if res.get('amount') is not None else 0.0
+        res['tax_amount'] = float(res['tax_amount']) if res.get('tax_amount') is not None else 0.0
+        return {"success": True, "message": "Invoice updated successfully", "invoice": res}
+
+@app.delete("/api/invoices/{invoice_id}")
+async def delete_invoice(invoice_id: str):
+    async with pool.acquire() as conn:
+        await conn.execute("DELETE FROM invoices WHERE id::text = $1::text OR invoice_number = $1", str(invoice_id))
+        return {"success": True, "message": "Invoice deleted successfully"}
 
 @app.get("/api/shiprocket/track/{awb_code}")
 async def track_shiprocket_shipment(awb_code: str):

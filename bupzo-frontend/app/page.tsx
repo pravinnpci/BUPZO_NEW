@@ -988,7 +988,14 @@ export default function Home() {
               )}
               {/* TAB: SETTINGS */}
               {customerTab === 'settings' && (
-                <CustomerSettings user={user} />
+                <CustomerSettings user={user} onNavigate={(target) => {
+                  if (target === 'seller') {
+                    setUserRole('seller');
+                    localStorage.setItem('userRole', 'seller');
+                  } else {
+                    setCustomerTab(target as any);
+                  }
+                }} />
               )}
               {/* TAB: MESSAGES */}
               {customerTab === 'messages' && (

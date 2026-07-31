@@ -188,12 +188,14 @@ export const AdminFollowers: React.FC<AdminFollowersProps> = ({ sellers, users }
                   <th className="py-3 cursor-pointer hover:text-blue-500 transition-colors" onClick={() => handleSort('user_name')}>
                     Customer Name <SortIndicator k="user_name" />
                   </th>
-                  <th className="py-3">Contact (Phone / Email)</th>
+                  <th className="py-3 cursor-pointer hover:text-blue-500 transition-colors" onClick={() => handleSort('user_email')}>
+                    Customer Email <SortIndicator k="user_email" />
+                  </th>
                   <th className="py-3 cursor-pointer hover:text-blue-500 transition-colors" onClick={() => handleSort('seller_name')}>
-                    Followed Merchant Store <SortIndicator k="seller_name" />
+                    Merchant Store <SortIndicator k="seller_name" />
                   </th>
                   <th className="py-3 cursor-pointer hover:text-blue-500 transition-colors" onClick={() => handleSort('created_at')}>
-                    Date & Time <SortIndicator k="created_at" />
+                    Date Followed <SortIndicator k="created_at" />
                   </th>
                   <th className="py-3 text-right">Actions</th>
                 </tr>
@@ -203,10 +205,7 @@ export const AdminFollowers: React.FC<AdminFollowersProps> = ({ sellers, users }
                   <tr key={f.id} className="border-b border-zinc-150 dark:border-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
                     <td className="py-3 font-mono text-zinc-500 font-bold">{f.id ? `${f.id.substring(0, 8)}...` : 'FL-1001'}</td>
                     <td className="py-3 font-bold text-blue-600 dark:text-blue-400">{f.user_name || 'Customer Shopper'}</td>
-                    <td className="py-3 font-mono text-zinc-600 dark:text-zinc-400">
-                      <div>{f.user_phone}</div>
-                      <div className="text-[10px] text-zinc-400">{f.user_email}</div>
-                    </td>
+                    <td className="py-3 font-mono text-zinc-600 dark:text-zinc-400">{f.user_email || 'customer@bupzo.com'}</td>
                     <td className="py-3 font-semibold text-amber-600 dark:text-amber-400">{f.seller_name || 'Merchant Store'}</td>
                     <td className="py-3 font-mono text-[10px] text-zinc-500 whitespace-nowrap">
                       {f.created_at ? new Date(f.created_at).toLocaleString() : '2026-07-25 20:45'}

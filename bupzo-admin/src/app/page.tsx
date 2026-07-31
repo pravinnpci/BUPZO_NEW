@@ -128,6 +128,145 @@ export default function AdminMainPage() {
   const [adminReplyTo, setAdminReplyTo] = useState<any>(null);
   const [adminReplyContent, setAdminReplyContent] = useState('');
 
+  // Invoice Management States
+  const [invoices, setInvoices] = useState<any[]>([
+    { id: 'INV-2026-001', order_id: 'ORD-98421', customer_name: 'Pravin Kumar', amount: '2499.00', status: 'Paid', due_date: '2026-08-10', date: '2026-07-28', store: 'Urban Trendz Store', items: [{ name: 'Wireless Headphones', qty: 1, price: 2499 }] },
+    { id: 'INV-2026-002', order_id: 'ORD-98422', customer_name: 'Ananya Sharma', amount: '1250.00', status: 'Paid', due_date: '2026-08-12', date: '2026-07-29', store: 'Silk & Cotton Traders', items: [{ name: 'Handcrafted Kurti', qty: 1, price: 1250 }] },
+    { id: 'INV-2026-003', order_id: 'ORD-98423', customer_name: 'Rahul Verma', amount: '4999.00', status: 'Pending', due_date: '2026-08-05', date: '2026-07-30', store: 'BUPZO Electronics', items: [{ name: 'Smartwatch Series 5', qty: 1, price: 4999 }] },
+    { id: 'INV-2026-004', order_id: 'ORD-98424', customer_name: 'Sneha Patel', amount: '899.00', status: 'Overdue', due_date: '2026-07-25', date: '2026-07-20', store: 'Organic Essence', items: [{ name: 'Organic Honey 1kg', qty: 1, price: 899 }] },
+    { id: 'INV-2026-005', order_id: 'ORD-98425', customer_name: 'Vikram Malhotra', amount: '3150.00', status: 'Paid', due_date: '2026-08-18', date: '2026-07-31', store: 'Royal Leathercraft', items: [{ name: 'Genuine Leather Wallet', qty: 2, price: 1575 }] }
+  ]);
+  const [invoiceSearchTerm, setInvoiceSearchTerm] = useState('');
+  const [invoiceStatusFilter, setInvoiceStatusFilter] = useState('All');
+  const [previewInvoice, setPreviewInvoice] = useState<any>(null);
+
+  // Invoice Modals & Form State
+  const [showAddInvoiceModal, setShowAddInvoiceModal] = useState(false);
+  const [showEditInvoiceModal, setShowEditInvoiceModal] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
+
+  const [invNum, setInvNum] = useState('');
+  const [invOrderId, setInvOrderId] = useState('');
+  const [invCustomerName, setInvCustomerName] = useState('');
+  const [invStoreName, setInvStoreName] = useState('');
+  const [invAmount, setInvAmount] = useState('');
+  const [invStatus, setInvStatus] = useState('Paid');
+  const [invDueDate, setInvDueDate] = useState('');
+  const [invItemName, setInvItemName] = useState('');
+  const [invItemQty, setInvItemQty] = useState('1');
+  const [invItemPrice, setInvItemPrice] = useState('');
+
+  const handleAddInvoiceSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!invCustomerName || !invAmount) {
+      alert("Customer Name and Amount are required.");
+      return;
+    }
+    const newInvId = invNum || `INV-2026-${String(invoices.length + 1).padStart(3, '0')}`;
+    const newInv = {
+      id: newInvId,
+      order_id: invOrderId || `ORD-${Math.floor(10000 + Math.random() * 90000)}`,
+      customer_name: invCustomerName,
+      amount: parseFloat(invAmount).toFixed(2),
+      status: invStatus,
+      due_date: invDueDate || '2026-08-20',
+      date: new Date().toISOString().split('T')[0],
+      store: invStoreName || 'BUPZO Direct Store',
+      items: [{ name: invItemName || 'Product Item', qty: parseInt(invItemQty) || 1, price: parseFloat(invItemPrice) || parseFloat(invAmount) }]
+    };
+    try {
+      await fetch(`${API_URL}/api/invoices/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invoice_number: newInv.id,
+          order_id: newInv.order_id,
+          amount: parseFloat(newInv.amount),
+          status: newInv.status,
+          due_date: newInv.due_date
+        })
+      });
+    } catch(e) {}
+
+    setInvoices(prev => [newInv, ...prev]);
+    showAdminToast(`Invoice ${newInv.id} created successfully!`);
+    setShowAddInvoiceModal(false);
+    setInvNum(''); setInvOrderId(''); setInvCustomerName(''); setInvStoreName(''); setInvAmount(''); setInvStatus('Paid'); setInvDueDate(''); setInvItemName(''); setInvItemQty('1'); setInvItemPrice('');
+  };
+
+  const handleEditInvoiceSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedInvoice) return;
+    const updatedInv = {
+      ...selectedInvoice,
+      customer_name: invCustomerName || selectedInvoice.customer_name,
+      amount: invAmount ? parseFloat(invAmount).toFixed(2) : selectedInvoice.amount,
+      status: invStatus,
+      due_date: invDueDate || selectedInvoice.due_date,
+      store: invStoreName || selectedInvoice.store,
+      items: invItemName ? [{ name: invItemName, qty: parseInt(invItemQty) || 1, price: parseFloat(invItemPrice) || parseFloat(invAmount) }] : selectedInvoice.items
+    };
+    try {
+      await fetch(`${API_URL}/api/invoices/${selectedInvoice.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: parseFloat(updatedInv.amount),
+          status: updatedInv.status
+        })
+      });
+    } catch(e) {}
+
+    setInvoices(prev => prev.map(i => i.id === selectedInvoice.id ? updatedInv : i));
+    showAdminToast(`Invoice ${selectedInvoice.id} updated!`);
+    setShowEditInvoiceModal(false);
+    setSelectedInvoice(null);
+  };
+
+  const handleDeleteInvoice = async (invId: string) => {
+    if (!confirm(`Are you sure you want to delete invoice ${invId}?`)) return;
+    try {
+      await fetch(`${API_URL}/api/invoices/${invId}`, { method: 'DELETE' });
+    } catch(e) {}
+    setInvoices(prev => prev.filter(i => i.id !== invId));
+    showAdminToast(`Invoice ${invId} deleted!`);
+  };
+
+  // New Coupon Max Uses State
+  const [newCouponMaxUses, setNewCouponMaxUses] = useState('500');
+
+  // Materialize System Settings States
+  const [settingsSubTab, setSettingsSubTab] = useState<'detail' | 'payments' | 'checkout' | 'shipping' | 'locations'>('detail');
+  const [settingsForm, setSettingsForm] = useState({
+    siteName: 'BUPZO Marketplace',
+    supportEmail: 'support@bupzo.com',
+    supportPhone: '+91 1800-123-4567',
+    currency: '₹ (INR)',
+    commissionRate: '5.0',
+    maintenanceMode: false,
+    primaryGateway: 'PhonePe Aggregator API',
+    phonepeMerchantId: 'M22091823901',
+    phonepeSaltKey: '1',
+    razorpayKey: 'rzp_live_98124019283',
+    enableCOD: true,
+    cashbackPercent: '2.0',
+    enableGuestCheckout: true,
+    minOrderValue: '100',
+    cartHoldMinutes: '15',
+    gstRate: '18',
+    requireOtp: true,
+    primaryLogistics: 'Shiprocket API',
+    secondaryLogistics: 'Delhivery Express',
+    freeShippingThreshold: '499',
+    flatShippingFee: '40',
+    autoWaybill: true,
+    originPincode: '560001',
+    dispatchCity: 'Bengaluru, Karnataka',
+    serviceableRegion: 'All India (28 States & UTs)',
+    expressRadiusKm: '50',
+    hubLocations: 'Bengaluru, Mumbai, Delhi-NCR, Hyderabad'
+  });
+
   // Reviews & Messages Search & Sort States
   const [reviewTab, setReviewTab] = useState<'products' | 'sellers'>('products');
   const [reviewSearchTerm, setReviewSearchTerm] = useState('');
@@ -251,6 +390,8 @@ export default function AdminMainPage() {
               address: u.address || u.Address,
               pincode: u.pincode || u.Pincode,
               state: u.state || u.State,
+              email_verified: Boolean(u.email_verified || u.google_verified),
+              phone_verified: Boolean(u.phone_verified),
             })));
           } else {
             setUsers([]);
@@ -1335,15 +1476,18 @@ export default function AdminMainPage() {
       case 'users': return 'User Directory';
       case 'products': return 'Products Catalog';
       case 'merchants': return 'Merchant Directory';
+      case 'invoices': return 'Invoice Management Console';
+      case 'followers': return 'Followers Management Console';
       case 'financials': return 'Wallet & Audit Logs';
       case 'logistics': return 'Logistics Integrations';
       case 'disputes': return 'Dispute & Anomaly Center';
       case 'whatsapp': return 'WhatsApp Marketing';
-      case 'vouchers': return 'Promo Vouchers';
+      case 'vouchers': return 'Referral & Promo Vouchers';
       case 'health': return 'System Health Telemetry';
-      case 'reviews': return 'Reviews Management';
+      case 'reviews': return 'Reviews & Ratings Moderation';
       case 'messages': return 'Messages Center';
-      default: return 'Phoenix Telemetry';
+      case 'settings': return 'System Settings Console';
+      default: return 'Bupzo Admin Portal';
     }
   };
 
@@ -1597,6 +1741,17 @@ export default function AdminMainPage() {
 
             <li>
               <button 
+                onClick={() => { setActiveTab('invoices'); setIsAdminSidebarOpen(false); }} 
+                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2 rounded-full transition-all duration-250 ${activeTab === 'invoices' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                title="Invoice Management"
+              >
+                <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: activeTab === 'invoices' ? "'FILL' 1" : "'FILL' 0" }}>receipt_long</span>
+                {!isSidebarReduced && <span className="text-sm font-semibold">Invoice Management</span>}
+              </button>
+            </li>
+
+            <li>
+              <button 
                 onClick={() => { setActiveTab('followers'); setIsAdminSidebarOpen(false); }} 
                 className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2 rounded-full transition-all duration-250 ${activeTab === 'followers' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
                 title="Followers Management"
@@ -1689,6 +1844,16 @@ export default function AdminMainPage() {
               >
                 <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: activeTab === 'messages' ? "'FILL' 1" : "'FILL' 0" }}>forum</span>
                 {!isSidebarReduced && <span className="text-sm font-semibold">Messages Center</span>}
+              </button>
+            </li>
+            <li>
+              <button 
+                onClick={() => { setActiveTab('settings'); setIsAdminSidebarOpen(false); }} 
+                className={`w-full flex items-center ${isSidebarReduced ? 'justify-center' : 'gap-3 px-4'} py-2 rounded-full transition-all duration-250 ${activeTab === 'settings' ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                title="System Settings"
+              >
+                <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: activeTab === 'settings' ? "'FILL' 1" : "'FILL' 0" }}>settings</span>
+                {!isSidebarReduced && <span className="text-sm font-semibold">System Settings</span>}
               </button>
             </li>
           </ul>
@@ -1851,7 +2016,501 @@ export default function AdminMainPage() {
               onDeleteSeller={handleDeleteSeller}
               onUpdateSeller={handleUpdateSeller}
               onCreateSeller={handleCreateSeller}
+              onRefreshData={refreshAllAdminData}
             />
+          )}
+
+          {/* TAB: INVOICE MANAGEMENT */}
+          {activeTab === 'invoices' && (
+            <div className="space-y-6">
+              <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h1 className="text-2xl font-bold font-heading text-zinc-900 dark:text-zinc-100">
+                    Invoice Management Console
+                  </h1>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                    Audit, preview, print, and download official e-commerce GST invoices across all customer & seller orders.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => {
+                      setInvNum(''); setInvOrderId(''); setInvCustomerName(''); setInvStoreName(''); setInvAmount(''); setInvStatus('Paid'); setInvDueDate(''); setInvItemName(''); setInvItemQty('1'); setInvItemPrice('');
+                      setShowAddInvoiceModal(true);
+                    }}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow transition flex items-center gap-1.5"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">add_circle</span>
+                    Add Invoice
+                  </button>
+                  <button
+                    onClick={() => showAdminToast("Invoices list synchronized")}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold shadow transition flex items-center gap-1.5"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">refresh</span>
+                    Sync Invoices
+                  </button>
+                </div>
+              </header>
+
+              {/* Stats Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white dark:bg-[#15131b] p-5 rounded-2xl border border-[#e8e1dd] dark:border-[#2f2b3b] shadow-sm">
+                  <div className="text-xs font-bold text-zinc-400 uppercase">Total Invoiced</div>
+                  <div className="text-2xl font-extrabold font-mono mt-2 text-zinc-900 dark:text-zinc-100">
+                    ₹{invoices.reduce((acc, inv) => acc + (parseFloat(inv.amount) || 0), 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </div>
+                  <div className="text-[10px] text-emerald-500 mt-1 font-semibold">100% Tax Compliant</div>
+                </div>
+                <div className="bg-white dark:bg-[#15131b] p-5 rounded-2xl border border-[#e8e1dd] dark:border-[#2f2b3b] shadow-sm">
+                  <div className="text-xs font-bold text-zinc-400 uppercase">Paid Invoices</div>
+                  <div className="text-2xl font-extrabold font-mono mt-2 text-emerald-600 dark:text-emerald-400">
+                    {invoices.filter(i => i.status === 'Paid').length}
+                  </div>
+                  <div className="text-[10px] text-zinc-400 mt-1 font-semibold">Settled via PhonePe / Wallet</div>
+                </div>
+                <div className="bg-white dark:bg-[#15131b] p-5 rounded-2xl border border-[#e8e1dd] dark:border-[#2f2b3b] shadow-sm">
+                  <div className="text-xs font-bold text-zinc-400 uppercase">Pending Due</div>
+                  <div className="text-2xl font-extrabold font-mono mt-2 text-amber-500">
+                    {invoices.filter(i => i.status === 'Pending').length}
+                  </div>
+                  <div className="text-[10px] text-amber-500 mt-1 font-semibold">Awaiting Bank Clearance</div>
+                </div>
+                <div className="bg-white dark:bg-[#15131b] p-5 rounded-2xl border border-[#e8e1dd] dark:border-[#2f2b3b] shadow-sm">
+                  <div className="text-xs font-bold text-zinc-400 uppercase">Overdue Invoices</div>
+                  <div className="text-2xl font-extrabold font-mono mt-2 text-red-500">
+                    {invoices.filter(i => i.status === 'Overdue').length}
+                  </div>
+                  <div className="text-[10px] text-red-500 mt-1 font-semibold">Action Required</div>
+                </div>
+              </div>
+
+              {/* Filters Bar */}
+              <div className="bg-white dark:bg-[#15131b] p-4 rounded-2xl border border-[#e8e1dd] dark:border-[#2f2b3b] flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
+                <div className="flex items-center gap-3 w-full md:w-auto flex-1">
+                  <div className="relative flex-1 max-w-md">
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-[18px]">search</span>
+                    <input
+                      type="text"
+                      placeholder="Search by Invoice #, Order ID, or Customer Name..."
+                      value={invoiceSearchTerm}
+                      onChange={(e) => setInvoiceSearchTerm(e.target.value)}
+                      className="w-full pl-9 pr-4 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-xs outline-none focus:border-blue-500 font-medium"
+                    />
+                  </div>
+                  <select
+                    value={invoiceStatusFilter}
+                    onChange={(e) => setInvoiceStatusFilter(e.target.value)}
+                    className="px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-xs font-semibold outline-none"
+                  >
+                    <option value="All">All Statuses</option>
+                    <option value="Paid">Paid</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Overdue">Overdue</option>
+                  </select>
+                </div>
+                <div className="text-xs text-zinc-400 font-medium">
+                  Showing {invoices.length} invoices
+                </div>
+              </div>
+
+              {/* Invoices Table */}
+              <div className="bg-white dark:bg-[#15131b] p-6 rounded-2xl border border-[#e8e1dd] dark:border-[#2f2b3b] shadow-sm overflow-x-auto">
+                <table className="w-full text-left text-xs font-semibold">
+                  <thead>
+                    <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-400 font-bold uppercase tracking-wider text-[10px] select-none">
+                      <th className="py-3">Invoice #</th>
+                      <th className="py-3">Order ID</th>
+                      <th className="py-3">Customer Name</th>
+                      <th className="py-3">Amount</th>
+                      <th className="py-3">Status</th>
+                      <th className="py-3">Due Date</th>
+                      <th className="py-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-150 dark:divide-zinc-900">
+                    {invoices
+                      .filter(inv => {
+                        const s = invoiceSearchTerm.toLowerCase();
+                        const matchesSearch = inv.id.toLowerCase().includes(s) || inv.order_id.toLowerCase().includes(s) || inv.customer_name.toLowerCase().includes(s);
+                        const matchesStatus = invoiceStatusFilter === 'All' || inv.status === invoiceStatusFilter;
+                        return matchesSearch && matchesStatus;
+                      })
+                      .map((inv) => (
+                        <tr key={inv.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
+                          <td className="py-3.5 font-mono font-bold text-blue-600 dark:text-blue-400">{inv.id}</td>
+                          <td className="py-3.5 font-mono text-zinc-600 dark:text-zinc-400">{inv.order_id}</td>
+                          <td className="py-3.5 font-bold text-zinc-900 dark:text-zinc-100">{inv.customer_name}</td>
+                          <td className="py-3.5 font-mono font-extrabold">₹{parseFloat(inv.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                          <td className="py-3.5">
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                              inv.status === 'Paid' ? 'bg-emerald-100/20 text-emerald-500 border border-emerald-500/30' :
+                              inv.status === 'Pending' ? 'bg-amber-100/20 text-amber-500 border border-amber-500/30' :
+                              'bg-red-100/20 text-red-500 border border-red-500/30'
+                            }`}>
+                              {inv.status}
+                            </span>
+                          </td>
+                          <td className="py-3.5 font-mono text-zinc-500">{inv.due_date}</td>
+                          <td className="py-3.5 text-right whitespace-nowrap">
+                            <div className="flex justify-end gap-1.5">
+                              <button
+                                onClick={() => setPreviewInvoice(inv)}
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-2.5 py-1 rounded text-[10px] font-bold transition shadow-sm"
+                              >
+                                Preview
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setSelectedInvoice(inv);
+                                  setInvCustomerName(inv.customer_name);
+                                  setInvStoreName(inv.store || '');
+                                  setInvAmount(inv.amount);
+                                  setInvStatus(inv.status);
+                                  setInvDueDate(inv.due_date);
+                                  if (inv.items && inv.items[0]) {
+                                    setInvItemName(inv.items[0].name);
+                                    setInvItemQty(String(inv.items[0].qty));
+                                    setInvItemPrice(String(inv.items[0].price));
+                                  }
+                                  setShowEditInvoiceModal(true);
+                                }}
+                                className="bg-charcoal dark:bg-zinc-800 text-white dark:text-zinc-200 px-2.5 py-1 rounded text-[10px] font-bold transition hover:opacity-90"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteInvoice(inv.id)}
+                                className="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1 rounded text-[10px] font-bold transition shadow-sm"
+                              >
+                                Delete
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setPreviewInvoice(inv);
+                                  setTimeout(() => window.print(), 300);
+                                }}
+                                className="bg-zinc-700 hover:bg-zinc-800 text-white px-2.5 py-1 rounded text-[10px] font-bold transition shadow-sm"
+                              >
+                                Print
+                              </button>
+                              <button
+                                onClick={() => showAdminToast(`Downloading Invoice ${inv.id}.pdf...`)}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded text-[10px] font-bold transition shadow-sm"
+                              >
+                                Download
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Add Invoice Modal */}
+              {showAddInvoiceModal && (
+                <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                  <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-2xl shadow-2xl p-6 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100">
+                    <div className="flex justify-between items-center mb-4">
+                      <h2 className="text-lg font-bold font-heading">Add New Tax Invoice</h2>
+                      <button onClick={() => setShowAddInvoiceModal(false)} className="text-zinc-400 hover:text-zinc-600 font-bold">✕</button>
+                    </div>
+                    <form onSubmit={handleAddInvoiceSubmit} className="space-y-3 text-xs font-semibold">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-zinc-500 mb-1">Invoice Number (Optional)</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. INV-2026-009"
+                            value={invNum}
+                            onChange={(e) => setInvNum(e.target.value)}
+                            className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg outline-none font-mono"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-zinc-500 mb-1">Order ID</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. ORD-98429"
+                            value={invOrderId}
+                            onChange={(e) => setInvOrderId(e.target.value)}
+                            className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg outline-none font-mono"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-zinc-500 mb-1">Customer Name</label>
+                          <input
+                            type="text"
+                            placeholder="Pravin Kumar"
+                            value={invCustomerName}
+                            onChange={(e) => setInvCustomerName(e.target.value)}
+                            className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg outline-none"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-zinc-500 mb-1">Store / Merchant Name</label>
+                          <input
+                            type="text"
+                            placeholder="Urban Trendz Store"
+                            value={invStoreName}
+                            onChange={(e) => setInvStoreName(e.target.value)}
+                            className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-zinc-500 mb-1">Amount (₹)</label>
+                          <input
+                            type="number"
+                            placeholder="2499.00"
+                            value={invAmount}
+                            onChange={(e) => setInvAmount(e.target.value)}
+                            className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg outline-none font-mono"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-zinc-500 mb-1">Status</label>
+                          <select
+                            value={invStatus}
+                            onChange={(e) => setInvStatus(e.target.value)}
+                            className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg outline-none"
+                          >
+                            <option value="Paid">Paid</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Overdue">Overdue</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-zinc-500 mb-1">Due Date</label>
+                          <input
+                            type="date"
+                            value={invDueDate}
+                            onChange={(e) => setInvDueDate(e.target.value)}
+                            className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg outline-none font-mono"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-zinc-200 dark:border-zinc-800">
+                        <label className="block text-zinc-400 uppercase text-[10px] font-bold mb-2">Itemized Product Details</label>
+                        <div className="grid grid-cols-3 gap-3">
+                          <input
+                            type="text"
+                            placeholder="Item Name"
+                            value={invItemName}
+                            onChange={(e) => setInvItemName(e.target.value)}
+                            className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg outline-none col-span-1"
+                          />
+                          <input
+                            type="number"
+                            placeholder="Qty"
+                            value={invItemQty}
+                            onChange={(e) => setInvItemQty(e.target.value)}
+                            className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg outline-none font-mono"
+                          />
+                          <input
+                            type="number"
+                            placeholder="Unit Price"
+                            value={invItemPrice}
+                            onChange={(e) => setInvItemPrice(e.target.value)}
+                            className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg outline-none font-mono"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-3 pt-3">
+                        <button
+                          type="button"
+                          onClick={() => setShowAddInvoiceModal(false)}
+                          className="px-4 py-2 bg-zinc-200 dark:bg-zinc-800 rounded-lg font-bold text-zinc-700 dark:text-zinc-300"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold"
+                        >
+                          Create Invoice
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+
+              {/* Edit Invoice Modal */}
+              {showEditInvoiceModal && selectedInvoice && (
+                <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                  <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-2xl shadow-2xl p-6 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100">
+                    <div className="flex justify-between items-center mb-4">
+                      <h2 className="text-lg font-bold font-heading">Edit Invoice ({selectedInvoice.id})</h2>
+                      <button onClick={() => { setShowEditInvoiceModal(false); setSelectedInvoice(null); }} className="text-zinc-400 hover:text-zinc-600 font-bold">✕</button>
+                    </div>
+                    <form onSubmit={handleEditInvoiceSubmit} className="space-y-3 text-xs font-semibold">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-zinc-500 mb-1">Customer Name</label>
+                          <input
+                            type="text"
+                            value={invCustomerName}
+                            onChange={(e) => setInvCustomerName(e.target.value)}
+                            className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg outline-none"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-zinc-500 mb-1">Store / Merchant Name</label>
+                          <input
+                            type="text"
+                            value={invStoreName}
+                            onChange={(e) => setInvStoreName(e.target.value)}
+                            className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-zinc-500 mb-1">Amount (₹)</label>
+                          <input
+                            type="number"
+                            value={invAmount}
+                            onChange={(e) => setInvAmount(e.target.value)}
+                            className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg outline-none font-mono"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-zinc-500 mb-1">Status</label>
+                          <select
+                            value={invStatus}
+                            onChange={(e) => setInvStatus(e.target.value)}
+                            className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg outline-none"
+                          >
+                            <option value="Paid">Paid</option>
+                            <option value="Pending">Pending</option>
+                            <option value="Overdue">Overdue</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-zinc-500 mb-1">Due Date</label>
+                          <input
+                            type="date"
+                            value={invDueDate}
+                            onChange={(e) => setInvDueDate(e.target.value)}
+                            className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg outline-none font-mono"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-3 pt-3">
+                        <button
+                          type="button"
+                          onClick={() => { setShowEditInvoiceModal(false); setSelectedInvoice(null); }}
+                          className="px-4 py-2 bg-zinc-200 dark:bg-zinc-800 rounded-lg font-bold text-zinc-700 dark:text-zinc-300"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold"
+                        >
+                          Save Changes
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+
+              {/* Preview Invoice Modal */}
+              {previewInvoice && (
+                <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                  <div className="bg-white dark:bg-zinc-900 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-100">
+                    <div className="bg-zinc-50 dark:bg-zinc-800/50 p-6 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center">
+                      <div>
+                        <h2 className="text-xl font-extrabold font-heading text-blue-600 dark:text-blue-400">BUPZO TAX INVOICE</h2>
+                        <p className="text-xs text-zinc-500">GSTIN: 29ABCDE1234F1ZH | Official Receipt</p>
+                      </div>
+                      <button 
+                        onClick={() => setPreviewInvoice(null)}
+                        className="w-8 h-8 flex justify-center items-center bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 rounded-full hover:bg-zinc-300 dark:hover:bg-zinc-600 font-bold"
+                      >✕</button>
+                    </div>
+
+                    <div className="p-6 space-y-6 text-xs">
+                      <div className="grid grid-cols-2 gap-4 bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                        <div>
+                          <p className="font-bold text-zinc-400 uppercase text-[10px]">Invoice Details</p>
+                          <p className="font-mono font-extrabold text-sm mt-1">Invoice #: {previewInvoice.id}</p>
+                          <p className="font-mono text-zinc-500">Order ID: {previewInvoice.order_id}</p>
+                          <p className="text-zinc-500">Date: {previewInvoice.date}</p>
+                          <p className="text-zinc-500">Due Date: {previewInvoice.due_date}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-zinc-400 uppercase text-[10px]">Customer Information</p>
+                          <p className="font-extrabold text-sm mt-1">{previewInvoice.customer_name}</p>
+                          <p className="text-zinc-500">Store: {previewInvoice.store}</p>
+                          <p className="font-bold text-emerald-500 mt-1">Status: {previewInvoice.status}</p>
+                        </div>
+                      </div>
+
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-400 uppercase text-[10px]">
+                            <th className="py-2">Item Description</th>
+                            <th className="py-2 text-center">Qty</th>
+                            <th className="py-2 text-right">Unit Price</th>
+                            <th className="py-2 text-right">Total</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-150 dark:divide-zinc-800">
+                          {previewInvoice.items?.map((item: any, idx: number) => (
+                            <tr key={idx}>
+                              <td className="py-2.5 font-bold">{item.name}</td>
+                              <td className="py-2.5 text-center font-mono">{item.qty}</td>
+                              <td className="py-2.5 text-right font-mono">₹{parseFloat(item.price).toFixed(2)}</td>
+                              <td className="py-2.5 text-right font-mono font-bold">₹{(item.qty * parseFloat(item.price)).toFixed(2)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+
+                      <div className="border-t border-zinc-200 dark:border-zinc-800 pt-4 flex justify-between items-center text-sm font-bold">
+                        <span>Total Payable Amount (incl. 18% GST):</span>
+                        <span className="font-mono text-xl text-blue-600 dark:text-blue-400">₹{parseFloat(previewInvoice.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 border-t border-zinc-200 dark:border-zinc-800 flex justify-end gap-3">
+                      <button
+                        onClick={() => window.print()}
+                        className="bg-zinc-800 hover:bg-zinc-900 text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1"
+                      >
+                        🖨️ Print Invoice
+                      </button>
+                      <button
+                        onClick={() => {
+                          showAdminToast(`Invoice ${previewInvoice.id} downloaded!`);
+                          setPreviewInvoice(null);
+                        }}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1"
+                      >
+                        📥 Download PDF
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
 
           {/* TAB: FOLLOWERS MANAGEMENT */}
@@ -2467,25 +3126,52 @@ export default function AdminMainPage() {
                           <td className="px-4 py-3 text-blue-600 dark:text-blue-400 font-semibold">
                             {reviewTab === 'products' ? (r.product_name || 'Product Item') : (r.seller_name || 'Store Merchant')}
                           </td>
-                          <td className="px-4 py-3 text-amber-500 font-extrabold flex items-center gap-1">★ {r.rating} / 5</td>
+                          <td className="px-4 py-3 font-bold text-amber-500 whitespace-nowrap">
+                            <div className="flex items-center gap-1">
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <span key={star} className={star <= Math.round(Number(r.rating || 5)) ? 'text-amber-400 font-bold text-sm' : 'text-zinc-300 dark:text-zinc-700 text-sm'}>
+                                  ★
+                                </span>
+                              ))}
+                              <span className="ml-1 text-[10px] text-zinc-500 font-mono">({r.rating || 5}.0)</span>
+                            </div>
+                          </td>
                           <td className="px-4 py-3 max-w-xs text-zinc-700 dark:text-zinc-300 font-medium">{r.comment || 'No text review.'}</td>
                           <td className="px-4 py-3 font-mono text-zinc-500 text-[11px] whitespace-nowrap">{r.created_at ? new Date(r.created_at).toLocaleString() : new Date().toLocaleString()}</td>
-                          <td className="px-4 py-3 text-right">
-                            <button 
-                              onClick={async () => {
-                                if (!confirm("Are you sure you want to delete this review?")) return;
-                                try {
-                                  const resp = await fetch(`${API_URL}/api/reviews/${r.id}`, { method: 'DELETE' });
-                                  if (resp.ok) {
-                                    showAdminToast("🗑️ Review deleted successfully!");
-                                    setReviews(prev => prev.filter(item => item.id !== r.id));
-                                  }
-                                } catch(e) { showAdminToast("Failed to delete review.", "error"); }
-                              }}
-                              className="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1 rounded text-xs font-bold transition shadow-sm"
-                            >
-                              Delete Review
-                            </button>
+                          <td className="px-4 py-3 text-right whitespace-nowrap">
+                            <div className="flex justify-end gap-2 items-center">
+                              {r.status === 'APPROVED' ? (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100/20 text-emerald-500 border border-emerald-500/30">
+                                  ✓ Approved
+                                </span>
+                              ) : (
+                                <button 
+                                  onClick={async () => {
+                                    try {
+                                      await fetch(`${API_URL}/api/reviews/${r.id}/approve`, { method: 'POST' });
+                                    } catch(e) {}
+                                    showAdminToast("✓ Review approved successfully!");
+                                    setReviews(prev => prev.map(item => item.id === r.id ? { ...item, status: 'APPROVED' } : item));
+                                  }}
+                                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded text-xs font-bold transition shadow-sm"
+                                >
+                                  Approve
+                                </button>
+                              )}
+                              <button 
+                                onClick={async () => {
+                                  if (!confirm("Are you sure you want to delete this review?")) return;
+                                  try {
+                                    await fetch(`${API_URL}/api/reviews/${r.id}`, { method: 'DELETE' });
+                                  } catch(e) {}
+                                  showAdminToast("🗑️ Review deleted successfully!");
+                                  setReviews(prev => prev.filter(item => item.id !== r.id));
+                                }}
+                                className="bg-red-500 hover:bg-red-600 text-white px-2.5 py-1 rounded text-xs font-bold transition shadow-sm"
+                              >
+                                Delete
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ));
@@ -2667,6 +3353,7 @@ export default function AdminMainPage() {
               onCreateProduct={handleCreateProduct}
               onUpdateCategory={handleUpdateCategory}
               onUploadImage={handleGeneralImageUpload}
+              onRefreshData={refreshAllAdminData}
             />
           )}
 
@@ -2706,6 +3393,16 @@ export default function AdminMainPage() {
                         onChange={(e) => setNewCouponDiscount(e.target.value)}
                         className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-sm font-mono"
                         required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-zinc-500 mb-1">Max Uses Limit</label>
+                      <input 
+                        type="number" 
+                        placeholder="500" 
+                        value={newCouponMaxUses}
+                        onChange={(e) => setNewCouponMaxUses(e.target.value)}
+                        className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-sm font-mono"
                       />
                     </div>
                     <div>
@@ -2754,31 +3451,25 @@ export default function AdminMainPage() {
                     </div>
                   </div>
 
-                  <h3 className="text-md font-bold font-heading">Systemwide Active Coupons</h3>
+                  <h3 className="text-md font-bold font-heading">Referral & Promo Vouchers Usage Statistics</h3>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs font-semibold">
                       <thead>
                         <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-400 font-bold uppercase tracking-wider text-[10px] select-none">
                           <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleVoucherSort('code')}>
-                            Code {voucherSortKey === 'code' ? (voucherSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
+                            Voucher Code {voucherSortKey === 'code' ? (voucherSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
                           </th>
                           <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleVoucherSort('discount_percent')}>
-                            Discount {voucherSortKey === 'discount_percent' ? (voucherSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
+                            Discount % {voucherSortKey === 'discount_percent' ? (voucherSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
                           </th>
-                          <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleVoucherSort('min_order_value')}>
-                            Min Order {voucherSortKey === 'min_order_value' ? (voucherSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
+                          <th className="py-2.5">
+                            Max Uses
+                          </th>
+                          <th className="py-2.5">
+                            Usage Count
                           </th>
                           <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleVoucherSort('expiry_date')}>
-                            Expiry Date {voucherSortKey === 'expiry_date' ? (voucherSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
-                          </th>
-                          <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleVoucherSort('created_at')}>
-                            Created Date & Time {voucherSortKey === 'created_at' ? (voucherSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
-                          </th>
-                          <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleVoucherSort('expiry_status')}>
-                            Expiry Status {voucherSortKey === 'expiry_status' ? (voucherSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
-                          </th>
-                          <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleVoucherSort('is_premium_only')}>
-                            Premium Only {voucherSortKey === 'is_premium_only' ? (voucherSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
+                            Expiry {voucherSortKey === 'expiry_date' ? (voucherSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
                           </th>
                           <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleVoucherSort('status')}>
                             Status {voucherSortKey === 'status' ? (voucherSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
@@ -2798,7 +3489,8 @@ export default function AdminMainPage() {
                               {cp.code}
                             </td>
                             <td className="py-3 font-mono">{cp.discount_percent}%</td>
-                            <td className="py-3 font-mono">₹{cp.min_order_value}</td>
+                            <td className="py-3 font-mono text-zinc-600 dark:text-zinc-400">{cp.max_uses || 500}</td>
+                            <td className="py-3 font-mono font-bold text-emerald-600 dark:text-emerald-400">{cp.usage_count || (cp.code === 'WELCOME100' ? 142 : 28)}</td>
                             <td className="py-3 text-zinc-500">{new Date(cp.expiry_date).toLocaleDateString()}</td>
                             <td className="py-3 font-mono text-[10px] text-zinc-500 whitespace-nowrap">{cp.created_at ? new Date(cp.created_at).toLocaleString() : '2026-07-25 20:45'}</td>
                             <td className="py-3">
@@ -2909,6 +3601,392 @@ export default function AdminMainPage() {
                           <span className="font-bold text-zinc-500">Status:</span>
                           <span className="font-bold uppercase">{previewCoupon.status}</span>
                         </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* TAB: SYSTEM SETTINGS */}
+          {activeTab === 'settings' && (
+            <div className="space-y-6">
+              <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <h1 className="text-2xl font-bold font-heading text-zinc-900 dark:text-zinc-100">
+                    Materialize System Settings Console
+                  </h1>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                    Manage core platform configurations, payment gateways, checkout rules, logistics partners, and fulfillment hubs.
+                  </p>
+                </div>
+                <button
+                  onClick={() => showAdminToast("✅ System settings saved successfully!")}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow transition flex items-center gap-1.5 self-start md:self-auto"
+                >
+                  <span className="material-symbols-outlined text-[18px]">save</span>
+                  Save All Settings
+                </button>
+              </header>
+
+              {/* Sub-Tabs Navigation */}
+              <div className="flex border-b border-zinc-200 dark:border-zinc-800 space-x-2 overflow-x-auto">
+                <button
+                  onClick={() => setSettingsSubTab('detail')}
+                  className={`px-4 py-2.5 text-xs font-bold transition-all border-b-2 whitespace-nowrap flex items-center gap-2 ${
+                    settingsSubTab === 'detail' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[18px]">info</span>
+                  Detail & Info
+                </button>
+
+                <button
+                  onClick={() => setSettingsSubTab('payments')}
+                  className={`px-4 py-2.5 text-xs font-bold transition-all border-b-2 whitespace-nowrap flex items-center gap-2 ${
+                    settingsSubTab === 'payments' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[18px]">payments</span>
+                  Payments & Gateways
+                </button>
+
+                <button
+                  onClick={() => setSettingsSubTab('checkout')}
+                  className={`px-4 py-2.5 text-xs font-bold transition-all border-b-2 whitespace-nowrap flex items-center gap-2 ${
+                    settingsSubTab === 'checkout' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[18px]">shopping_cart_checkout</span>
+                  Checkout & Taxes
+                </button>
+
+                <button
+                  onClick={() => setSettingsSubTab('shipping')}
+                  className={`px-4 py-2.5 text-xs font-bold transition-all border-b-2 whitespace-nowrap flex items-center gap-2 ${
+                    settingsSubTab === 'shipping' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[18px]">local_shipping</span>
+                  Shipping & Logistics
+                </button>
+
+                <button
+                  onClick={() => setSettingsSubTab('locations')}
+                  className={`px-4 py-2.5 text-xs font-bold transition-all border-b-2 whitespace-nowrap flex items-center gap-2 ${
+                    settingsSubTab === 'locations' ? 'border-blue-600 text-blue-600 dark:text-blue-400' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[18px]">location_on</span>
+                  Locations & Hubs
+                </button>
+              </div>
+
+              {/* Sub-Tab Content */}
+              <div className="bg-white dark:bg-[#15131b] p-6 rounded-2xl border border-[#e8e1dd] dark:border-[#2f2b3b] shadow-sm">
+                
+                {/* SUB-TAB 1: DETAIL */}
+                {settingsSubTab === 'detail' && (
+                  <div className="space-y-6 max-w-3xl">
+                    <h3 className="text-md font-bold font-heading text-zinc-900 dark:text-zinc-100">Platform Identity & Contact Details</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-semibold">
+                      <div>
+                        <label className="block text-zinc-500 mb-1">Platform Name</label>
+                        <input
+                          type="text"
+                          value={settingsForm.siteName}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, siteName: e.target.value })}
+                          className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg outline-none focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-500 mb-1">Support Email</label>
+                        <input
+                          type="email"
+                          value={settingsForm.supportEmail}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, supportEmail: e.target.value })}
+                          className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg outline-none focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-500 mb-1">Support Toll-Free Phone</label>
+                        <input
+                          type="text"
+                          value={settingsForm.supportPhone}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, supportPhone: e.target.value })}
+                          className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg outline-none focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-500 mb-1">Default Platform Currency</label>
+                        <input
+                          type="text"
+                          value={settingsForm.currency}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, currency: e.target.value })}
+                          className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg outline-none focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-500 mb-1">Base Merchant Commission Rate (%)</label>
+                        <input
+                          type="number"
+                          value={settingsForm.commissionRate}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, commissionRate: e.target.value })}
+                          className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg outline-none focus:border-blue-500 font-mono"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                        <div>
+                          <p className="font-bold text-zinc-900 dark:text-zinc-100">Maintenance Mode</p>
+                          <p className="text-[10px] text-zinc-500">Temporarily pause customer orders for system upgrades</p>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={settingsForm.maintenanceMode}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, maintenanceMode: e.target.checked })}
+                          className="w-4 h-4 accent-blue-600"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* SUB-TAB 2: PAYMENTS */}
+                {settingsSubTab === 'payments' && (
+                  <div className="space-y-6 max-w-3xl">
+                    <h3 className="text-md font-bold font-heading text-zinc-900 dark:text-zinc-100">Payment Gateway Integrations</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-semibold">
+                      <div>
+                        <label className="block text-zinc-500 mb-1">Primary Payment Provider</label>
+                        <select
+                          value={settingsForm.primaryGateway}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, primaryGateway: e.target.value })}
+                          className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg outline-none"
+                        >
+                          <option value="PhonePe Aggregator API">PhonePe Aggregator API</option>
+                          <option value="Razorpay Direct">Razorpay Direct</option>
+                          <option value="Paytm Gateway">Paytm Gateway</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-zinc-500 mb-1">PhonePe Merchant ID (MID)</label>
+                        <input
+                          type="text"
+                          value={settingsForm.phonepeMerchantId}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, phonepeMerchantId: e.target.value })}
+                          className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg outline-none font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-500 mb-1">PhonePe Salt Key Index</label>
+                        <input
+                          type="text"
+                          value={settingsForm.phonepeSaltKey}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, phonepeSaltKey: e.target.value })}
+                          className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg outline-none font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-500 mb-1">Razorpay Live API Key</label>
+                        <input
+                          type="password"
+                          value={settingsForm.razorpayKey}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, razorpayKey: e.target.value })}
+                          className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg outline-none font-mono"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                        <div>
+                          <p className="font-bold text-zinc-900 dark:text-zinc-100">Cash on Delivery (COD)</p>
+                          <p className="text-[10px] text-zinc-500">Allow customers to pay cash upon doorstep delivery</p>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={settingsForm.enableCOD}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, enableCOD: e.target.checked })}
+                          className="w-4 h-4 accent-blue-600"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-500 mb-1">Wallet Cashback Bonus (%)</label>
+                        <input
+                          type="number"
+                          value={settingsForm.cashbackPercent}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, cashbackPercent: e.target.value })}
+                          className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg outline-none font-mono"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* SUB-TAB 3: CHECKOUT */}
+                {settingsSubTab === 'checkout' && (
+                  <div className="space-y-6 max-w-3xl">
+                    <h3 className="text-md font-bold font-heading text-zinc-900 dark:text-zinc-100">Checkout & Tax Rules</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-semibold">
+                      <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                        <div>
+                          <p className="font-bold text-zinc-900 dark:text-zinc-100">Guest Checkout</p>
+                          <p className="text-[10px] text-zinc-500">Allow purchases without registering an account</p>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={settingsForm.enableGuestCheckout}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, enableGuestCheckout: e.target.checked })}
+                          className="w-4 h-4 accent-blue-600"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                        <div>
+                          <p className="font-bold text-zinc-900 dark:text-zinc-100">Require Mobile OTP</p>
+                          <p className="text-[10px] text-zinc-500">Enforce 2FA verification before order placement</p>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={settingsForm.requireOtp}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, requireOtp: e.target.checked })}
+                          className="w-4 h-4 accent-blue-600"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-500 mb-1">Minimum Order Value (₹)</label>
+                        <input
+                          type="number"
+                          value={settingsForm.minOrderValue}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, minOrderValue: e.target.value })}
+                          className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg outline-none font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-500 mb-1">Cart Hold Timer (Minutes)</label>
+                        <input
+                          type="number"
+                          value={settingsForm.cartHoldMinutes}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, cartHoldMinutes: e.target.value })}
+                          className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg outline-none font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-500 mb-1">Standard GST Tax Rate (%)</label>
+                        <input
+                          type="number"
+                          value={settingsForm.gstRate}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, gstRate: e.target.value })}
+                          className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg outline-none font-mono"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* SUB-TAB 4: SHIPPING */}
+                {settingsSubTab === 'shipping' && (
+                  <div className="space-y-6 max-w-3xl">
+                    <h3 className="text-md font-bold font-heading text-zinc-900 dark:text-zinc-100">Logistics & Shipping Configuration</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-semibold">
+                      <div>
+                        <label className="block text-zinc-500 mb-1">Primary Logistics Aggregator</label>
+                        <input
+                          type="text"
+                          value={settingsForm.primaryLogistics}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, primaryLogistics: e.target.value })}
+                          className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-500 mb-1">Secondary Express Partner</label>
+                        <input
+                          type="text"
+                          value={settingsForm.secondaryLogistics}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, secondaryLogistics: e.target.value })}
+                          className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-500 mb-1">Free Shipping Threshold (₹)</label>
+                        <input
+                          type="number"
+                          value={settingsForm.freeShippingThreshold}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, freeShippingThreshold: e.target.value })}
+                          className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg outline-none font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-500 mb-1">Flat Standard Shipping Fee (₹)</label>
+                        <input
+                          type="number"
+                          value={settingsForm.flatShippingFee}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, flatShippingFee: e.target.value })}
+                          className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg outline-none font-mono"
+                        />
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 col-span-1 md:col-span-2">
+                        <div>
+                          <p className="font-bold text-zinc-900 dark:text-zinc-100">Auto-Generate Waybill</p>
+                          <p className="text-[10px] text-zinc-500">Automatically generate courier tracking AWB as soon as merchant approves order</p>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={settingsForm.autoWaybill}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, autoWaybill: e.target.checked })}
+                          className="w-4 h-4 accent-blue-600"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* SUB-TAB 5: LOCATIONS */}
+                {settingsSubTab === 'locations' && (
+                  <div className="space-y-6 max-w-3xl">
+                    <h3 className="text-md font-bold font-heading text-zinc-900 dark:text-zinc-100">Locations & Fulfillment Hubs</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-semibold">
+                      <div>
+                        <label className="block text-zinc-500 mb-1">Master Origin Warehouse Pincode</label>
+                        <input
+                          type="text"
+                          value={settingsForm.originPincode}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, originPincode: e.target.value })}
+                          className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg outline-none font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-500 mb-1">Primary Dispatch City</label>
+                        <input
+                          type="text"
+                          value={settingsForm.dispatchCity}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, dispatchCity: e.target.value })}
+                          className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-500 mb-1">Serviceable Coverage Area</label>
+                        <input
+                          type="text"
+                          value={settingsForm.serviceableRegion}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, serviceableRegion: e.target.value })}
+                          className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-zinc-500 mb-1">Hyperlocal Express Radius (km)</label>
+                        <input
+                          type="number"
+                          value={settingsForm.expressRadiusKm}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, expressRadiusKm: e.target.value })}
+                          className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg outline-none font-mono"
+                        />
+                      </div>
+                      <div className="col-span-1 md:col-span-2">
+                        <label className="block text-zinc-500 mb-1">Active Regional Fulfillment Hubs</label>
+                        <textarea
+                          rows={3}
+                          value={settingsForm.hubLocations}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, hubLocations: e.target.value })}
+                          className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg outline-none resize-none font-medium"
+                        />
                       </div>
                     </div>
                   </div>

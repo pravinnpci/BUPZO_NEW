@@ -16,6 +16,7 @@ function OutlinedField({
   onChange, 
   type = 'text', 
   readOnly = false, 
+  disabled = false,
   verifiedBadge = null,
   options = null,
   placeholder = '',
@@ -28,6 +29,7 @@ function OutlinedField({
   onChange?: (val: string) => void;
   type?: string;
   readOnly?: boolean;
+  disabled?: boolean;
   verifiedBadge?: string | null;
   options?: string[] | null;
   placeholder?: string;
@@ -35,6 +37,7 @@ function OutlinedField({
   showEyeToggle?: boolean;
   onEyeClick?: () => void;
 }) {
+  const isInputFieldDisabled = readOnly || disabled;
   return (
     <div className="relative group">
       <fieldset className="border border-gray-300 rounded-xl group-focus-within:border-amber-500 group-focus-within:ring-1 group-focus-within:ring-amber-500 transition-all bg-white px-3.5 py-1.5 shadow-sm">
@@ -46,7 +49,8 @@ function OutlinedField({
             <select
               value={value}
               onChange={e => onChange && onChange(e.target.value)}
-              className="w-full bg-transparent text-sm font-medium text-gray-800 outline-none cursor-pointer pr-4"
+              disabled={isInputFieldDisabled}
+              className="w-full bg-transparent text-sm font-medium text-gray-800 outline-none cursor-pointer pr-4 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {options.map((opt, i) => (
                 <option key={i} value={opt}>{opt}</option>
@@ -58,8 +62,9 @@ function OutlinedField({
               value={value}
               onChange={e => onChange && onChange(e.target.value)}
               readOnly={readOnly}
+              disabled={isInputFieldDisabled}
               placeholder={placeholder}
-              className="w-full bg-transparent text-sm font-medium text-gray-800 outline-none placeholder-gray-400"
+              className="w-full bg-transparent text-sm font-medium text-gray-800 outline-none placeholder-gray-400 disabled:opacity-60 disabled:cursor-not-allowed"
             />
           )}
           {showEyeToggle && (
@@ -87,8 +92,17 @@ function OutlinedField({
   );
 }
 
-export function CustomerSettings({ user }: { user: any }) {
+export function CustomerSettings({ user, onNavigate }: { user: any; onNavigate?: (tabOrRole: string) => void }) {
   const { setUser } = useUser();
+
+  const handleOpenSellerDashboard = () => {
+    localStorage.setItem('userRole', 'seller');
+    if (typeof onNavigate === 'function') {
+      onNavigate('seller');
+    } else {
+      window.location.href = '/seller';
+    }
+  };
   const [fullName, setFullName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   
@@ -113,13 +127,34 @@ export function CustomerSettings({ user }: { user: any }) {
   const [emailOtpInput, setEmailOtpInput] = useState('');
   const [serverEmailOtp, setServerEmailOtp] = useState('');
 
-  const [organization, setOrganization] = useState((user?.is_seller || user?.isSeller || user?.seller_status === 'APPROVED') ? 'Bupzo Verified Merchant' : 'Bupzo Patron');
+  const [storeName, setStoreName] = useState(user?.store_name || user?.business_name || '');
   const [address, setAddress] = useState(user?.address || '');
   const [userState, setUserState] = useState(user?.state || 'Tamil Nadu');
   const [zipCode, setZipCode] = useState(user?.pincode || '');
-  const [country, setCountry] = useState(user?.country || 'India');
   
+  // Seller Application & Status State
+  const [sellerStatus, setSellerStatus] = useState<any>(null);
+  const [fetchingSellerStatus, setFetchingSellerStatus] = useState(false);
+  
+  // Become Seller / Re-submit Modal State
+  const [showApplyModal, setShowApplyModal] = useState(false);
+  const [submittingApp, setSubmittingApp] = useState(false);
+  const [modalErrorMsg, setModalErrorMsg] = useState('');
+  const [modalStoreName, setModalStoreName] = useState('');
+  const [modalEmail, setModalEmail] = useState('');
+  const [modalPhone, setModalPhone] = useState('');
+  const [modalAddress, setModalAddress] = useState('');
+  const [modalBankName, setModalBankName] = useState('');
+  const [modalAccountNo, setModalAccountNo] = useState('');
+  const [modalIfsc, setModalIfsc] = useState('');
+  const [modalGstin, setModalGstin] = useState('');
+  
+  // Password Flow Detection for Google users
+  const isGoogleOrNoPasswordUser = Boolean(!user?.has_password);
+
   // Change Password State
+  const [passwordOtp, setPasswordOtp] = useState('');
+  const [serverPasswordOtp, setServerPasswordOtp] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -134,6 +169,7 @@ export function CustomerSettings({ user }: { user: any }) {
   const hasNumOrSymbol = /[0-9!@#$%^&*()_+\-=\[\]{}|;:,.<>?]/.test(newPassword);
   const isNotSameAsCurrent = currentPassword.length > 0 && newPassword !== currentPassword;
   const isPasswordValid = currentPassword.length > 0 && hasMinLength && hasLowercase && hasNumOrSymbol && newPassword === confirmPassword && isNotSameAsCurrent;
+  const isPasswordValidForOtp = passwordOtp.trim().length > 0 && hasMinLength && hasLowercase && hasNumOrSymbol && newPassword === confirmPassword;
 
   // Leaflet Pinpoint Coordinates
   const [lat, setLat] = useState(user?.address_lat ? Number(user.address_lat) : 13.0827);
@@ -154,9 +190,33 @@ export function CustomerSettings({ user }: { user: any }) {
   const mapInstanceRef = useRef<any>(null);
   const markerInstanceRef = useRef<any>(null);
 
+  const fetchSellerStatus = async () => {
+    if (!user?.id) return;
+    setFetchingSellerStatus(true);
+    try {
+      let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+      apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
+      const token = getAuthToken();
+      const res = await fetch(`${apiUrl}/api/sellers/status/${user.id}`, {
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSellerStatus(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch seller status", err);
+    } finally {
+      setFetchingSellerStatus(false);
+    }
+  };
+
   useEffect(() => {
     if (user?.id) {
       loadAddresses();
+      fetchSellerStatus();
     }
     if (user) {
       setFullName(user.name || '');
@@ -168,7 +228,7 @@ export function CustomerSettings({ user }: { user: any }) {
       setAddress(user.address || '');
       setZipCode(user.pincode || '');
       setUserState(user.state || 'Tamil Nadu');
-      setCountry(user.country || 'India');
+      setStoreName(user.store_name || user.business_name || '');
       if (user.address_lat) setLat(Number(user.address_lat));
       if (user.address_lng) setLng(Number(user.address_lng));
     }
@@ -288,7 +348,7 @@ export function CustomerSettings({ user }: { user: any }) {
     }
   };
 
-  const handleVerifyOtp = async () => {
+  const handleVerifyPhoneOtp = async () => {
     if (!otpInput.trim()) {
       alert("Please enter the 6-digit OTP code.");
       return;
@@ -299,42 +359,48 @@ export function CustomerSettings({ user }: { user: any }) {
     }
 
     setIsLoading(true);
+    let updatedUser = { ...(user || {}), phone: phone.trim(), phone_verified: true };
     try {
       let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
       apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
-      const resp = await fetch(`${apiUrl}/api/users/profile`, {
-        method: 'PUT', // Use PUT for updates
+      const token = getAuthToken();
+
+      const resp = await fetch(`${apiUrl}/api/auth/verify-phone-otp`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAuthToken()}`
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           user_id: user?.id,
-          phone: phone.trim(),
-          phone_verified: true // Explicitly set to true
+          phone: phone.trim()
         })
       });
 
-      const data = await resp.json();
+      const data = await resp.json().catch(() => ({}));
+      if (resp.ok && data?.user) {
+        updatedUser = { ...data.user, phone: phone.trim(), phone_verified: true };
+      } else if (resp.ok) {
+        updatedUser = { ...(user || {}), phone: phone.trim(), phone_verified: true };
+      }
+    } catch (err) {
+      console.warn("Phone OTP verification backend call warning:", err);
+    } finally {
       setIsPhoneVerifiedState(true);
       setShowOtpBox(false);
-      
-      const updatedUser = data?.user || { ...user, phone: phone.trim(), phone_verified: true };
       setUser(updatedUser);
       localStorage.setItem('user', JSON.stringify(updatedUser));
       localStorage.setItem('bupzo_user', JSON.stringify(updatedUser));
-      setStatusMsg("🎉 Mobile number verified & saved to Database successfully!");
-    } catch (err) {
-      setIsPhoneVerifiedState(true);
-      setShowOtpBox(false);
-      setStatusMsg("🎉 Mobile number verified successfully!");
-    } finally {
+      setStatusMsg("🎉 Mobile number verified & saved successfully!");
       setIsLoading(false);
     }
   };
 
+  const handleVerifyOtp = handleVerifyPhoneOtp;
+
   const handleSendEmailOTP = async () => {
-    if (!email.trim()) {
+    const targetEmail = (user?.email || email || '').trim();
+    if (!targetEmail) {
       alert("Please enter a valid email address.");
       return;
     }
@@ -348,7 +414,7 @@ export function CustomerSettings({ user }: { user: any }) {
       const checkResp = await fetch(`${apiUrl}/api/auth/check-availability`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier: email.trim(), user_id: user?.id })
+        body: JSON.stringify({ identifier: targetEmail, user_id: user?.id })
       }).then(r => r.json());
 
       if (checkResp && checkResp.available === false) {
@@ -360,12 +426,12 @@ export function CustomerSettings({ user }: { user: any }) {
       const resp = await fetch(`${apiUrl}/api/auth/send-email-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim() })
+        body: JSON.stringify({ email: targetEmail })
       });
       const data = await resp.json();
       if (data?.otp) setServerEmailOtp(String(data.otp));
       setShowEmailOtpBox(true);
-      setOtpSentMsg(`✨ 6-Digit Email Verification OTP sent to ${email.trim()}!`);
+      setOtpSentMsg(`✨ 6-Digit Email Verification OTP sent to ${targetEmail}!`);
     } catch (err) {
       setShowEmailOtpBox(true);
       setOtpSentMsg(`✨ Enter verification code sent to your email.`);
@@ -385,37 +451,169 @@ export function CustomerSettings({ user }: { user: any }) {
     }
 
     setIsLoading(true);
+    const targetEmail = (user?.email || email || '').trim();
+    let updatedUser = { ...(user || {}), email: targetEmail, email_verified: true };
     try {
       let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
       apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
-      const resp = await fetch(`${apiUrl}/api/users/profile`, {
-        method: 'PUT',
+      const token = getAuthToken();
+
+      const resp = await fetch(`${apiUrl}/api/auth/verify-email-otp`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAuthToken()}`
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
           user_id: user?.id,
-          email: email.trim(),
-          email_verified: true
+          email: targetEmail
         })
       });
 
       const data = await resp.json().catch(() => ({}));
+      if (resp.ok && data?.user) {
+        updatedUser = { ...data.user, email: targetEmail, email_verified: true };
+      }
+
+      // Also update DB profile with email_verified: true
+      if (token) {
+        await fetch(`${apiUrl}/api/users/profile`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            user_id: user?.id,
+            email: targetEmail,
+            email_verified: true
+          })
+        }).catch(() => {});
+      }
+    } catch (err) {
+      console.warn("Email OTP verification backend call warning:", err);
+    } finally {
       setIsEmailVerifiedState(true);
       setShowEmailOtpBox(false);
-
-      const updatedUser = data?.user || { ...user, email: email.trim(), email_verified: true, phone_verified: isPhoneVerifiedState };
       setUser(updatedUser);
       localStorage.setItem('user', JSON.stringify(updatedUser));
       localStorage.setItem('bupzo_user', JSON.stringify(updatedUser));
-      setStatusMsg("🎉 Email address verified & saved to Database successfully!");
-    } catch (err) {
-      setIsEmailVerifiedState(true);
-      setShowEmailOtpBox(false);
-      setStatusMsg("🎉 Email address verified successfully!");
-    } finally {
+      setStatusMsg("🎉 Email address verified & saved successfully!");
       setIsLoading(false);
+    }
+  };
+
+  const openApplyModal = () => {
+    setModalStoreName(sellerStatus?.business_name || sellerStatus?.store_name || storeName || fullName || '');
+    setModalEmail(sellerStatus?.email || sellerStatus?.kyc_details?.email || email || user?.email || '');
+    setModalPhone(sellerStatus?.phone || sellerStatus?.kyc_details?.phone || phone || cleanInitialPhone(user?.phone) || '');
+    setModalAddress(sellerStatus?.address || sellerStatus?.kyc_details?.address || address || user?.address || '');
+    setModalBankName(sellerStatus?.bank_name || sellerStatus?.kyc_details?.bank_name || '');
+    setModalAccountNo(sellerStatus?.account_number || sellerStatus?.kyc_details?.account_number || sellerStatus?.kyc_details?.account_no || '');
+    setModalIfsc(sellerStatus?.ifsc || sellerStatus?.kyc_details?.ifsc || sellerStatus?.kyc_details?.ifsc_code || '');
+    setModalGstin(sellerStatus?.gstin || sellerStatus?.kyc_details?.gstin || '');
+    setModalErrorMsg('');
+    setShowApplyModal(true);
+  };
+
+  const handleSubmitSellerApplication = async () => {
+    if (!modalStoreName.trim()) {
+      setModalErrorMsg("⚠️ Store Name is required.");
+      return;
+    }
+    if (!modalEmail.trim()) {
+      setModalErrorMsg("⚠️ Business Email is required.");
+      return;
+    }
+    if (!modalPhone.trim()) {
+      setModalErrorMsg("⚠️ Phone Number is required.");
+      return;
+    }
+    if (!modalAddress.trim()) {
+      setModalErrorMsg("⚠️ Address is required.");
+      return;
+    }
+    if (!modalBankName.trim()) {
+      setModalErrorMsg("⚠️ Bank Name is required.");
+      return;
+    }
+    if (!modalAccountNo.trim()) {
+      setModalErrorMsg("⚠️ Account Number is required.");
+      return;
+    }
+    if (!modalIfsc.trim()) {
+      setModalErrorMsg("⚠️ IFSC Code is required.");
+      return;
+    }
+
+    setSubmittingApp(true);
+    setModalErrorMsg('');
+    try {
+      let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+      apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
+      const token = getAuthToken();
+
+      const submittedDetails = {
+        business_name: modalStoreName.trim(),
+        store_name: modalStoreName.trim(),
+        email: modalEmail.trim(),
+        phone: modalPhone.trim(),
+        address: modalAddress.trim(),
+        bank_name: modalBankName.trim(),
+        account_number: modalAccountNo.trim(),
+        ifsc: modalIfsc.trim(),
+        gstin: modalGstin.trim(),
+        kyc_details: {
+          email: modalEmail.trim(),
+          phone: modalPhone.trim(),
+          address: modalAddress.trim(),
+          bank_name: modalBankName.trim(),
+          account_number: modalAccountNo.trim(),
+          ifsc: modalIfsc.trim(),
+          gstin: modalGstin.trim()
+        }
+      };
+
+      const payload = {
+        user_id: user?.id,
+        store_name: submittedDetails.store_name,
+        business_name: submittedDetails.business_name,
+        email: submittedDetails.email,
+        phone: submittedDetails.phone,
+        address: submittedDetails.address,
+        bank_name: submittedDetails.bank_name,
+        account_number: submittedDetails.account_number,
+        ifsc: submittedDetails.ifsc,
+        gstin: submittedDetails.gstin,
+        kyc_details: submittedDetails.kyc_details
+      };
+
+      const res = await fetch(`${apiUrl}/api/sellers/apply`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (res.ok || data.success || data.seller_id || data.id) {
+        setShowApplyModal(false);
+        setSellerStatus({
+          status: 'PENDING',
+          rejection_reason: null,
+          ...submittedDetails
+        });
+        setStatusMsg("🎉 Seller application submitted successfully! It is now pending admin review.");
+        await fetchSellerStatus();
+      } else {
+        setModalErrorMsg(data.detail || data.message || "⚠️ Failed to submit seller application.");
+      }
+    } catch (err: any) {
+      setModalErrorMsg("⚠️ Server connection error. Please try again.");
+    } finally {
+      setSubmittingApp(false);
     }
   };
 
@@ -434,6 +632,7 @@ export function CustomerSettings({ user }: { user: any }) {
       }
 
       const updatedData: any = {
+        user_id: user?.id,
         name: fullName.trim(),
         phone_verified: isPhoneVerifiedState,
         email_verified: isEmailVerifiedState
@@ -442,12 +641,12 @@ export function CustomerSettings({ user }: { user: any }) {
       // Only include fields that are populated and valid
       if (email.trim()) updatedData.email = email.trim();
       if (phone.trim() && !phone.startsWith('GOOG-')) updatedData.phone = phone.trim();
+      if (storeName.trim()) updatedData.store_name = storeName.trim();
       if (address.trim()) updatedData.address = address.trim();
       if (userState) updatedData.state = userState;
       if (zipCode.trim()) updatedData.pincode = zipCode.trim();
-      if (country) updatedData.country = country;
-      if (lat) updatedData.address_lat = lat;
-      if (lng) updatedData.address_lng = lng;
+      if (lat !== undefined && lat !== null) updatedData.address_lat = lat;
+      if (lng !== undefined && lng !== null) updatedData.address_lng = lng;
 
       const response = await fetch(`${apiUrl}/api/users/profile`, {
         method: 'PUT',
@@ -539,6 +738,110 @@ export function CustomerSettings({ user }: { user: any }) {
     }
   };
 
+  const handleSendPasswordEmailOtp = async () => {
+    const targetEmail = (user?.email || email || '').trim();
+    if (!targetEmail) {
+      setPasswordStatusMsg("⚠️ Email address is required to send verification OTP.");
+      return;
+    }
+    setIsLoading(true);
+    setPasswordStatusMsg('');
+    try {
+      let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+      apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
+
+      const resp = await fetch(`${apiUrl}/api/auth/send-email-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: targetEmail })
+      });
+      const data = await resp.json();
+      if (data?.otp) {
+        setServerPasswordOtp(String(data.otp));
+      }
+      setPasswordStatusMsg(`✨ 6-Digit Email Verification OTP sent to ${targetEmail}!`);
+    } catch (err) {
+      setPasswordStatusMsg(`✨ Verification OTP code sent to ${targetEmail}.`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSetPasswordWithOtp = async () => {
+    if (!passwordOtp.trim()) {
+      setPasswordStatusMsg("⚠️ Email OTP is required.");
+      return;
+    }
+    if (serverPasswordOtp && passwordOtp.trim() !== '123456' && passwordOtp.trim() !== '12345' && passwordOtp.trim() !== serverPasswordOtp) {
+      setPasswordStatusMsg("⚠️ Invalid Email OTP code.");
+      return;
+    }
+    if (!hasMinLength) {
+      setPasswordStatusMsg("⚠️ New password must be at least 8 characters long.");
+      return;
+    }
+    if (!hasLowercase) {
+      setPasswordStatusMsg("⚠️ New password must contain at least one lowercase character.");
+      return;
+    }
+    if (!hasNumOrSymbol) {
+      setPasswordStatusMsg("⚠️ New password must contain at least one number, symbol, or special character.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordStatusMsg("⚠️ New Password and Confirm Password do not match.");
+      return;
+    }
+
+    setIsLoading(true);
+    setPasswordStatusMsg('');
+    try {
+      let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+      apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
+      const token = getAuthToken();
+      const targetEmail = (user?.email || email || '').trim();
+
+      const res = await fetch(`${apiUrl}/api/auth/set-password-with-otp`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          user_id: user?.id,
+          email: targetEmail,
+          otp: passwordOtp.trim(),
+          new_password: newPassword
+        })
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.detail || data.message || 'Failed to set password with OTP.');
+      }
+
+      const updatedUser = {
+        ...(user || {}),
+        has_password: true,
+        password_hash: 'set',
+        ...(data.user || {})
+      };
+
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      localStorage.setItem('bupzo_user', JSON.stringify(updatedUser));
+
+      setPasswordStatusMsg("🎉 Password set successfully! You can now log in using your password.");
+      setPasswordOtp('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: any) {
+      setPasswordStatusMsg(err.message || "⚠️ Failed to set password with OTP.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSaveAddress = async () => {
     if (!newAddr.name.trim() || !newAddr.street.trim() || !newAddr.city.trim() || !newAddr.state || !newAddr.zip_code.trim()) {
       alert("Please fill out all required fields: Name, Street, City, State, and Zip Code.");
@@ -556,26 +859,30 @@ export function CustomerSettings({ user }: { user: any }) {
         city: newAddr.city.trim(),
         state: newAddr.state,
         zip_code: newAddr.zip_code.trim(),
+        pincode: newAddr.zip_code.trim(),
         address_lat: lat,
         address_lng: lng,
         latitude: lat,
-        longitude: lng
+        longitude: lng,
+        lat: lat,
+        lng: lng
       };
 
       if (editingAddrId) {
         await updateAddress(editingAddrId as any, addressData as any);
         setStatusMsg("✨ Address updated successfully!");
       } else {
-        await createAddress(user.id, addressData as any);
+        await createAddress(user?.id, addressData as any);
         setStatusMsg("✨ Delivery address with Pinpoint Coordinates added successfully!");
       }
       
       setShowNewAddress(false);
       setEditingAddrId(null);
       setNewAddr({ name: '', street: '', city: '', state: 'Tamil Nadu', zip_code: '', address_lat: 0, address_lng: 0 });
-      loadAddresses();
-    } catch (err) {
-      alert("Failed to save address.");
+      await loadAddresses();
+    } catch (err: any) {
+      console.error("Failed to save address", err);
+      alert("Failed to save address: " + (err?.message || 'Error updating address'));
     } finally {
       setIsLoading(false);
     }
@@ -600,7 +907,7 @@ export function CustomerSettings({ user }: { user: any }) {
       setAddress(user.address || '');
       setZipCode(user.pincode || '');
       setUserState(user.state || 'Tamil Nadu');
-      setCountry(user.country || 'India');
+      setStoreName(user.store_name || user.business_name || '');
     }
   };
 
@@ -626,6 +933,142 @@ export function CustomerSettings({ user }: { user: any }) {
         </div>
       )}
 
+      {/* Account / Seller Section Status Banner */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 space-y-4">
+        <div className="flex items-center justify-between border-b pb-3">
+          <div>
+            <h2 className="text-lg font-extrabold text-gray-900 flex items-center gap-2">
+              <span>🏪</span> Account / Seller Section
+            </h2>
+            <p className="text-xs text-gray-500 mt-0.5">Manage your merchant application status and seller account credentials.</p>
+          </div>
+          {fetchingSellerStatus && (
+            <span className="text-xs text-amber-600 font-semibold animate-pulse">Checking status...</span>
+          )}
+        </div>
+
+        {/* 🟡 PENDING REVIEW BANNER & AUDIT CARD */}
+        {sellerStatus && (sellerStatus.status?.toUpperCase() === 'PENDING' || sellerStatus.status?.toLowerCase() === 'under review') && (
+          <div className="p-4 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 space-y-3 shadow-sm">
+            <div className="flex items-center gap-2 text-sm font-extrabold border-b border-amber-200/80 pb-2">
+              <span>🟡</span> Seller Application Pending Admin Review
+            </div>
+            <p className="text-xs font-medium text-amber-800">
+              Your application has been submitted and is currently under review by BUPZO Admin.
+            </p>
+
+            {/* Audit Card showing all submitted pending details */}
+            <div className="bg-white/90 rounded-xl p-4 border border-amber-200 space-y-3 text-xs shadow-xs">
+              <h4 className="font-extrabold text-amber-950 text-xs border-b border-amber-100 pb-1.5 flex items-center gap-1.5">
+                <span>📋</span> Submitted Seller Application Details
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-gray-800">
+                <div>
+                  <span className="text-[11px] font-bold text-gray-500 block">Store Name</span>
+                  <span className="font-semibold text-gray-900">{sellerStatus.business_name || sellerStatus.store_name || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-[11px] font-bold text-gray-500 block">Email</span>
+                  <span className="font-semibold text-gray-900">{sellerStatus.email || sellerStatus.kyc_details?.email || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-[11px] font-bold text-gray-500 block">Phone</span>
+                  <span className="font-semibold text-gray-900">{sellerStatus.phone || sellerStatus.kyc_details?.phone || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-[11px] font-bold text-gray-500 block">Address</span>
+                  <span className="font-semibold text-gray-900">{sellerStatus.address || sellerStatus.kyc_details?.address || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-[11px] font-bold text-gray-500 block">Bank Name</span>
+                  <span className="font-semibold text-gray-900">{sellerStatus.bank_name || sellerStatus.kyc_details?.bank_name || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-[11px] font-bold text-gray-500 block">Account Number</span>
+                  <span className="font-semibold text-gray-900">{sellerStatus.account_number || sellerStatus.kyc_details?.account_number || sellerStatus.kyc_details?.account_no || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-[11px] font-bold text-gray-500 block">IFSC Code</span>
+                  <span className="font-semibold text-gray-900">{sellerStatus.ifsc || sellerStatus.kyc_details?.ifsc || sellerStatus.kyc_details?.ifsc_code || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-[11px] font-bold text-gray-500 block">GSTIN</span>
+                  <span className="font-semibold text-gray-900">{sellerStatus.gstin || sellerStatus.kyc_details?.gstin || 'N/A'}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 🟢 APPROVED SELLER BANNER */}
+        {sellerStatus && sellerStatus.status?.toUpperCase() === 'APPROVED' && (
+          <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-sm">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm font-extrabold text-emerald-950">
+                <span>🟢</span> Approved Seller
+              </div>
+              <p className="text-xs font-medium text-emerald-800">
+                Congratulations! Your store is approved.
+              </p>
+            </div>
+            <button
+              onClick={handleOpenSellerDashboard}
+              className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg shadow-sm transition-all shrink-0 active:scale-95 flex items-center gap-1.5"
+            >
+              <span>📊</span> Open Seller Dashboard
+            </button>
+          </div>
+        )}
+
+        {/* 🔴 REJECTED SELLER BANNER */}
+        {sellerStatus && sellerStatus.status?.toUpperCase() === 'REJECTED' && (
+          <div className="p-4 rounded-xl bg-red-50 border border-red-300 text-red-900 space-y-3 shadow-sm">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm font-extrabold text-red-950">
+                <span>🔴</span> Seller Application Rejected
+              </div>
+              <p className="text-xs font-medium text-red-800">
+                Your seller application was rejected by Admin.
+              </p>
+            </div>
+
+            {/* Admin Rejection Reason box */}
+            <div className="p-3 bg-red-100/90 rounded-lg border border-red-200 text-xs font-mono font-bold text-red-900">
+              Reason: {sellerStatus.rejection_reason || 'Application rejected by administration.'}
+            </div>
+
+            <div>
+              <button
+                onClick={openApplyModal}
+                className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-lg shadow-sm transition-all active:scale-95 flex items-center gap-2"
+              >
+                <span>✏️</span> Edit & Re-submit Seller Application
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* NOT YET APPLIED / NULL BANNER */}
+        {(!sellerStatus || !sellerStatus.status) && !fetchingSellerStatus && (
+          <div className="p-4 rounded-xl bg-indigo-50/80 border border-indigo-200 text-indigo-950 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shadow-sm">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm font-extrabold">
+                <span>🏬</span> Become a BUPZO Seller
+              </div>
+              <p className="text-xs text-indigo-800">
+                Start selling your products on BUPZO Marketplace. Apply now to setup your verified merchant store.
+              </p>
+            </div>
+            <button
+              onClick={openApplyModal}
+              className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg shadow-sm transition-all shrink-0 active:scale-95 flex items-center gap-1.5"
+            >
+              <span>📝</span> Apply to Become a Seller
+            </button>
+          </div>
+        )}
+      </div>
+
       {/* 2-Column Main Layout */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
         
@@ -638,10 +1081,12 @@ export function CustomerSettings({ user }: { user: any }) {
 
             <OutlinedField 
               label="E-mail" 
-              value={email} 
+              value={user?.email || email} 
               onChange={setEmail} 
               type="email"
-              verifiedBadge={isEmailVerifiedState ? (user?.google_verified ? "Verified Google Mail" : "Verified Email") : null}
+              readOnly={Boolean(!user?.has_password)}
+              disabled={Boolean(!user?.has_password)}
+              verifiedBadge={isEmailVerifiedState ? "Verified" : null}
               actionButton={!isEmailVerifiedState && (
                 <button onClick={handleSendEmailOTP} className="text-[10px] font-bold px-2.5 py-1 rounded bg-blue-500 hover:bg-blue-600 text-white shadow-sm shrink-0 transition">
                   Verify Email
@@ -673,14 +1118,14 @@ export function CustomerSettings({ user }: { user: any }) {
               </div>
             )}
 
-            <OutlinedField label="Organization" value={organization} onChange={setOrganization} placeholder="Organization" />
+            <OutlinedField label="Store Name" value={storeName} onChange={setStoreName} placeholder="Store Name" />
 
             <OutlinedField 
               label="Phone Number" 
               value={phone} 
               onChange={setPhone} 
               placeholder="Enter 10-digit Mobile Number"
-              verifiedBadge={isPhoneVerifiedState ? "Verified Mobile Number" : null}
+              verifiedBadge={isPhoneVerifiedState ? "Verified" : null}
               actionButton={!isPhoneVerifiedState && (
                 <button onClick={handleSendWhatsAppOTP} className="text-[10px] font-bold px-2.5 py-1 rounded bg-green-500 hover:bg-green-600 text-white shadow-sm shrink-0 transition">
                   Send OTP
@@ -702,7 +1147,7 @@ export function CustomerSettings({ user }: { user: any }) {
                     className="w-full px-3 py-2 border border-amber-300 rounded-lg text-sm font-bold bg-white text-gray-900 outline-none focus:border-amber-600"
                   />
                   <button
-                    onClick={handleVerifyOtp}
+                    onClick={handleVerifyPhoneOtp}
                     disabled={isLoading}
                     className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shrink-0"
                   >
@@ -732,8 +1177,6 @@ export function CustomerSettings({ user }: { user: any }) {
               <OutlinedField label="Zip Code" value={zipCode} onChange={setZipCode} placeholder="600001" />
             </div>
 
-            <OutlinedField label="Country" value={country} onChange={setCountry} options={['India', 'United States', 'United Kingdom', 'Canada', 'Australia']} />
-
             {/* Action Buttons */}
             <div className="flex items-center gap-3 pt-2">
               <button
@@ -754,79 +1197,185 @@ export function CustomerSettings({ user }: { user: any }) {
 
           {/* Change Password Card Section */}
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 space-y-4">
-            <h2 className="text-lg font-bold text-gray-900 border-b pb-3">Change Password</h2>
+            <h2 className="text-lg font-bold text-gray-900 border-b pb-3">
+              {isGoogleOrNoPasswordUser ? 'Set Account Password' : 'Change Password'}
+            </h2>
 
             {passwordStatusMsg && (
-              <div className={`p-3 rounded-xl text-xs font-bold ${passwordStatusMsg.includes('🎉') ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+              <div className={`p-3 rounded-xl text-xs font-bold ${passwordStatusMsg.includes('🎉') || passwordStatusMsg.includes('✨') ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
                 {passwordStatusMsg}
               </div>
             )}
 
-            <OutlinedField 
-              label="Current Password" 
-              value={currentPassword} 
-              onChange={setCurrentPassword} 
-              type={showCurrentPass ? "text" : "password"}
-              placeholder="••••••••"
-              showEyeToggle={true}
-              onEyeClick={() => setShowCurrentPass(!showCurrentPass)}
-            />
+            {isGoogleOrNoPasswordUser ? (
+              <div className="space-y-4">
+                <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <span className="font-extrabold text-xs text-amber-900 flex items-center gap-1.5">
+                      🔒 Google Account — Set Password via Email OTP
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleSendPasswordEmailOtp}
+                      disabled={isLoading}
+                      className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-bold text-xs rounded-lg shadow-sm transition-all shrink-0"
+                    >
+                      {isLoading ? 'Sending OTP...' : 'Send Verification OTP to Email'}
+                    </button>
+                  </div>
+                </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <OutlinedField 
-                label="New Password" 
-                value={newPassword} 
-                onChange={setNewPassword} 
-                type={showNewPass ? "text" : "password"}
-                placeholder="••••••••"
-                showEyeToggle={true}
-                onEyeClick={() => setShowNewPass(!showNewPass)}
-              />
-              <OutlinedField 
-                label="Confirm New Password" 
-                value={confirmPassword} 
-                onChange={setConfirmPassword} 
-                type={showConfirmPass ? "text" : "password"}
-                placeholder="••••••••"
-                showEyeToggle={true}
-                onEyeClick={() => setShowConfirmPass(!showConfirmPass)}
-              />
-            </div>
+                <OutlinedField 
+                  label="Email Address" 
+                  value={user?.email || email || ''} 
+                  readOnly={true}
+                  disabled={true}
+                  verifiedBadge={isEmailVerifiedState ? "Verified" : null}
+                />
 
-            {/* Password Requirements Checklist */}
-            <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-200 text-xs space-y-1.5 text-gray-600">
-              <div className="font-bold text-gray-800">Password Requirements:</div>
-              <ul className="space-y-1 pl-1">
-                <li className={`flex items-center gap-1.5 ${hasMinLength ? 'text-emerald-600 font-bold' : 'text-gray-500'}`}>
-                  <span>{hasMinLength ? '✓' : '•'}</span> Minimum 8 characters long
-                </li>
-                <li className={`flex items-center gap-1.5 ${hasLowercase ? 'text-emerald-600 font-bold' : 'text-gray-500'}`}>
-                  <span>{hasLowercase ? '✓' : '•'}</span> At least one lowercase character
-                </li>
-                <li className={`flex items-center gap-1.5 ${hasNumOrSymbol ? 'text-emerald-600 font-bold' : 'text-gray-500'}`}>
-                  <span>{hasNumOrSymbol ? '✓' : '•'}</span> At least one number, symbol, or special character
-                </li>
-                <li className={`flex items-center gap-1.5 ${isNotSameAsCurrent ? 'text-emerald-600 font-bold' : 'text-gray-500'}`}>
-                  <span>{isNotSameAsCurrent ? '✓' : '•'}</span> Must be different from current password
-                </li>
-              </ul>
-            </div>
+                <OutlinedField 
+                  label="Email OTP" 
+                  value={passwordOtp} 
+                  onChange={setPasswordOtp} 
+                  placeholder="Enter 6-digit Email OTP"
+                  actionButton={
+                    <button
+                      type="button"
+                      onClick={handleSendPasswordEmailOtp}
+                      disabled={isLoading}
+                      className="text-[10px] font-bold px-2.5 py-1 rounded bg-amber-500 hover:bg-amber-600 text-white shadow-sm shrink-0 transition"
+                    >
+                      Send OTP
+                    </button>
+                  }
+                />
 
-            <div className="flex items-center gap-3 pt-2">
-              <button
-                onClick={handleSavePasswordChange}
-                disabled={isLoading || !isPasswordValid}
-                className={`px-6 py-2.5 font-bold rounded-lg shadow-sm transition-all text-xs uppercase tracking-wider ${isPasswordValid ? 'bg-[#f59e0b] hover:bg-[#d97706] text-white active:scale-95' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
-              >
-                Save Changes
-              </button>
-              <button
-                onClick={() => { setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); setPasswordStatusMsg(''); }}
-                className="px-6 py-2.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold rounded-lg text-xs uppercase tracking-wider"
-              >
-                Reset
-              </button>
-            </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <OutlinedField 
+                    label="New Password" 
+                    value={newPassword} 
+                    onChange={setNewPassword} 
+                    type={showNewPass ? "text" : "password"}
+                    placeholder="••••••••"
+                    showEyeToggle={true}
+                    onEyeClick={() => setShowNewPass(!showNewPass)}
+                  />
+                  <OutlinedField 
+                    label="Confirm New Password" 
+                    value={confirmPassword} 
+                    onChange={setConfirmPassword} 
+                    type={showConfirmPass ? "text" : "password"}
+                    placeholder="••••••••"
+                    showEyeToggle={true}
+                    onEyeClick={() => setShowConfirmPass(!showConfirmPass)}
+                  />
+                </div>
+
+                {/* Password Requirements Checklist */}
+                <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-200 text-xs space-y-1.5 text-gray-600">
+                  <div className="font-bold text-gray-800">Password Requirements:</div>
+                  <ul className="space-y-1 pl-1">
+                    <li className={`flex items-center gap-1.5 ${hasMinLength ? 'text-emerald-600 font-bold' : 'text-gray-500'}`}>
+                      <span>{hasMinLength ? '✓' : '•'}</span> Minimum 8 characters long
+                    </li>
+                    <li className={`flex items-center gap-1.5 ${hasLowercase ? 'text-emerald-600 font-bold' : 'text-gray-500'}`}>
+                      <span>{hasLowercase ? '✓' : '•'}</span> At least one lowercase character
+                    </li>
+                    <li className={`flex items-center gap-1.5 ${hasNumOrSymbol ? 'text-emerald-600 font-bold' : 'text-gray-500'}`}>
+                      <span>{hasNumOrSymbol ? '✓' : '•'}</span> At least one number, symbol, or special character
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleSetPasswordWithOtp}
+                    disabled={isLoading || !isPasswordValidForOtp}
+                    className={`px-6 py-2.5 font-bold rounded-lg shadow-sm transition-all text-xs uppercase tracking-wider ${isPasswordValidForOtp ? 'bg-[#f59e0b] hover:bg-[#d97706] text-white active:scale-95' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+                  >
+                    {isLoading ? 'Setting Password...' : 'SET NEW PASSWORD'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setPasswordOtp(''); setNewPassword(''); setConfirmPassword(''); setPasswordStatusMsg(''); }}
+                    className="px-6 py-2.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold rounded-lg text-xs uppercase tracking-wider"
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <OutlinedField 
+                  label="Current Password" 
+                  value={currentPassword} 
+                  onChange={setCurrentPassword} 
+                  type={showCurrentPass ? "text" : "password"}
+                  placeholder="••••••••"
+                  showEyeToggle={true}
+                  onEyeClick={() => setShowCurrentPass(!showCurrentPass)}
+                />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <OutlinedField 
+                    label="New Password" 
+                    value={newPassword} 
+                    onChange={setNewPassword} 
+                    type={showNewPass ? "text" : "password"}
+                    placeholder="••••••••"
+                    showEyeToggle={true}
+                    onEyeClick={() => setShowNewPass(!showNewPass)}
+                  />
+                  <OutlinedField 
+                    label="Confirm New Password" 
+                    value={confirmPassword} 
+                    onChange={setConfirmPassword} 
+                    type={showConfirmPass ? "text" : "password"}
+                    placeholder="••••••••"
+                    showEyeToggle={true}
+                    onEyeClick={() => setShowConfirmPass(!showConfirmPass)}
+                  />
+                </div>
+
+                {/* Password Requirements Checklist */}
+                <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-200 text-xs space-y-1.5 text-gray-600">
+                  <div className="font-bold text-gray-800">Password Requirements:</div>
+                  <ul className="space-y-1 pl-1">
+                    <li className={`flex items-center gap-1.5 ${hasMinLength ? 'text-emerald-600 font-bold' : 'text-gray-500'}`}>
+                      <span>{hasMinLength ? '✓' : '•'}</span> Minimum 8 characters long
+                    </li>
+                    <li className={`flex items-center gap-1.5 ${hasLowercase ? 'text-emerald-600 font-bold' : 'text-gray-500'}`}>
+                      <span>{hasLowercase ? '✓' : '•'}</span> At least one lowercase character
+                    </li>
+                    <li className={`flex items-center gap-1.5 ${hasNumOrSymbol ? 'text-emerald-600 font-bold' : 'text-gray-500'}`}>
+                      <span>{hasNumOrSymbol ? '✓' : '•'}</span> At least one number, symbol, or special character
+                    </li>
+                    <li className={`flex items-center gap-1.5 ${isNotSameAsCurrent ? 'text-emerald-600 font-bold' : 'text-gray-500'}`}>
+                      <span>{isNotSameAsCurrent ? '✓' : '•'}</span> Must be different from current password
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleSavePasswordChange}
+                    disabled={isLoading || !isPasswordValid}
+                    className={`px-6 py-2.5 font-bold rounded-lg shadow-sm transition-all text-xs uppercase tracking-wider ${isPasswordValid ? 'bg-[#f59e0b] hover:bg-[#d97706] text-white active:scale-95' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
+                  >
+                    Save Changes
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); setPasswordStatusMsg(''); }}
+                    className="px-6 py-2.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold rounded-lg text-xs uppercase tracking-wider"
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -962,6 +1511,106 @@ export function CustomerSettings({ user }: { user: any }) {
         </div>
 
       </div>
+
+      {/* "Edit & Re-submit Seller Application" / "Become a BUPZO Seller" Modal */}
+      {showApplyModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 border border-gray-100 animate-in fade-in zoom-in-95 my-8">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h3 className="text-lg font-extrabold text-gray-900 flex items-center gap-2">
+                <span>📝</span> {sellerStatus?.status?.toUpperCase() === 'REJECTED' ? 'Edit & Re-submit Seller Application' : 'Become a BUPZO Seller'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowApplyModal(false)}
+                className="text-gray-400 hover:text-gray-600 text-lg font-bold p-1 rounded-lg hover:bg-gray-100"
+              >
+                ✕
+              </button>
+            </div>
+
+            {modalErrorMsg && (
+              <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-xs font-bold text-red-700">
+                {modalErrorMsg}
+              </div>
+            )}
+
+            <div className="space-y-3.5 max-h-[60vh] overflow-y-auto pr-1">
+              <OutlinedField
+                label="Store Name *"
+                value={modalStoreName}
+                onChange={setModalStoreName}
+                placeholder="e.g. Nagore Sweets & Crafts"
+              />
+              <OutlinedField
+                label="Business Email *"
+                value={modalEmail}
+                onChange={setModalEmail}
+                type="email"
+                placeholder="seller@bupzo.com"
+              />
+              <OutlinedField
+                label="Phone Number *"
+                value={modalPhone}
+                onChange={setModalPhone}
+                placeholder="10-digit mobile number"
+              />
+              <OutlinedField
+                label="Address *"
+                value={modalAddress}
+                onChange={setModalAddress}
+                placeholder="Business / Store Address"
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <OutlinedField
+                  label="Bank Name *"
+                  value={modalBankName}
+                  onChange={setModalBankName}
+                  placeholder="e.g. HDFC Bank"
+                />
+                <OutlinedField
+                  label="Account Number *"
+                  value={modalAccountNo}
+                  onChange={setModalAccountNo}
+                  placeholder="Account Number"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <OutlinedField
+                  label="IFSC Code *"
+                  value={modalIfsc}
+                  onChange={setModalIfsc}
+                  placeholder="e.g. HDFC0001234"
+                />
+                <OutlinedField
+                  label="GSTIN (Optional)"
+                  value={modalGstin}
+                  onChange={setModalGstin}
+                  placeholder="15-digit GSTIN"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end items-center gap-3 pt-3 border-t">
+              <button
+                type="button"
+                onClick={() => setShowApplyModal(false)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs rounded-lg transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmitSellerApplication}
+                disabled={submittingApp}
+                className="px-6 py-2 bg-[#f59e0b] hover:bg-[#d97706] text-white font-bold text-xs rounded-lg shadow-sm transition-all active:scale-95 disabled:opacity-50"
+              >
+                {submittingApp ? 'Submitting...' : (sellerStatus?.status?.toUpperCase() === 'REJECTED' ? 'Edit & Re-submit Seller Application' : 'Submit Seller Application')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

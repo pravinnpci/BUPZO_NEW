@@ -15,6 +15,8 @@ interface User {
   pincode?: string;
   state?: string;
   created_at?: string;
+  email_verified?: boolean;
+  phone_verified?: boolean;
 }
 
 interface AdminUsersProps {
@@ -200,15 +202,27 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
                   <td className="py-3 font-semibold text-[#3874ff] cursor-pointer hover:underline" onClick={() => setPreviewUser(u)}>{u.name || 'Bupzo Patron'}</td>
                   <td className="py-3">{u.phone?.startsWith('GOOG-') ? 'Not Provided' : u.phone}</td>
                   <td className="py-3">
-                    <span className={`px-1.5 py-0.5 rounded font-bold text-[9px] ${Boolean((u as any).phone_verified) && u.phone && !u.phone?.startsWith('GOOG-') ? 'bg-emerald-100/20 text-emerald-500 border border-emerald-500/30' : 'bg-amber-100/10 text-amber-500 border border-amber-500/30'}`}>
-                      {Boolean((u as any).phone_verified) && u.phone && !u.phone?.startsWith('GOOG-') ? '✓ Verified' : '✕ Pending'}
-                    </span>
+                    {u.phone_verified ? (
+                      <span className="px-2 py-0.5 rounded font-bold text-[9px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-500/30">
+                        ✓ Mobile Verified
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded font-bold text-[9px] bg-amber-100/10 text-amber-500 border border-amber-500/30">
+                        Pending
+                      </span>
+                    )}
                   </td>
                   <td className="py-3">{u.email}</td>
                   <td className="py-3">
-                    <span className={`px-1.5 py-0.5 rounded font-bold text-[9px] ${Boolean((u as any).email_verified) || Boolean((u as any).google_verified) ? 'bg-emerald-100/20 text-emerald-500 border border-emerald-500/30' : 'bg-amber-100/10 text-amber-500 border border-amber-500/30'}`}>
-                      {Boolean((u as any).email_verified) || Boolean((u as any).google_verified) ? '✓ Verified' : '✕ Pending'}
-                    </span>
+                    {u.email_verified ? (
+                      <span className="px-2 py-0.5 rounded font-bold text-[9px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border border-emerald-500/30">
+                        ✓ Email Verified
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded font-bold text-[9px] bg-amber-100/10 text-amber-500 border border-amber-500/30">
+                        Pending
+                      </span>
+                    )}
                   </td>
                   <td className="py-3 font-mono text-[10px] text-zinc-500 whitespace-nowrap">{u.created_at ? new Date(u.created_at).toLocaleString() : '2026-07-25 20:45'}</td>
                   <td className="py-3 font-mono font-bold">₹{u.wallet}</td>

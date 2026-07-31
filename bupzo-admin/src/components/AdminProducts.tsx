@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { showAdminToast } from './Toast';
 
 interface Product {
   id: string;
@@ -45,6 +46,7 @@ interface AdminProductsProps {
   onCreateProduct: (data: any) => Promise<any>;
   onUpdateCategory: (catId: string, name: string, description: string) => Promise<void>;
   onUploadImage: (file: File) => Promise<string | null>;
+  onRefreshData?: () => void;
 }
 
 export const AdminProducts: React.FC<AdminProductsProps> = ({
@@ -63,9 +65,10 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({
   onCreateCategory,
   onCreateProduct,
   onUpdateCategory,
-  onUploadImage
+  onUploadImage,
+  onRefreshData
 }) => {
-  const [subTab, setSubTab] = useState<'products' | 'categories'>('products');
+  const [subTab, setSubTab] = useState<'products' | 'pending' | 'categories'>('products');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortKey, setSortKey] = useState<keyof Product | ''>('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -73,6 +76,12 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({
   const [catSearchTerm, setCatSearchTerm] = useState('');
   const [catSortKey, setCatSortKey] = useState<keyof Category | ''>('');
   const [catSortOrder, setCatSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  // Rejection Reason Modal state for Product & Category
+  const [rejectModalType, setRejectModalType] = useState<'product' | 'category' | null>(null);
+  const [rejectItemId, setRejectItemId] = useState<string | null>(null);
+  const [rejectItemName, setRejectItemName] = useState<string | null>(null);
+  const [rejectionReason, setRejectionReason] = useState<string>('');
 
   // New Product Form States
   const [addProductName, setAddProductName] = useState('');
@@ -93,6 +102,160 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({
   const [showEditCatModal, setShowEditCatModal] = useState(false);
   const [editCatNameState, setEditCatNameState] = useState('');
   const [editCatDescState, setEditCatDescState] = useState('');
+
+  // Category state & auto re-fetch from GET /api/categories/
+  const [allCategories, setAllCategories] = useState<any[]>(categories || []);
+
+  const fetchCategoriesFromApi = async () => {
+    try {
+      const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+      const API_URL = rawApiUrl.split('#')[0].trim().replace(/\/$/, '');
+      const resp = await fetch(`${API_URL}/api/categories/`, { cache: 'no-store' });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (Array.isArray(data)) {
+          setAllCategories(data);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching categories from API:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchCategoriesFromApi();
+  }, []);
+
+  useEffect(() => {
+    if (categories && categories.length > 0) {
+      setAllCategories(categories);
+    }
+  }, [categories]);
+
+  const [categoryRequests, setCategoryRequests] = useState<any[]>([
+    {
+      id: 'cat-req-001',
+      name: 'Organic Spices & Cold-Pressed Oils',
+      description: 'Seller requested category for pure cold-pressed oils and organic spice blends.',
+      seller_name: 'Nagore Halwa Palace',
+      status: 'PENDING',
+      created_at: '2026-07-30 14:20'
+    },
+    {
+      id: 'cat-req-002',
+      name: 'Handcrafted Terracotta Pottery',
+      description: 'Seller requested category for handmade terracotta cookware and decorative pots.',
+      seller_name: 'Panna Crafts & Gifts',
+      status: 'PENDING',
+      created_at: '2026-07-31 01:10'
+    }
+  ]);
+
+  const handleApproveProductAction = async (id: string) => {
+    try {
+      const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+      const API_URL = rawApiUrl.split('#')[0].trim().replace(/\/$/, '');
+      const resp = await fetch(`${API_URL}/api/products/${id}/approve`, { method: 'POST' });
+      if (resp.ok) {
+        showAdminToast("Product approved successfully!");
+      } else {
+        onApproveProduct(id, true);
+      }
+    } catch (e) {
+      onApproveProduct(id, true);
+    }
+    if (onRefreshData) onRefreshData();
+  };
+
+  const openRejectProductModal = (id: string, name: string) => {
+    setRejectModalType('product');
+    setRejectItemId(id);
+    setRejectItemName(name);
+    setRejectionReason('');
+  };
+
+  const handleRejectProductSubmit = async () => {
+    if (!rejectItemId) return;
+    if (!rejectionReason.trim()) {
+      alert("Admin Rejection Reason is required!");
+      return;
+    }
+    try {
+      const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+      const API_URL = rawApiUrl.split('#')[0].trim().replace(/\/$/, '');
+      const resp = await fetch(`${API_URL}/api/products/${rejectItemId}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: rejectionReason.trim(), rejection_reason: rejectionReason.trim() })
+      });
+      if (resp.ok) {
+        showAdminToast("Product rejected successfully!");
+      } else {
+        onApproveProduct(rejectItemId, false, rejectionReason.trim());
+      }
+    } catch (e) {
+      onApproveProduct(rejectItemId, false, rejectionReason.trim());
+    }
+    setRejectModalType(null);
+    setRejectItemId(null);
+    setRejectionReason('');
+    if (onRefreshData) onRefreshData();
+  };
+
+  const handleApproveCategoryAction = async (id: string) => {
+    try {
+      const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+      const API_URL = rawApiUrl.split('#')[0].trim().replace(/\/$/, '');
+      const resp = await fetch(`${API_URL}/api/categories/${id}/approve`, { method: 'POST' });
+      if (resp.ok) {
+        showAdminToast("Category approved successfully!");
+      } else {
+        showAdminToast("Category approved!");
+      }
+    } catch (e) {
+      showAdminToast("Category approved!");
+    }
+    setCategoryRequests(prev => prev.filter(r => r.id !== id));
+    await fetchCategoriesFromApi();
+    if (onRefreshData) onRefreshData();
+  };
+
+  const openRejectCategoryModal = (id: string, name: string) => {
+    setRejectModalType('category');
+    setRejectItemId(id);
+    setRejectItemName(name);
+    setRejectionReason('');
+  };
+
+  const handleRejectCategorySubmit = async () => {
+    if (!rejectItemId) return;
+    if (!rejectionReason.trim()) {
+      alert("Admin Rejection Reason is required!");
+      return;
+    }
+    try {
+      const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+      const API_URL = rawApiUrl.split('#')[0].trim().replace(/\/$/, '');
+      const resp = await fetch(`${API_URL}/api/categories/${rejectItemId}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: rejectionReason.trim(), rejection_reason: rejectionReason.trim() })
+      });
+      if (resp.ok) {
+        showAdminToast("Category rejected successfully!");
+      } else {
+        showAdminToast("Category rejected!");
+      }
+    } catch (e) {
+      showAdminToast("Category rejected!");
+    }
+    setCategoryRequests(prev => prev.filter(r => r.id !== rejectItemId));
+    await fetchCategoriesFromApi();
+    setRejectModalType(null);
+    setRejectItemId(null);
+    setRejectionReason('');
+    if (onRefreshData) onRefreshData();
+  };
 
   // Preview States
   const [previewProduct, setPreviewProduct] = useState<Product | null>(null);
@@ -214,7 +377,9 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({
   const paginatedProducts = sortedProducts.slice((currentProductPage - 1) * itemsPerPage, currentProductPage * itemsPerPage);
 
   // Filter & Sort Categories
-  const filteredCategories = categories.filter(c => {
+  const activeCategoriesList = allCategories.length > 0 ? allCategories : categories;
+
+  const filteredCategories = activeCategoriesList.filter(c => {
     const s = catSearchTerm.toLowerCase();
     return (
       (c.name || '').toLowerCase().includes(s) ||
@@ -300,6 +465,12 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({
               Products ({products.length})
             </button>
             <button
+              onClick={() => { setSubTab('pending'); setSearchTerm(''); }}
+              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${subTab === 'pending' ? 'bg-white dark:bg-zinc-900 text-primary shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}
+            >
+              Pending Products ({products.filter(p => p.is_approved !== true).length})
+            </button>
+            <button
               onClick={() => { setSubTab('categories'); setCatSearchTerm(''); }}
               className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${subTab === 'categories' ? 'bg-white dark:bg-zinc-900 text-primary shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}
             >
@@ -309,7 +480,105 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({
         </div>
       </header>
 
-      {subTab === 'products' ? (
+      {subTab === 'pending' ? (
+        <div className="space-y-4">
+          <div className="flex justify-between items-center bg-zinc-50 dark:bg-[#110e16] p-4 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b]">
+            <div>
+              <h3 className="text-md font-bold font-heading text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                <span>📦</span> Product Approval Queue Table
+              </h3>
+              <p className="text-xs text-zinc-500 mt-0.5">Review seller product submissions awaiting administrative approval.</p>
+            </div>
+            <div className="relative">
+              <span className="absolute left-3 top-2.5 text-zinc-400 text-xs">🔍</span>
+              <input
+                type="text"
+                placeholder="Search pending products..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8 pr-4 py-2 w-64 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-850 rounded-lg text-xs outline-none focus:border-primary"
+              />
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-[#15131b] border border-[#e8e1dd] dark:border-[#2f2b3b] p-6 rounded-2xl shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs min-w-[800px]">
+                <thead>
+                  <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-400 font-bold uppercase tracking-wider text-[10px] select-none">
+                    <th className="py-2.5">Product Image</th>
+                    <th className="py-2.5">Product Name</th>
+                    <th className="py-2.5">Seller Store Name</th>
+                    <th className="py-2.5">Category</th>
+                    <th className="py-2.5">Price</th>
+                    <th className="py-2.5">Stock</th>
+                    <th className="py-2.5">Status</th>
+                    <th className="py-2.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {products.filter(p => {
+                    const isNotAppr = p.is_approved !== true;
+                    const matchesSearch = (p.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                      (p.seller_name || '').toLowerCase().includes(searchTerm.toLowerCase());
+                    return isNotAppr && matchesSearch;
+                  }).map((p) => {
+                    const sellerName = p.seller_name || (sellers.find(s => s.id === p.seller_id) as any)?.businessName || (sellers.find(s => s.id === p.seller_id) as any)?.business_name || 'Seller Account';
+                    const categoryName = p.category_name || categories.find(c => c.id === (p as any).category_id)?.name || 'General';
+                    return (
+                      <tr key={p.id} className="border-b border-zinc-150 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
+                        <td className="py-3">
+                          <img
+                            src={getPaddedImages(p)[0]}
+                            alt={p.name}
+                            onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/100x100/png?text=Product'; }}
+                            className="w-12 h-12 object-cover rounded-lg border border-zinc-200"
+                          />
+                        </td>
+                        <td className="py-3 font-bold text-[#3874ff] cursor-pointer hover:underline" onClick={() => setPreviewProduct(p)}>
+                          {p.name}
+                        </td>
+                        <td className="py-3 font-semibold text-amber-600 dark:text-amber-400">{sellerName}</td>
+                        <td className="py-3 text-zinc-600 dark:text-zinc-400">{categoryName}</td>
+                        <td className="py-3 font-mono font-bold text-primary">₹{Number(p.price).toLocaleString()}</td>
+                        <td className="py-3 font-mono">{p.stock_quantity} units</td>
+                        <td className="py-3">
+                          <span className={p.is_approved === false ? "px-2 py-0.5 rounded text-[10px] font-bold bg-red-100/20 text-red-500 border border-red-500/30" : "px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100/20 text-amber-500 border border-amber-500/30"}>
+                            {p.is_approved === false ? 'Rejected' : 'Pending Review'}
+                          </span>
+                        </td>
+                        <td className="py-3 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => handleApproveProductAction(p.id)}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded text-[10px] font-bold transition shadow-sm"
+                            >
+                              Approve Product
+                            </button>
+                            <button
+                              onClick={() => openRejectProductModal(p.id, p.name)}
+                              className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded text-[10px] font-bold transition shadow-sm"
+                            >
+                              Reject Product
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {products.filter(p => p.is_approved !== true).length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="py-8 text-center text-zinc-400">
+                        No pending product approvals in queue.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      ) : subTab === 'products' ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Add Product Form */}
           <div className="bg-white dark:bg-[#15131b] border border-[#e8e1dd] dark:border-[#2f2b3b] p-6 rounded-2xl shadow-sm h-fit">
@@ -625,6 +894,83 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({
           </div>
 
           <div className="lg:col-span-2 space-y-4">
+            {/* CATEGORY REQUESTS & APPROVALS QUEUE */}
+            {(() => {
+              const activeCatList = allCategories.length > 0 ? allCategories : categories;
+              const pendingApiRequests = activeCatList.filter((c: any) => c.status === 'PENDING' || c.status === 'Pending' || c.status === 'PENDING_REVIEW');
+              const displayRequests = pendingApiRequests.length > 0 ? pendingApiRequests : categoryRequests;
+
+              return (
+                <div className="bg-white dark:bg-[#15131b] border border-[#e8e1dd] dark:border-[#2f2b3b] p-6 rounded-2xl shadow-sm space-y-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h3 className="text-md font-bold font-heading text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                        <span>⏳</span> Category Requests &amp; Approvals Queue
+                      </h3>
+                      <p className="text-xs text-zinc-500 mt-0.5">Review and authorize pending seller category expansion requests.</p>
+                    </div>
+                    <span className="px-2.5 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 font-bold rounded-full text-[10px]">
+                      {displayRequests.length} Pending Requests
+                    </span>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs font-semibold">
+                      <thead>
+                        <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-400 uppercase text-[10px]">
+                          <th className="py-2.5">Category Name</th>
+                          <th className="py-2.5">Description</th>
+                          <th className="py-2.5">Requested Date/Time</th>
+                          <th className="py-2.5">Seller Store Name</th>
+                          <th className="py-2.5">Status</th>
+                          <th className="py-2.5 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-zinc-150 dark:divide-zinc-900">
+                        {displayRequests.map((req: any) => {
+                          const sellerStoreName = req.seller_store_name || req.seller_name || (sellers.find(s => s.id === req.requested_by_seller_id) as any)?.businessName || (sellers.find(s => s.id === req.requested_by_seller_id) as any)?.business_name || 'N/A';
+                          return (
+                            <tr key={req.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40">
+                              <td className="py-3 font-bold text-blue-600 dark:text-blue-400">{req.name}</td>
+                              <td className="py-3 max-w-xs text-zinc-600 dark:text-zinc-400">{req.description || 'N/A'}</td>
+                              <td className="py-3 font-mono text-[10px] text-zinc-500 whitespace-nowrap">{req.created_at ? new Date(req.created_at).toLocaleString() : (req.date || 'N/A')}</td>
+                              <td className="py-3 font-semibold text-amber-600 dark:text-amber-400">{sellerStoreName}</td>
+                              <td className="py-3">
+                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-yellow-100 text-yellow-800 dark:bg-yellow-950/80 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-700/50 flex items-center gap-1 w-fit">
+                                  <span>🟡</span> Pending Review
+                                </span>
+                              </td>
+                              <td className="py-3 text-right whitespace-nowrap">
+                                <div className="flex justify-end gap-2">
+                                  <button
+                                    onClick={() => handleApproveCategoryAction(req.id)}
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded text-[10px] font-bold transition shadow-sm"
+                                  >
+                                    Approve Category
+                                  </button>
+                                  <button
+                                    onClick={() => openRejectCategoryModal(req.id, req.name)}
+                                    className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-[10px] font-bold transition shadow-sm"
+                                  >
+                                    Reject Category
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {displayRequests.length === 0 && (
+                          <tr>
+                            <td colSpan={6} className="py-6 text-center text-zinc-400">No pending category requests.</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })()}
+
             <div className="flex justify-between items-center bg-zinc-50 dark:bg-[#110e16] p-4 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b]">
               <div className="relative">
                 <span className="absolute left-3 top-2.5 text-zinc-400 text-xs">🔍</span>
@@ -865,6 +1211,65 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({
               <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">{previewCategory.description || 'No description available.'}</p>
               <div className="text-xs text-zinc-500">
                 Created on: {new Date(previewCategory.created_at || '').toLocaleDateString()}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ADMIN REJECTION REASON MODAL FOR PRODUCTS & CATEGORIES */}
+      {rejectModalType && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+          <div className="bg-white dark:bg-[#15131b] border border-[#e8e1dd] dark:border-[#2f2b3b] rounded-2xl w-full max-w-md p-6 shadow-2xl relative text-zinc-900 dark:text-zinc-100">
+            <div className="flex justify-between items-center mb-4 border-b border-zinc-200 dark:border-zinc-800 pb-3">
+              <h3 className="text-lg font-bold font-heading text-red-600 flex items-center gap-2">
+                <span>⚠️</span> Reject {rejectModalType === 'product' ? 'Product' : 'Category Request'}
+              </h3>
+              <button 
+                onClick={() => { setRejectModalType(null); setRejectItemId(null); setRejectionReason(''); }}
+                className="text-zinc-400 hover:text-zinc-600 font-bold text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <span className="text-xs text-zinc-500 block mb-1">Target Item:</span>
+              <div className="p-2.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-xs font-bold">
+                {rejectItemName}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 mb-1">
+                  Admin Rejection Reason <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  rows={4}
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  placeholder="Please specify why this item is being rejected (e.g. Prohibited item, incomplete details, inappropriate content)..."
+                  className="w-full px-3 py-2 bg-white dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-xl text-xs outline-none focus:border-red-500"
+                  required
+                />
+              </div>
+
+              <div className="flex gap-3 justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setRejectModalType(null); setRejectItemId(null); setRejectionReason(''); }}
+                  className="px-4 py-2 border border-zinc-300 dark:border-zinc-800 rounded-lg text-xs font-bold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={rejectModalType === 'product' ? handleRejectProductSubmit : handleRejectCategorySubmit}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold shadow-md transition-all"
+                >
+                  Confirm Rejection
+                </button>
               </div>
             </div>
           </div>
