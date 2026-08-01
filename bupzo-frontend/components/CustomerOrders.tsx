@@ -104,27 +104,68 @@ export const CustomerOrders = ({ customerOrders, user }: any) => {
                         </div>
                       )}
                   <div className="mb-4">
-                    <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">Order Status</h4>
-                    <div className="flex items-center w-full mt-4">
-                      {['pending', 'processing', 'shipped', 'delivered'].map((step, idx, arr) => {
-                        const stepIndex = arr.indexOf(ord.status?.toLowerCase());
-                        const isCompleted = idx <= (stepIndex === -1 ? 0 : stepIndex);
-                        const isLast = idx === arr.length - 1;
-                        return (
-                          <React.Fragment key={step}>
-                            <div className="flex flex-col items-center">
-                              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${isCompleted ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
-                                {isCompleted ? '✓' : idx + 1}
+                    <h4 className="text-xs font-bold text-gray-500 uppercase mb-3">Order Fulfillment Timeline</h4>
+                    {/* Pipeline Steps */}
+                    <div className="relative">
+                      {/* Connector line */}
+                      <div className="absolute top-4 left-4 right-4 h-0.5 bg-gray-200 z-0" />
+                      <div className="flex items-start justify-between relative z-10">
+                        {[
+                          { key: 'paid',             label: 'Order\nPlaced',     icon: '💳' },
+                          { key: 'processing',       label: 'Seller\nConfirmed', icon: '✅' },
+                          { key: 'ready_for_pickup', label: 'Ready\nPickup',     icon: '📦' },
+                          { key: 'shipped',          label: 'Shipped',           icon: '🚚' },
+                          { key: 'delivered',        label: 'Delivered',         icon: '🎉' },
+                        ].map((step, idx, arr) => {
+                          const pipeline = ['paid', 'processing', 'ready_for_pickup', 'shipped', 'delivered'];
+                          const currentIdx = pipeline.indexOf((ord.status || 'paid').toLowerCase());
+                          const stepIdx = pipeline.indexOf(step.key);
+                          const isCompleted = stepIdx <= currentIdx && currentIdx >= 0;
+                          const isCurrent = stepIdx === currentIdx;
+                          const isCancelled = (ord.status || '').toLowerCase() === 'cancelled';
+
+                          return (
+                            <div key={step.key} className="flex flex-col items-center" style={{ width: `${100 / arr.length}%` }}>
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-all
+                                ${isCancelled ? 'bg-rose-100 border-rose-300 text-rose-500' :
+                                  isCompleted ? 'bg-emerald-500 border-emerald-600 text-white shadow-md shadow-emerald-200' :
+                                  'bg-white border-gray-200 text-gray-400'}
+                                ${isCurrent && !isCancelled ? 'ring-2 ring-offset-1 ring-emerald-400 scale-110' : ''}`
+                              }>
+                                {isCancelled ? '✕' : isCompleted ? step.icon : idx + 1}
                               </div>
-                              <span className={`text-[10px] mt-1 font-bold uppercase ${isCompleted ? 'text-green-600' : 'text-gray-400'}`}>{step}</span>
+                              <span className={`text-[9px] mt-1.5 font-bold uppercase text-center whitespace-pre leading-tight
+                                ${isCancelled ? 'text-rose-400' : isCompleted ? 'text-emerald-600' : 'text-gray-400'}`}>
+                                {step.label}
+                              </span>
                             </div>
-                            {!isLast && (
-                              <div className={`flex-1 h-1 mx-2 ${idx < (stepIndex === -1 ? 0 : stepIndex) ? 'bg-green-500' : 'bg-gray-200'}`} />
-                            )}
-                          </React.Fragment>
-                        );
-                      })}
+                          );
+                        })}
+                      </div>
                     </div>
+
+                    {/* Cancelled banner */}
+                    {(ord.status || '').toLowerCase() === 'cancelled' && (
+                      <div className="mt-3 bg-rose-50 border border-rose-200 rounded-lg p-2.5 text-xs text-rose-700 font-semibold flex items-center gap-2">
+                        <span>❌</span> This order has been cancelled.
+                      </div>
+                    )}
+
+                    {/* AWB / Courier info inline */}
+                    {ord.awb_code && (
+                      <div className="mt-3 bg-violet-50 border border-violet-200 rounded-lg p-2.5 text-xs flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span>📋</span>
+                          <span className="font-bold text-violet-700">AWB: {ord.awb_code}</span>
+                          {ord.courier_name && <span className="text-zinc-500">via {ord.courier_name}</span>}
+                        </div>
+                        {ord.estimated_delivery_date && (
+                          <span className="text-[10px] bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full font-bold">
+                            Est. {new Date(ord.estimated_delivery_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                   {ord.tracking_id && (() => {
                     const liveInfo = trackingData[ord.id];

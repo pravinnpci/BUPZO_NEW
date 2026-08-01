@@ -66,13 +66,15 @@ export default function CheckoutPage() {
     );
   }
 
+  const [paymentMethod, setPaymentMethod] = useState<'COD' | 'UPI' | 'CARD' | 'NETBANKING' | 'WALLET'>('COD');
+
   const handlePlaceOrder = async () => {
     setLoading(true);
     try {
-      // Logic for split payment
-      if (remainingAmount > 0) {
-        alert(`Proceeding to Payment Gateway to pay the remaining ₹${remainingAmount.toFixed(2)}`);
-        // Here we simulate the gateway success
+      if (paymentMethod === 'COD') {
+        alert("✅ Cash on Delivery selected. Your order will be placed and you can pay cash upon delivery!");
+      } else if (remainingAmount > 0) {
+        alert(`Proceeding to ${paymentMethod} Payment Gateway to pay remaining ₹${remainingAmount.toFixed(2)}`);
       }
       
       const sellerCarts: Record<string, any[]> = {};
@@ -92,7 +94,8 @@ export default function CheckoutPage() {
           items: sellerItems.map(item => ({ product_id: item.product.id, quantity: item.quantity })),
           total_amount: sellerSubtotal + (shippingCost / numSellers) + (TRUST_DONATION_AMOUNT / numSellers),
           order_source: 'WEB',
-          payment_gateway: remainingAmount > 0 ? 'Razorpay' : 'Wallet',
+          payment_gateway: remainingAmount <= 0 ? 'Wallet' : paymentMethod,
+          payment_status: paymentMethod === 'COD' ? 'PENDING_COD' : 'COMPLETED',
           trust_donation_amount: TRUST_DONATION_AMOUNT / numSellers
         });
       }
@@ -105,6 +108,7 @@ export default function CheckoutPage() {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
@@ -168,6 +172,53 @@ export default function CheckoutPage() {
               )}
             </div>
 
+            {/* Multiple Payment Options Aggregator */}
+            <div className="mt-4 pt-4 border-t border-gray-200 space-y-2">
+              <h3 className="font-bold text-xs text-gray-700 uppercase tracking-wider mb-2">Select Payment Method</h3>
+              
+              <label className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition ${paymentMethod === 'COD' ? 'border-emerald-500 bg-emerald-50/50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                <div className="flex items-center gap-2">
+                  <input type="radio" name="payMode" checked={paymentMethod === 'COD'} onChange={() => setPaymentMethod('COD')} className="text-emerald-600" />
+                  <div>
+                    <div className="text-xs font-bold text-gray-900">💵 Cash on Delivery (COD)</div>
+                    <div className="text-[10px] text-emerald-700">Pay cash upon home delivery</div>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded">FREE COD</span>
+              </label>
+
+              <label className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition ${paymentMethod === 'UPI' ? 'border-blue-500 bg-blue-50/50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                <div className="flex items-center gap-2">
+                  <input type="radio" name="payMode" checked={paymentMethod === 'UPI'} onChange={() => setPaymentMethod('UPI')} className="text-blue-600" />
+                  <div>
+                    <div className="text-xs font-bold text-gray-900">📱 UPI / PhonePe / GPay</div>
+                    <div className="text-[10px] text-gray-500">Instant UPI QR & Mobile App</div>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold text-blue-600 bg-blue-100 px-2 py-0.5 rounded">Instant</span>
+              </label>
+
+              <label className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition ${paymentMethod === 'CARD' ? 'border-purple-500 bg-purple-50/50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                <div className="flex items-center gap-2">
+                  <input type="radio" name="payMode" checked={paymentMethod === 'CARD'} onChange={() => setPaymentMethod('CARD')} className="text-purple-600" />
+                  <div>
+                    <div className="text-xs font-bold text-gray-900">💳 Credit / Debit Card</div>
+                    <div className="text-[10px] text-gray-500">Visa, MasterCard, RuPay</div>
+                  </div>
+                </div>
+              </label>
+
+              <label className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition ${paymentMethod === 'NETBANKING' ? 'border-amber-500 bg-amber-50/50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                <div className="flex items-center gap-2">
+                  <input type="radio" name="payMode" checked={paymentMethod === 'NETBANKING'} onChange={() => setPaymentMethod('NETBANKING')} className="text-amber-600" />
+                  <div>
+                    <div className="text-xs font-bold text-gray-900">🏦 Net Banking</div>
+                    <div className="text-[10px] text-gray-500">All Major Indian Banks</div>
+                  </div>
+                </div>
+              </label>
+            </div>
+
             <div className="flex justify-between text-base font-bold mt-4 pt-4 border-t border-gray-200 text-gray-900">
               <span>Amount to Pay</span>
               <span>₹{remainingAmount.toFixed(2)}</span>
@@ -176,13 +227,14 @@ export default function CheckoutPage() {
             <button 
               onClick={handlePlaceOrder}
               disabled={loading}
-              className="w-full mt-6 bg-[#9f2089] text-white py-3 rounded font-bold hover:bg-pink-800 transition"
+              className="w-full mt-6 bg-[#e52e06] text-white py-3 rounded-xl font-bold hover:bg-red-700 transition shadow-md flex items-center justify-center gap-2 text-sm"
             >
-              {loading ? 'Processing...' : (remainingAmount > 0 ? `Pay ₹${remainingAmount.toFixed(2)} via Gateway` : 'Place Order')}
+              {loading ? 'Processing...' : (paymentMethod === 'COD' ? `Confirm Order via Cash on Delivery (₹${remainingAmount.toFixed(2)})` : `Pay ₹${remainingAmount.toFixed(2)} via ${paymentMethod}`)}
             </button>
-            <p className="text-[10px] text-gray-400 text-center mt-3">By placing this order, you agree to BUPZO's Terms & Conditions.</p>
+            <p className="text-[10px] text-gray-400 text-center mt-3">By placing this order, you agree to BUPZO's Escrow Terms & Conditions.</p>
           </div>
         </div>
+
 
       </div>
     </div>

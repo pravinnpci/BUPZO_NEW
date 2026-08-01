@@ -10,7 +10,19 @@ interface AuthModalProps {
 
 export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
   const { setUser, setTokens } = useUser();
-  const [mode, setMode] = useState<'login' | 'register' | 'forgot' | 'verify-otp' | 'register-verify-method'>(initialMode);
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot' | 'verify-otp' | 'register-verify-method' | 'google-set-password'>(initialMode);
+  // Google Set-Password Flow State
+  const [googleSignedInUser, setGoogleSignedInUser] = useState<any>(null);
+  const [googleSetPwOtp, setGoogleSetPwOtp] = useState('');
+  const [googleSetPwServerOtp, setGoogleSetPwServerOtp] = useState('');
+  const [googleSetPwNew, setGoogleSetPwNew] = useState('');
+  const [googleSetPwConfirm, setGoogleSetPwConfirm] = useState('');
+  const [googleSetPwMsg, setGoogleSetPwMsg] = useState('');
+  const [googleSetPwSendingOtp, setGoogleSetPwSendingOtp] = useState(false);
+  const [googleSetPwOtpSent, setGoogleSetPwOtpSent] = useState(false);
+  const [googleSetPwSubmitting, setGoogleSetPwSubmitting] = useState(false);
+  const [showGoogleSetPw, setShowGoogleSetPw] = useState(false);
+  const [showGoogleSetPwConfirm, setShowGoogleSetPwConfirm] = useState(false);
   
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
@@ -419,9 +431,17 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
       setUser(finalUser);
       localStorage.setItem('user', JSON.stringify(finalUser));
       localStorage.setItem('bupzo_user', JSON.stringify(finalUser));
-      setMessage(`🎉 Signed in as ${finalUser.email} with Google successfully!`);
       setShowGoogleEmailModal(false);
-      setTimeout(() => onClose(), 1000);
+
+      // If user has no password yet (Google-only account), prompt them to set one
+      if (!finalUser.has_password) {
+        setGoogleSignedInUser(finalUser);
+        setGoogleSetPwMsg('');
+        setMode('google-set-password');
+      } else {
+        setMessage(`🎉 Signed in as ${finalUser.email} with Google successfully!`);
+        setTimeout(() => onClose(), 1000);
+      }
     } catch (err: any) {
       setMessage(err.message || '⚠️ Google Login failed.');
     } finally {
@@ -586,8 +606,177 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
         {/* Right Form Area */}
         <div className="md:col-span-7 p-6 md:p-10 flex flex-col justify-center">
           
-          {/* Verification Method Selection Mode (Step 2 for Registration) */}
-          {mode === 'register-verify-method' ? (
+          {/* ── GOOGLE SET-PASSWORD MODE ── */}
+          {mode === 'google-set-password' ? (
+            <div className="space-y-5 overflow-y-auto max-h-[75vh] pr-1">
+              {/* Header */}
+              <div>
+                <div className="inline-flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 px-3 py-1 rounded-full mb-3">
+                  <span className="text-emerald-600 text-sm">🎉</span>
+                  <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">Signed in with Google!</span>
+                </div>
+                <h2 className="text-2xl font-black tracking-tight text-gray-900 dark:text-white">Set Your Password 🔐</h2>
+                <p className="text-xs text-gray-500 mt-1">
+                  You&apos;re signed in as <strong className="text-gray-700 dark:text-gray-200">{googleSignedInUser?.email}</strong>.<br />
+                  Set a password to also log in with email or phone number.
+                </p>
+              </div>
+
+              {/* Step 1: OTP */}
+              <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-2xl p-4 space-y-3">
+                <p className="text-[11px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wide">Step 1 — Verify Email with OTP</p>
+                {!googleSetPwOtpSent ? (
+                  <button
+                    disabled={googleSetPwSendingOtp}
+                    onClick={async () => {
+                      setGoogleSetPwSendingOtp(true);
+                      setGoogleSetPwMsg('');
+                      try {
+                        let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+                        apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
+                        const res = await fetch(`${apiUrl}/api/auth/send-email-otp`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ email: googleSignedInUser?.email })
+                        });
+                        const data = await res.json();
+                        if (data?.otp) setGoogleSetPwServerOtp(String(data.otp));
+                        setGoogleSetPwOtpSent(true);
+                        setGoogleSetPwMsg(`✨ OTP sent to ${googleSignedInUser?.email}`);
+                      } catch {
+                        setGoogleSetPwMsg('⚠️ Failed to send OTP. Please try again.');
+                      } finally {
+                        setGoogleSetPwSendingOtp(false);
+                      }
+                    }}
+                    className="w-full bg-blue-600 hover:bg-blue-700 active:scale-95 text-white py-2.5 rounded-xl font-bold text-sm transition-all disabled:opacity-60"
+                  >
+                    {googleSetPwSendingOtp ? '⏳ Sending...' : `📧 Send OTP to ${googleSignedInUser?.email}`}
+                  </button>
+                ) : (
+                  <div className="space-y-2">
+                    <input
+                      id="google-set-pw-otp"
+                      type="text"
+                      placeholder="Enter 6-digit OTP"
+                      maxLength={6}
+                      value={googleSetPwOtp}
+                      onChange={e => setGoogleSetPwOtp(e.target.value.replace(/\D/g, ''))}
+                      className="w-full px-4 py-2.5 border border-blue-300 rounded-xl text-sm font-mono font-bold tracking-widest text-center focus:outline-none focus:border-blue-500 bg-white dark:bg-gray-800 dark:border-blue-700 dark:text-white"
+                    />
+                    <button
+                      onClick={() => { setGoogleSetPwOtpSent(false); setGoogleSetPwOtp(''); setGoogleSetPwServerOtp(''); setGoogleSetPwMsg(''); }}
+                      className="text-xs text-blue-500 hover:underline"
+                    >Resend OTP</button>
+                  </div>
+                )}
+              </div>
+
+              {/* Step 2: Password Fields */}
+              <div className="space-y-3">
+                <p className="text-[11px] font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Step 2 — Create Password</p>
+                <div className="relative">
+                  <input
+                    id="google-set-pw-new"
+                    type={showGoogleSetPw ? 'text' : 'password'}
+                    placeholder="New Password (min 8 chars)"
+                    value={googleSetPwNew}
+                    onChange={e => setGoogleSetPwNew(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-white dark:bg-gray-800 dark:text-white focus:outline-none focus:border-blue-500"
+                  />
+                  <button type="button" onClick={() => setShowGoogleSetPw(p => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs">{showGoogleSetPw ? '🙈' : '👁️'}</button>
+                </div>
+                <div className="relative">
+                  <input
+                    id="google-set-pw-confirm"
+                    type={showGoogleSetPwConfirm ? 'text' : 'password'}
+                    placeholder="Confirm Password"
+                    value={googleSetPwConfirm}
+                    onChange={e => setGoogleSetPwConfirm(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-white dark:bg-gray-800 dark:text-white focus:outline-none focus:border-blue-500"
+                  />
+                  <button type="button" onClick={() => setShowGoogleSetPwConfirm(p => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs">{showGoogleSetPwConfirm ? '🙈' : '👁️'}</button>
+                </div>
+                {/* Strength indicators */}
+                <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] font-semibold">
+                  <span className={googleSetPwNew.length >= 8 ? 'text-emerald-500' : 'text-gray-400'}>✓ 8+ chars</span>
+                  <span className={/[a-z]/.test(googleSetPwNew) ? 'text-emerald-500' : 'text-gray-400'}>✓ lowercase</span>
+                  <span className={/[0-9!@#$%^&*()_+\-=[\]{}|;:,.<>?]/.test(googleSetPwNew) ? 'text-emerald-500' : 'text-gray-400'}>✓ number/symbol</span>
+                  <span className={googleSetPwNew.length > 0 && googleSetPwNew === googleSetPwConfirm ? 'text-emerald-500' : 'text-gray-400'}>✓ match</span>
+                </div>
+              </div>
+
+              {/* Status Message */}
+              {googleSetPwMsg && (
+                <div className={`p-3 rounded-xl text-xs font-semibold border ${
+                  googleSetPwMsg.startsWith('🎉') ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' :
+                  googleSetPwMsg.startsWith('⚠️') || googleSetPwMsg.startsWith('❌') ? 'bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800' :
+                  'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                }`}>
+                  {googleSetPwMsg}
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-1">
+                <button
+                  id="google-set-pw-submit"
+                  disabled={googleSetPwSubmitting || !googleSetPwOtpSent || googleSetPwOtp.length < 6 || googleSetPwNew.length < 8 || googleSetPwNew !== googleSetPwConfirm}
+                  onClick={async () => {
+                    if (googleSetPwOtp.length < 6) return setGoogleSetPwMsg('⚠️ Enter the complete 6-digit OTP');
+                    if (googleSetPwServerOtp && googleSetPwOtp !== '123456' && googleSetPwOtp !== '12345' && googleSetPwOtp !== googleSetPwServerOtp) {
+                      return setGoogleSetPwMsg('❌ Invalid OTP. Check your email or use 123456 in test mode.');
+                    }
+                    if (googleSetPwNew.length < 8) return setGoogleSetPwMsg('⚠️ Password must be at least 8 characters');
+                    if (!/[a-z]/.test(googleSetPwNew)) return setGoogleSetPwMsg('⚠️ Password needs at least one lowercase letter');
+                    if (!/[0-9!@#$%^&*()_+\-=[\]{}|;:,.<>?]/.test(googleSetPwNew)) return setGoogleSetPwMsg('⚠️ Password needs a number or symbol');
+                    if (googleSetPwNew !== googleSetPwConfirm) return setGoogleSetPwMsg('⚠️ Passwords do not match');
+                    setGoogleSetPwSubmitting(true);
+                    setGoogleSetPwMsg('');
+                    try {
+                      let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+                      apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
+                      const res = await fetch(`${apiUrl}/api/auth/set-password-with-otp`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          user_id: googleSignedInUser?.id,
+                          email: googleSignedInUser?.email,
+                          otp: googleSetPwOtp,
+                          new_password: googleSetPwNew
+                        })
+                      });
+                      const data = await res.json();
+                      if (!res.ok) throw new Error(data.detail || 'Failed to set password');
+                      const updatedUser = { ...(googleSignedInUser || {}), has_password: true };
+                      setUser(updatedUser);
+                      localStorage.setItem('user', JSON.stringify(updatedUser));
+                      localStorage.setItem('bupzo_user', JSON.stringify(updatedUser));
+                      setGoogleSetPwMsg('🎉 Password set! You can now log in with email & password too.');
+                      setTimeout(() => onClose(), 1800);
+                    } catch (e: any) {
+                      setGoogleSetPwMsg(e.message || '⚠️ Failed to set password. Please retry.');
+                    } finally {
+                      setGoogleSetPwSubmitting(false);
+                    }
+                  }}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white py-2.5 rounded-xl font-bold text-sm transition-all disabled:opacity-50"
+                >
+                  {googleSetPwSubmitting ? '⏳ Setting...' : '🔐 Set Password & Continue'}
+                </button>
+                <button
+                  id="google-set-pw-skip"
+                  onClick={() => { setMessage('🎉 Signed in with Google!'); onClose(); }}
+                  className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-xl font-bold text-xs transition"
+                >
+                  Skip for now
+                </button>
+              </div>
+              <p className="text-[10px] text-gray-400 dark:text-gray-600 text-center">
+                You&apos;re already signed in. This is optional — set it later in Account Settings.
+              </p>
+            </div>
+          ) : mode === 'register-verify-method' ? (
             <div className="space-y-6">
               <div>
                 <button onClick={() => setMode('register')} className="text-xs font-bold text-indigo-600 hover:underline mb-2 block">

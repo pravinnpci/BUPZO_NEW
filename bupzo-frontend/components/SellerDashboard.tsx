@@ -49,6 +49,11 @@ export function SellerDashboard({ onSwitchToCustomer }: { onSwitchToCustomer?: (
 
   // Primary Tab Navigation
   const [activeTab, setActiveTab] = useState('overview');
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [customerPage, setCustomerPage] = useState(1);
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+  const [customerDetailTab, setCustomerDetailTab] = useState<'overview' | 'security' | 'billing'>('overview');
 
   // Data States
   const [products, setProducts] = useState<any[]>([]);
@@ -130,7 +135,38 @@ export function SellerDashboard({ onSwitchToCustomer }: { onSwitchToCustomer?: (
   });
 
   // Settings Sub-Tabs State
-  const [settingsSubTab, setSettingsSubTab] = useState<'profile' | 'payment' | 'shipping' | 'address'>('profile');
+  const [settingsSubTab, setSettingsSubTab] = useState<'profile' | 'payment' | 'checkout' | 'shipping' | 'address'>('profile');
+
+  // Store Details extras
+  const [storeSlug, setStoreSlug] = useState('');
+  const [socialLinks, setSocialLinks] = useState({ instagram: '', facebook: '', whatsapp: '', twitter: '' });
+
+  // Checkout settings
+  const [checkoutSettings, setCheckoutSettings] = useState({
+    guest_checkout: true,
+    min_order_value: 0,
+    contact_method: 'email_or_phone',
+    address_autofill: true,
+    auto_fulfill: false,
+    auto_archive: true,
+    cancellation_window: 24,
+    return_policy: 'Items can be returned within 7 days of delivery in original condition.',
+    terms: 'By placing an order you agree to our store terms and conditions.'
+  });
+
+  // Payment gateway settings
+  const [paymentGateways, setPaymentGateways] = useState({
+    cod_enabled: true,
+    cod_fee: 49,
+    upi_enabled: true,
+    neft_enabled: true,
+    razorpay_enabled: false,
+    razorpay_key_id: '',
+    razorpay_key_secret: ''
+  });
+
+  // Service pincodes
+  const [servicePincodes, setServicePincodes] = useState('');
 
   // Followers & Rating Sub-Sections State
   const [followersSubTab, setFollowersSubTab] = useState<'followers' | 'ratings'>('followers');
@@ -312,6 +348,14 @@ export function SellerDashboard({ onSwitchToCustomer }: { onSwitchToCustomer?: (
         } catch (e) {
           setOrders([]);
         }
+
+        try {
+          const custResp = await fetch(`${API_URL}/api/customers/seller/${currentSellerId}`).catch(() => null);
+          if (custResp && custResp.ok) {
+            const custData = await custResp.json().catch(() => []);
+            setCustomers(Array.isArray(custData) ? custData : []);
+          }
+        } catch(e) { setCustomers([]); }
 
         // 2. REAL DATA SYNC FOR FOLLOWERS & REVIEWS
         try {
@@ -816,41 +860,8 @@ export function SellerDashboard({ onSwitchToCustomer }: { onSwitchToCustomer?: (
 
   const customerOptions = Array.from(new Map(rawCustomerEntries).values());
   const safeNotifications = Array.isArray(notifications) ? notifications : [];
-  const safeInvoices = Array.isArray(invoices) && invoices.length > 0 ? invoices : [
-    {
-      id: 'inv_101',
-      invoice_number: 'INV-2026-9041',
-      customer_name: 'Aarav Sharma',
-      customer_email: 'aarav.s@gmail.com',
-      amount: 4999.00,
-      tax_amount: 899.82,
-      status: 'PAID',
-      issued_date: '2026-07-28',
-      due_date: '2026-08-12'
-    },
-    {
-      id: 'inv_102',
-      invoice_number: 'INV-2026-9042',
-      customer_name: 'Priya Patel',
-      customer_email: 'priya.p@outlook.com',
-      amount: 1450.00,
-      tax_amount: 261.00,
-      status: 'PENDING',
-      issued_date: '2026-07-30',
-      due_date: '2026-08-14'
-    },
-    {
-      id: 'inv_103',
-      invoice_number: 'INV-2026-9043',
-      customer_name: 'Rohan Verma',
-      customer_email: 'rohan.v@yahoo.com',
-      amount: 3200.00,
-      tax_amount: 576.00,
-      status: 'OVERDUE',
-      issued_date: '2026-07-10',
-      due_date: '2026-07-25'
-    }
-  ];
+  const safeInvoices = Array.isArray(invoices) ? invoices : [];
+
 
   // 7. SELLER FINANCIAL METRICS CALCULATION
   const grossSales = safeOrders.reduce((acc, o) => acc + (Number(o?.amount || o?.total_amount || 0)), 0);
@@ -1147,6 +1158,46 @@ export function SellerDashboard({ onSwitchToCustomer }: { onSwitchToCustomer?: (
               <span className="text-zinc-400 font-normal">• Direct Fans</span>
             </div>
             <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 to-pink-500"></div>
+          </div>
+        </div>
+
+        {/* Popular Products - Top 5 by orders */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-black text-gray-900 dark:text-white text-base">🔥 Top Products</h3>
+            <button onClick={() => setActiveTab('products')} className="text-xs text-blue-500 hover:underline font-bold">View All</button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 dark:border-gray-700">
+                  <th className="text-left py-2 text-xs font-bold text-gray-500">Product</th>
+                  <th className="text-left py-2 text-xs font-bold text-gray-500">Category</th>
+                  <th className="text-left py-2 text-xs font-bold text-gray-500">Price</th>
+                  <th className="text-left py-2 text-xs font-bold text-gray-500">Stock</th>
+                  <th className="text-left py-2 text-xs font-bold text-gray-500">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
+                {safeProducts.slice(0, 5).map((p: any) => (
+                  <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30">
+                    <td className="py-3">
+                      <div className="flex items-center gap-3">
+                        <img src={p.image_url || 'https://via.placeholder.com/40'} alt={p.name} className="w-10 h-10 rounded-lg object-cover flex-shrink-0" onError={(e: any) => { e.target.src = 'https://via.placeholder.com/40'; }} />
+                        <span className="font-semibold text-gray-900 dark:text-white text-xs line-clamp-1">{p.name}</span>
+                      </div>
+                    </td>
+                    <td className="py-3 text-xs text-gray-500">{p.category_name || 'General'}</td>
+                    <td className="py-3 font-bold text-gray-900 dark:text-white text-xs">₹{Number(p.price || 0).toLocaleString('en-IN')}</td>
+                    <td className="py-3 text-xs"><span className={`font-bold px-2 py-0.5 rounded-full ${ (p.stock_quantity || 0) > 10 ? 'bg-emerald-100 text-emerald-700' : (p.stock_quantity || 0) > 0 ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700' }`}>{p.stock_quantity || 0}</span></td>
+                    <td className="py-3 text-xs"><span className={`font-bold px-2 py-0.5 rounded-full ${ p.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' : p.status === 'REJECTED' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700' }`}>{p.status || 'PENDING'}</span></td>
+                  </tr>
+                ))}
+                {safeProducts.length === 0 && (
+                  <tr><td colSpan={5} className="text-center py-6 text-gray-400 text-xs">No products yet. Add your first product!</td></tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
 
@@ -1794,115 +1845,311 @@ export function SellerDashboard({ onSwitchToCustomer }: { onSwitchToCustomer?: (
             </div>
           </div>
         ) : (
-          /* ORDERS LIST VIEW */
+          /* ── ORDERS FULFILLMENT PIPELINE VIEW ── */
           <div className="space-y-4">
-            {/* Search & Filter */}
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="relative flex-1">
-                <input 
-                  type="text" 
-                  placeholder="Search by Order ID or Customer Name..." 
+
+            {/* Status Pipeline Filter Tabs */}
+            <div className="flex flex-wrap gap-2 items-center">
+              {[
+                { label: 'All', count: safeOrders.length, color: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300' },
+                { label: 'paid', count: safeOrders.filter(o => o?.status === 'paid').length, color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300' },
+                { label: 'processing', count: safeOrders.filter(o => o?.status === 'processing').length, color: 'bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300' },
+                { label: 'ready_for_pickup', count: safeOrders.filter(o => o?.status === 'ready_for_pickup').length, color: 'bg-violet-100 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300' },
+                { label: 'shipped', count: safeOrders.filter(o => o?.status === 'shipped').length, color: 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300' },
+                { label: 'delivered', count: safeOrders.filter(o => o?.status === 'delivered').length, color: 'bg-teal-100 text-teal-700 dark:bg-teal-950/50 dark:text-teal-300' },
+                { label: 'cancelled', count: safeOrders.filter(o => o?.status === 'cancelled').length, color: 'bg-rose-100 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300' },
+              ].map(tab => (
+                <button
+                  key={tab.label}
+                  onClick={() => { setOrderStatusFilter(tab.label === 'All' ? 'All' : tab.label); setOrderPage(1); }}
+                  className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all ${orderStatusFilter === (tab.label === 'All' ? 'All' : tab.label) ? tab.color + ' ring-2 ring-offset-1 ring-blue-500 shadow' : 'bg-zinc-50 dark:bg-zinc-900 text-zinc-500 border-zinc-200 dark:border-zinc-700 hover:opacity-80'}`}
+                >
+                  {tab.label === 'paid' ? '💳 New Orders' :
+                   tab.label === 'processing' ? '🔧 Processing' :
+                   tab.label === 'ready_for_pickup' ? '📦 Ready Pickup' :
+                   tab.label === 'shipped' ? '🚚 Shipped' :
+                   tab.label === 'delivered' ? '✅ Delivered' :
+                   tab.label === 'cancelled' ? '❌ Cancelled' : '📋 All'} ({tab.count})
+                </button>
+              ))}
+              <div className="relative flex-1 min-w-[180px]">
+                <input
+                  type="text"
+                  placeholder="🔍 Search order ID or customer..."
                   value={orderSearch}
                   onChange={(e) => { setOrderSearch(e.target.value); setOrderPage(1); }}
-                  className="w-full px-3.5 py-2 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs bg-white dark:bg-zinc-900 outline-none focus:border-blue-500" 
+                  className="w-full px-3.5 py-1.5 border border-zinc-200 dark:border-zinc-700 rounded-xl text-xs bg-white dark:bg-zinc-900 outline-none focus:border-blue-500"
                 />
               </div>
-              <select 
-                value={orderStatusFilter}
-                onChange={(e) => { setOrderStatusFilter(e.target.value); setOrderPage(1); }}
-                className="px-3.5 py-2 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs bg-white dark:bg-zinc-900 font-bold outline-none"
-              >
-                <option value="All">All Statuses</option>
-                <option value="pending">Pending</option>
-                <option value="shipped">Shipped</option>
-                <option value="delivered">Delivered</option>
-              </select>
             </div>
 
-            {/* Table */}
-            <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-zinc-200 dark:border-zinc-800 overflow-hidden">
-              <div className="p-3 border-b border-zinc-200 dark:border-zinc-800 text-xs font-semibold text-zinc-500 bg-zinc-50 dark:bg-zinc-800/50">
-                Showing {paginatedOrders.length} (Total: {filteredOrders.length}) of {safeOrders.length} orders
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-zinc-50 dark:bg-zinc-800/50 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 font-bold uppercase tracking-wider">
-                    <tr>
-                      <th className="px-4 py-3">Order ID</th>
-                      <th className="px-4 py-3">Customer</th>
-                      <th className="px-4 py-3">Amount</th>
-                      <th className="px-4 py-3">Delivery Partner</th>
-                      <th className="px-4 py-3">Status</th>
-                      <th className="px-4 py-3 text-right">Actions &amp; Tracking</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-                    {paginatedOrders.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="px-4 py-8 text-center text-zinc-500">
-                          No orders found matching the filter criteria.
-                        </td>
-                      </tr>
-                    ) : (
-                      paginatedOrders.map(o => (
-                        <tr key={o?.id || Math.random()} className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 transition-colors font-medium">
-                          <td className="px-4 py-3 font-mono font-bold text-blue-600 dark:text-blue-400">
-                            #{String(o?.id || 'ORD-98412').slice(-8)}
-                          </td>
-                          <td className="px-4 py-3 font-bold text-zinc-900 dark:text-white">
-                            {o?.customer_name || o?.customer || 'Guest Customer'}
-                            <div className="text-[10px] text-zinc-400 font-normal">{safeDate(o?.created_at || o?.date)}</div>
-                          </td>
-                          <td className="px-4 py-3 font-mono font-black text-zinc-900 dark:text-white">
+            {/* Order Cards Grid */}
+            <div className="space-y-3">
+              {paginatedOrders.length === 0 ? (
+                <div className="text-center py-12 text-zinc-500 text-sm bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+                  <div className="text-4xl mb-3">📭</div>
+                  <p className="font-bold">No orders found</p>
+                  <p className="text-xs mt-1 text-zinc-400">Try changing the status filter above.</p>
+                </div>
+              ) : (
+                paginatedOrders.map((o: any) => {
+                  const st = (o?.status || 'pending').toLowerCase();
+                  const statusConfig: Record<string, { label: string; color: string; icon: string }> = {
+                    paid:             { label: 'New Order', color: 'bg-emerald-500', icon: '💳' },
+                    processing:       { label: 'Processing', color: 'bg-blue-500', icon: '🔧' },
+                    ready_for_pickup: { label: 'Ready for Pickup', color: 'bg-violet-500', icon: '📦' },
+                    shipped:          { label: 'Shipped', color: 'bg-amber-500', icon: '🚚' },
+                    delivered:        { label: 'Delivered', color: 'bg-teal-500', icon: '✅' },
+                    cancelled:        { label: 'Cancelled', color: 'bg-rose-500', icon: '❌' },
+                    pending:          { label: 'Pending', color: 'bg-zinc-400', icon: '⏳' },
+                  };
+                  const cfg = statusConfig[st] || statusConfig['pending'];
+
+                  return (
+                    <div key={o?.id} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                      {/* Card Header */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between px-4 py-3 border-b border-zinc-100 dark:border-zinc-800 gap-2">
+                        <div className="flex items-center gap-3">
+                          <span className={`w-2 h-2 rounded-full ${cfg.color} inline-block flex-shrink-0`}></span>
+                          <span className="font-mono font-black text-blue-600 dark:text-blue-400 text-xs">
+                            #{String(o?.id || '').slice(-8).toUpperCase()}
+                          </span>
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold text-white ${cfg.color}`}>
+                            {cfg.icon} {cfg.label}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-zinc-500">
+                          <span className="font-bold text-zinc-900 dark:text-white">
                             ₹{Number(o?.amount || o?.total_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className="px-2.5 py-0.5 rounded text-[11px] font-bold bg-purple-50 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
-                              {o?.shipping_partner || o?.delivery_partner || 'Shiprocket'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            {getStatusBadge(o?.status)}
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              {/* Live Tracking Button */}
-                              <button 
-                                onClick={() => setTrackingOrder(o)}
-                                className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded-lg font-bold text-xs flex items-center gap-1 transition active:scale-95"
-                              >
-                                <span>🚚</span> Track AWB
-                              </button>
+                          </span>
+                          <span>{safeDate(o?.created_at)}</span>
+                        </div>
+                      </div>
 
-                              {/* Invoice Button */}
-                              <button 
-                                onClick={() => setInvoiceOrder(o)}
-                                className="px-2.5 py-1 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700 rounded-lg font-bold text-xs flex items-center gap-1 transition active:scale-95"
-                              >
-                                <span>🧾</span> Invoice
-                              </button>
-
-                              {(o?.status === 'Pending' || o?.status === 'pending') && (
-                                <button 
-                                  onClick={() => handleUpdateOrderStatus(o?.id, 'shipped')} 
-                                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs transition"
-                                >
-                                  Ship
-                                </button>
+                      {/* Card Body */}
+                      <div className="px-4 py-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                        {/* Customer Info */}
+                        <div>
+                          <p className="text-zinc-400 uppercase tracking-wider font-bold mb-1 text-[10px]">Customer</p>
+                          <p className="font-bold text-zinc-900 dark:text-white">{o?.customer_name || 'Guest Customer'}</p>
+                          {o?.customer_phone && <p className="text-zinc-500">{o.customer_phone}</p>}
+                        </div>
+                        {/* Shipping Info */}
+                        <div>
+                          <p className="text-zinc-400 uppercase tracking-wider font-bold mb-1 text-[10px]">Shipping</p>
+                          {o?.awb_code ? (
+                            <div className="space-y-0.5">
+                              <p className="font-bold text-violet-600 dark:text-violet-400">AWB: {o.awb_code}</p>
+                              <p className="text-zinc-500">{o.courier_name || 'Shiprocket'}</p>
+                              {o.tracking_url && (
+                                <a href={o.tracking_url} target="_blank" rel="noopener noreferrer"
+                                   className="text-blue-500 hover:underline text-[10px]">🔗 Track Live</a>
                               )}
                             </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                          ) : (
+                            <p className="text-zinc-400">{o?.shipping_partner || o?.courier_name || '—'}</p>
+                          )}
+                        </div>
+                        {/* Items Info */}
+                        <div>
+                          <p className="text-zinc-400 uppercase tracking-wider font-bold mb-1 text-[10px]">Items</p>
+                          {Array.isArray(o?.items) && o.items.length > 0 ? (
+                            <div className="space-y-1">
+                              {o.items.slice(0, 2).map((item: any, idx: number) => (
+                                <div key={idx} className="flex items-center gap-2">
+                                  {item.image_url && (
+                                    <img src={item.image_url} alt="" className="w-6 h-6 rounded object-cover border border-zinc-200" />
+                                  )}
+                                  <span className="text-zinc-700 dark:text-zinc-300 truncate max-w-[120px]">{item.name}</span>
+                                  <span className="text-zinc-400">×{item.quantity}</span>
+                                </div>
+                              ))}
+                              {o.items.length > 2 && <p className="text-zinc-400 text-[10px]">+{o.items.length - 2} more items</p>}
+                            </div>
+                          ) : (
+                            <p className="text-zinc-400">No item details</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Pickup Schedule Info */}
+                      {(st === 'ready_for_pickup' || st === 'shipped') && o?.pickup_scheduled_date && (
+                        <div className="px-4 py-2 bg-violet-50 dark:bg-violet-950/20 border-t border-violet-100 dark:border-violet-900/30 text-xs flex items-center gap-2">
+                          <span>📅</span>
+                          <span className="text-violet-700 dark:text-violet-300 font-semibold">
+                            Pickup Scheduled: {safeDate(o.pickup_scheduled_date)}
+                          </span>
+                          {o.estimated_delivery_date && (
+                            <span className="text-zinc-500">• Est. Delivery: {safeDate(o.estimated_delivery_date)}</span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Action Buttons */}
+                      <div className="px-4 py-3 border-t border-zinc-100 dark:border-zinc-800 flex flex-wrap items-center gap-2 bg-zinc-50/50 dark:bg-zinc-800/20">
+
+                        {/* STEP 1: Confirm Order (paid → processing) with inventory check */}
+                        {st === 'paid' && (
+                          <button
+                            onClick={async () => {
+                              if (!confirm(`Confirm order #${String(o?.id || '').slice(-8).toUpperCase()} and verify inventory?`)) return;
+                              try {
+                                const res = await fetch(`${API_URL}/api/orders/${o.id}/confirm`, { method: 'POST' });
+                                const data = await res.json();
+                                if (res.ok && data.success) {
+                                  alert(`✅ Order confirmed! Inventory check passed.\n${data.inventory_check?.map((i: any) => `${i.product_name}: ${i.available_qty} in stock`).join('\n') || ''}`);
+                                  setOrders((prev: any[]) => prev.map(ord => ord.id === o.id ? { ...ord, status: 'processing' } : ord));
+                                } else {
+                                  alert(`❌ ${data.detail || 'Failed to confirm order'}`);
+                                }
+                              } catch (e) { alert('Network error'); }
+                            }}
+                            className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold text-xs transition active:scale-95 flex items-center gap-1.5 shadow-sm"
+                          >
+                            ✅ Confirm Order + Inventory Check
+                          </button>
+                        )}
+
+                        {/* STEP 2: Ready for Pickup (processing → ready_for_pickup) */}
+                        {(st === 'processing') && (
+                          <button
+                            onClick={async () => {
+                              const courierIdStr = prompt('Enter Shiprocket Courier ID (e.g. 1 for Standard, 2 for Express):\n\n1 - Standard (₹50)\n2 - Express (₹120)\n3 - Economy (₹35)', '1');
+                              if (!courierIdStr) return;
+                              const courierId = parseInt(courierIdStr);
+                              const courierNames: Record<number, string> = { 1: 'Standard Delivery', 2: 'Express Delivery', 3: 'Economy Delivery' };
+                              const shippingCosts: Record<number, number> = { 1: 50, 2: 120, 3: 35 };
+                              try {
+                                const res = await fetch(`${API_URL}/api/orders/${o.id}/ready-pickup`, {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    courier_id: courierId,
+                                    courier_name: courierNames[courierId] || 'Shiprocket',
+                                    shipping_cost: shippingCosts[courierId] || 50,
+                                    customer_name: o.customer_name || '',
+                                    customer_phone: o.customer_phone || '',
+                                    customer_email: o.customer_email || '',
+                                    weight_kg: 0.5,
+                                    delivery_pincode: '110001',
+                                    billing_city: 'Mumbai',
+                                    billing_state: 'Maharashtra',
+                                    billing_pincode: '400001',
+                                  })
+                                });
+                                const data = await res.json();
+                                if (res.ok && data.success) {
+                                  alert(`🚚 Pickup scheduled!\nAWB: ${data.awb_code || 'Generated'}\nCourier: ${data.courier_name}\n${data.mock ? '(Running in mock mode — configure Shiprocket credentials for live AWB)' : ''}`);
+                                  setOrders((prev: any[]) => prev.map(ord => ord.id === o.id ? {
+                                    ...ord,
+                                    status: 'ready_for_pickup',
+                                    awb_code: data.awb_code,
+                                    courier_name: data.courier_name,
+                                    tracking_url: data.tracking_url,
+                                    pickup_scheduled_date: data.pickup_scheduled_date,
+                                  } : ord));
+                                } else {
+                                  alert(`❌ ${data.detail || 'Failed to create shipment'}`);
+                                }
+                              } catch (e) { alert('Network error'); }
+                            }}
+                            className="px-3.5 py-1.5 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-bold text-xs transition active:scale-95 flex items-center gap-1.5 shadow-sm"
+                          >
+                            📦 Mark Ready for Pickup → Shiprocket
+                          </button>
+                        )}
+
+                        {/* Tracking Button */}
+                        {o?.awb_code && (
+                          <button
+                            onClick={() => setTrackingOrder(o)}
+                            className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded-lg font-bold text-xs flex items-center gap-1 transition active:scale-95"
+                          >
+                            🔍 Live Tracking
+                          </button>
+                        )}
+
+                        {/* STEP 3: Mark Delivered */}
+                        {(st === 'ready_for_pickup' || st === 'shipped') && (
+                          <button
+                            onClick={async () => {
+                              if (!confirm('Confirm delivery of this order?')) return;
+                              try {
+                                const res = await fetch(`${API_URL}/api/orders/${o.id}/delivered`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ delivery_note: 'Delivered by courier' }) });
+                                const data = await res.json();
+                                if (res.ok && data.success) {
+                                  alert('✅ Order marked as delivered! Customer notified.');
+                                  setOrders((prev: any[]) => prev.map(ord => ord.id === o.id ? { ...ord, status: 'delivered' } : ord));
+                                } else {
+                                  alert(`❌ ${data.detail || 'Failed'}`);
+                                }
+                              } catch (e) { alert('Network error'); }
+                            }}
+                            className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg font-bold text-xs transition active:scale-95 flex items-center gap-1"
+                          >
+                            ✅ Mark Delivered
+                          </button>
+                        )}
+
+                        {/* Cancel Shipment Button */}
+                        {(st === 'ready_for_pickup') && o?.awb_code && (
+                          <button
+                            onClick={async () => {
+                              const reason = prompt('Reason for cancellation:', 'Customer request');
+                              if (!reason) return;
+                              try {
+                                const res = await fetch(`${API_URL}/api/orders/${o.id}/cancel-shipment?reason=${encodeURIComponent(reason)}`, { method: 'POST' });
+                                const data = await res.json();
+                                if (res.ok && data.success) {
+                                  alert('🚫 Shipment cancelled successfully.');
+                                  setOrders((prev: any[]) => prev.map(ord => ord.id === o.id ? { ...ord, status: 'cancelled' } : ord));
+                                } else {
+                                  alert(`❌ ${data.detail || 'Failed'}`);
+                                }
+                              } catch (e) { alert('Network error'); }
+                            }}
+                            className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-600 border border-rose-200 dark:border-rose-800 rounded-lg font-bold text-xs transition active:scale-95 flex items-center gap-1"
+                          >
+                            🚫 Cancel Shipment
+                          </button>
+                        )}
+
+                        {/* Generate Label */}
+                        {(st === 'ready_for_pickup' || st === 'shipped') && o?.shiprocket_shipment_id && (
+                          <button
+                            onClick={async () => {
+                              const res = await fetch(`${API_URL}/api/orders/${o.id}/label`, { method: 'POST' }).catch(() => null);
+                              if (res?.ok) {
+                                const data = await res.json();
+                                if (data.label_url) window.open(data.label_url, '_blank');
+                                else if (data.mock) alert('📄 Label generated! (Mock mode — configure Shiprocket credentials for live PDF)');
+                              }
+                            }}
+                            className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 rounded-lg font-bold text-xs transition active:scale-95 flex items-center gap-1"
+                          >
+                            🏷️ Print Label
+                          </button>
+                        )}
+
+                        {/* Invoice Button */}
+                        <button
+                          onClick={() => setInvoiceOrder(o)}
+                          className="px-3 py-1.5 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 rounded-lg font-bold text-xs transition active:scale-95 flex items-center gap-1"
+                        >
+                          🧾 Invoice
+                        </button>
+
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
 
+            {/* Pagination */}
             {totalOrderPages > 1 && (
               <div className="flex justify-between items-center mt-4 px-2 text-xs font-semibold text-zinc-500">
-                <span>Page {orderPage} of {totalOrderPages}</span>
+                <span>Page {orderPage} of {totalOrderPages} · {filteredOrders.length} orders</span>
                 <div className="flex gap-2">
                   <button disabled={orderPage === 1} onClick={() => setOrderPage(c => c - 1)} className="px-3 py-1.5 bg-white dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded transition disabled:opacity-50 border border-zinc-200 dark:border-zinc-700">Prev</button>
                   <button disabled={orderPage === totalOrderPages} onClick={() => setOrderPage(c => c + 1)} className="px-3 py-1.5 bg-white dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 rounded transition disabled:opacity-50 border border-zinc-200 dark:border-zinc-700">Next</button>
@@ -2130,6 +2377,11 @@ export function SellerDashboard({ onSwitchToCustomer }: { onSwitchToCustomer?: (
             <span>💳</span> Bank Account &amp; Payouts
           </button>
 
+          <button onClick={() => setSettingsSubTab('checkout')}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${ settingsSubTab === 'checkout' ? 'bg-blue-600 text-white shadow' : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800' }`}>
+            <span>🛒</span> Checkout
+          </button>
+
           <button 
             onClick={() => setSettingsSubTab('shipping')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${settingsSubTab === 'shipping' ? 'bg-blue-600 text-white shadow' : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}
@@ -2200,6 +2452,25 @@ export function SellerDashboard({ onSwitchToCustomer }: { onSwitchToCustomer?: (
                 onChange={e => setStoreProfile({ ...storeProfile, description: e.target.value })}
                 className="w-full p-2.5 border rounded-lg bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-xs outline-none"
               />
+            </div>
+
+            {/* Social Links */}
+            <div className="mt-5 space-y-3">
+              <h4 className="font-bold text-sm text-gray-700 dark:text-gray-300">Social Media Links</h4>
+              {[
+                { key: 'instagram', label: '📸 Instagram', placeholder: 'https://instagram.com/yourstore' },
+                { key: 'facebook', label: '📘 Facebook', placeholder: 'https://facebook.com/yourstore' },
+                { key: 'whatsapp', label: '💬 WhatsApp', placeholder: '+91 98765 43210' },
+                { key: 'twitter', label: '🐦 X / Twitter', placeholder: 'https://x.com/yourstore' },
+              ].map(({ key, label, placeholder }) => (
+                <div key={key}>
+                  <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">{label}</label>
+                  <input type="text" placeholder={placeholder}
+                    value={(socialLinks as any)[key]}
+                    onChange={e => setSocialLinks(p => ({...p, [key]: e.target.value}))}
+                    className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-white dark:bg-gray-800 dark:text-white focus:outline-none focus:border-blue-500" />
+                </div>
+              ))}
             </div>
 
             <div className="pt-2 flex justify-end">
@@ -2286,6 +2557,35 @@ export function SellerDashboard({ onSwitchToCustomer }: { onSwitchToCustomer?: (
               </div>
             </div>
 
+            {/* Payment Gateways */}
+            <div className="mt-5 space-y-4">
+              <h4 className="font-bold text-sm text-gray-700 dark:text-gray-300">Payment Methods</h4>
+              {[
+                { key: 'cod_enabled', label: 'Cash on Delivery (COD)', icon: '💵' },
+                { key: 'upi_enabled', label: 'UPI Payments', icon: '📱' },
+                { key: 'neft_enabled', label: 'Bank Transfer / NEFT', icon: '🏦' },
+              ].map(({ key, label, icon }) => (
+                <div key={key} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span>{icon}</span>
+                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{label}</span>
+                  </div>
+                  <button onClick={() => setPaymentGateways(p => ({...p, [key]: !(p as any)[key]}))}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${ (paymentGateways as any)[key] ? 'bg-blue-600' : 'bg-gray-300' }`}>
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${ (paymentGateways as any)[key] ? 'translate-x-6' : 'translate-x-1' }`} />
+                  </button>
+                </div>
+              ))}
+              {paymentGateways.cod_enabled && (
+                <div className="ml-6">
+                  <label className="text-xs font-semibold text-gray-500 mb-1 block">COD Fee (₹)</label>
+                  <input type="number" value={paymentGateways.cod_fee}
+                    onChange={e => setPaymentGateways(p => ({...p, cod_fee: Number(e.target.value)}))}
+                    className="w-32 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-800 dark:text-white focus:outline-none" />
+                </div>
+              )}
+            </div>
+
             <div className="pt-2 flex justify-end">
               <button 
                 onClick={() => alert('🎉 Bank details & PAN/GSTIN saved for escrow payouts!')}
@@ -2293,6 +2593,83 @@ export function SellerDashboard({ onSwitchToCustomer }: { onSwitchToCustomer?: (
               >
                 Save Bank Details
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* SUB-TAB: CHECKOUT */}
+        {settingsSubTab === 'checkout' && (
+          <div className="space-y-6">
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6 space-y-5">
+              <h3 className="font-black text-zinc-900 dark:text-white text-sm border-b border-zinc-200 dark:border-zinc-800 pb-2">🛒 Checkout Settings</h3>
+              
+              {/* Guest Checkout */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-semibold text-sm text-gray-800 dark:text-gray-200">Guest Checkout</div>
+                  <div className="text-xs text-zinc-500">Allow customers to checkout without creating an account</div>
+                </div>
+                <button onClick={() => setCheckoutSettings(p => ({...p, guest_checkout: !p.guest_checkout}))}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${ checkoutSettings.guest_checkout ? 'bg-blue-600' : 'bg-zinc-300' }`}>
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${ checkoutSettings.guest_checkout ? 'translate-x-6' : 'translate-x-1' }`} />
+                </button>
+              </div>
+
+              {/* Minimum Order Value */}
+              <div>
+                <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1">Minimum Order Value (₹)</label>
+                <input type="number" value={checkoutSettings.min_order_value}
+                  onChange={e => setCheckoutSettings(p => ({...p, min_order_value: Number(e.target.value)}))}
+                  className="w-full px-4 py-2.5 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:outline-none focus:border-blue-500" />
+              </div>
+
+              {/* Contact Method */}
+              <div>
+                <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">Customer Contact Method</label>
+                <div className="space-y-2">
+                  {['email_or_phone', 'email_only'].map(opt => (
+                    <label key={opt} className="flex items-center gap-3 cursor-pointer">
+                      <input type="radio" name="contact_method" value={opt}
+                        checked={checkoutSettings.contact_method === opt}
+                        onChange={() => setCheckoutSettings(p => ({...p, contact_method: opt}))}
+                        className="text-blue-600" />
+                      <span className="text-sm text-zinc-700 dark:text-zinc-300">{opt === 'email_or_phone' ? 'Phone number or Email' : 'Email only'}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Cancellation Window */}
+              <div>
+                <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1">Cancellation Window (hours after order)</label>
+                <input type="number" value={checkoutSettings.cancellation_window}
+                  onChange={e => setCheckoutSettings(p => ({...p, cancellation_window: Number(e.target.value)}))}
+                  className="w-full px-4 py-2.5 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:outline-none focus:border-blue-500" />
+              </div>
+
+              {/* Return Policy */}
+              <div>
+                <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1">Return Policy</label>
+                <textarea rows={3} value={checkoutSettings.return_policy}
+                  onChange={e => setCheckoutSettings(p => ({...p, return_policy: e.target.value}))}
+                  className="w-full px-4 py-2.5 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:outline-none focus:border-blue-500 resize-none" />
+              </div>
+
+              {/* Terms & Conditions */}
+              <div>
+                <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1">Terms & Conditions</label>
+                <textarea rows={3} value={checkoutSettings.terms}
+                  onChange={e => setCheckoutSettings(p => ({...p, terms: e.target.value}))}
+                  className="w-full px-4 py-2.5 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:outline-none focus:border-blue-500 resize-none" />
+              </div>
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  onClick={() => alert('🎉 Checkout settings saved!')}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-bold text-xs shadow transition">
+                  Save Checkout Settings
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -2480,6 +2857,15 @@ export function SellerDashboard({ onSwitchToCustomer }: { onSwitchToCustomer?: (
                   />
                 </div>
               </div>
+            </div>
+
+            <div className="mt-5">
+              <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1">Service Pincodes (comma-separated)</label>
+              <textarea rows={3} placeholder="400001, 400002, 110001, 560001..."
+                value={servicePincodes}
+                onChange={e => setServicePincodes(e.target.value)}
+                className="w-full px-4 py-2.5 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm bg-zinc-50 dark:bg-zinc-800 dark:text-white focus:outline-none focus:border-blue-500 resize-none" />
+              <p className="text-xs text-zinc-400 mt-1">Enter all pincodes your store delivers to, separated by commas</p>
             </div>
 
             <div className="pt-2 flex justify-end">
@@ -2768,6 +3154,7 @@ export function SellerDashboard({ onSwitchToCustomer }: { onSwitchToCustomer?: (
   // Primary Sidebar Tabs list
   const tabs = [
     { id: 'overview', label: 'Overview', icon: '📊' },
+    { id: 'customers', label: 'Customers', icon: '👥' },
     { id: 'products', label: 'Products', icon: '📦' },
     { id: 'orders', label: 'Orders & Invoices', icon: '📑' },
     { id: 'followers-ratings', label: 'Followers & Store Rating', icon: '⭐' },
@@ -2778,9 +3165,294 @@ export function SellerDashboard({ onSwitchToCustomer }: { onSwitchToCustomer?: (
     { id: 'messages', label: 'Messages', icon: '💬' },
   ];
 
+  const renderCustomersTab = () => {
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-black text-gray-900 dark:text-white">👥 Customers</h2>
+            <p className="text-xs text-gray-500">Customers who have ordered from your store</p>
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="Search customers..."
+              value={customerSearch}
+              onChange={e => { setCustomerSearch(e.target.value); setCustomerPage(1); }}
+              className="px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-white dark:bg-gray-800 dark:text-white focus:outline-none focus:border-blue-500"
+            />
+          </div>
+        </div>
+
+        {/* Stat Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { label: 'Total Customers', value: customers.length, icon: '👥', color: 'blue' },
+            { label: 'Active', value: customers.filter(c => c.status === 'Active').length, icon: '✅', color: 'emerald' },
+            { label: 'Total Revenue', value: `₹${customers.reduce((s,c) => s + (c.total_spent || 0), 0).toLocaleString('en-IN')}`, icon: '💰', color: 'violet' },
+            { label: 'Avg. Order Value', value: customers.length > 0 ? `₹${Math.round(customers.reduce((s,c) => s + (c.total_spent || 0), 0) / customers.reduce((s,c) => s + (c.total_orders || 0), 1)).toLocaleString('en-IN')}` : '₹0', icon: '📊', color: 'amber' },
+          ].map((card, i) => (
+            <div key={i} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-2xl">{card.icon}</span>
+              </div>
+              <div className="text-2xl font-black text-gray-900 dark:text-white">{card.value}</div>
+              <div className="text-xs text-gray-500 mt-1">{card.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Customer Table or Detail View */}
+        {selectedCustomer ? (
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+            {/* Customer Detail Header */}
+            <div className="flex items-center gap-4 p-6 border-b border-gray-100 dark:border-gray-700">
+              <button onClick={() => setSelectedCustomer(null)} className="text-blue-500 hover:underline text-sm font-bold">← Back to Customers</button>
+            </div>
+            <div className="flex gap-0">
+              {/* Left Profile Sidebar */}
+              <div className="w-64 border-r border-gray-100 dark:border-gray-700 p-6 space-y-4">
+                <div className="text-center">
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center text-white text-2xl font-black mx-auto mb-3">
+                    {(selectedCustomer.name || 'C')[0].toUpperCase()}
+                  </div>
+                  <h3 className="font-black text-gray-900 dark:text-white text-lg">{selectedCustomer.name}</h3>
+                  <p className="text-xs text-gray-500">{selectedCustomer.email}</p>
+                  <span className={`inline-block mt-2 px-3 py-1 rounded-full text-xs font-bold ${ selectedCustomer.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700' }`}>
+                    {selectedCustomer.status}
+                  </span>
+                </div>
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Total Orders</span>
+                    <span className="font-bold text-gray-900 dark:text-white">{selectedCustomer.total_orders}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Total Spent</span>
+                    <span className="font-bold text-emerald-600">₹{(selectedCustomer.total_spent || 0).toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Phone</span>
+                    <span className="font-bold text-gray-900 dark:text-white text-xs">{selectedCustomer.phone || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Last Order</span>
+                    <span className="font-bold text-gray-900 dark:text-white text-xs">{selectedCustomer.last_order_date ? new Date(selectedCustomer.last_order_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Joined</span>
+                    <span className="font-bold text-gray-900 dark:text-white text-xs">{selectedCustomer.created_at ? new Date(selectedCustomer.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}</span>
+                  </div>
+                </div>
+              </div>
+              {/* Right Detail Content */}
+              <div className="flex-1 p-6">
+                {/* Sub-tabs */}
+                <div className="flex gap-1 mb-6 bg-gray-100 dark:bg-gray-700 rounded-xl p-1">
+                  {(['overview', 'security', 'billing'] as const).map(tab => (
+                    <button key={tab} onClick={() => setCustomerDetailTab(tab)}
+                      className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold capitalize transition ${ customerDetailTab === tab ? 'bg-white dark:bg-gray-800 text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700' }`}>
+                      {tab === 'billing' ? 'Billing & Orders' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    </button>
+                  ))}
+                </div>
+
+                {customerDetailTab === 'overview' && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-3 gap-3">
+                      {[
+                        { label: 'Total Orders', value: selectedCustomer.total_orders, icon: '📦' },
+                        { label: 'Total Spent', value: `₹${(selectedCustomer.total_spent || 0).toLocaleString('en-IN')}`, icon: '💰' },
+                        { label: 'Avg Order', value: `₹${Math.round((selectedCustomer.total_spent || 0) / Math.max(selectedCustomer.total_orders, 1)).toLocaleString('en-IN')}`, icon: '📊' },
+                      ].map((s, i) => (
+                        <div key={i} className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4 text-center">
+                          <div className="text-2xl mb-1">{s.icon}</div>
+                          <div className="font-black text-gray-900 dark:text-white">{s.value}</div>
+                          <div className="text-xs text-gray-500">{s.label}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="bg-blue-50 dark:bg-blue-950/30 rounded-xl p-4">
+                      <h4 className="font-bold text-sm text-gray-700 dark:text-gray-300 mb-2">Contact Information</h4>
+                      <div className="space-y-2 text-sm">
+                        <div><span className="text-gray-500">Email:</span> <span className="font-semibold text-gray-900 dark:text-white ml-2">{selectedCustomer.email || 'N/A'}</span></div>
+                        <div><span className="text-gray-500">Phone:</span> <span className="font-semibold text-gray-900 dark:text-white ml-2">{selectedCustomer.phone || 'N/A'}</span></div>
+                        <div><span className="text-gray-500">Last Active:</span> <span className="font-semibold text-gray-900 dark:text-white ml-2">{selectedCustomer.last_login ? new Date(selectedCustomer.last_login).toLocaleString('en-IN') : 'N/A'}</span></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {customerDetailTab === 'security' && (
+                  <div className="space-y-4">
+                    <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-4">
+                      <h4 className="font-bold text-sm text-gray-700 dark:text-gray-300 mb-3">Account Security</h4>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600 dark:text-gray-400">Account Status</span>
+                          <span className={`px-3 py-1 rounded-full text-xs font-bold ${ !selectedCustomer.is_suspended ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700' }`}>
+                            {selectedCustomer.is_suspended ? '🚫 Suspended' : '✅ Active'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600 dark:text-gray-400">Last Login</span>
+                          <span className="text-sm font-semibold text-gray-900 dark:text-white">{selectedCustomer.last_login ? new Date(selectedCustomer.last_login).toLocaleString('en-IN') : 'Unknown'}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-gray-600 dark:text-gray-400">Member Since</span>
+                          <span className="text-sm font-semibold text-gray-900 dark:text-white">{selectedCustomer.created_at ? new Date(selectedCustomer.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Unknown'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {customerDetailTab === 'billing' && (
+                  <div className="space-y-6">
+                    {/* Order History */}
+                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
+                      <h4 className="font-bold text-sm text-gray-900 dark:text-white mb-3 flex items-center justify-between">
+                        <span>📦 Order History ({selectedCustomer.orders_list?.length || selectedCustomer.total_orders || 0} Orders)</span>
+                        <span className="text-xs font-bold text-emerald-600">Total Spent: ₹{(selectedCustomer.total_spent || 0).toLocaleString('en-IN')}</span>
+                      </h4>
+                      <div className="space-y-2">
+                        {((selectedCustomer.orders_list && selectedCustomer.orders_list.length > 0)
+                          ? selectedCustomer.orders_list
+                          : safeOrders.filter(o => o.user_id === selectedCustomer.id)
+                        ).slice(0, 15).map((o: any) => (
+                          <div key={o.id} className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm">
+                            <div>
+                              <div className="text-xs font-bold text-blue-600 dark:text-blue-400 font-mono">#{String(o.id).slice(0, 8).toUpperCase()}</div>
+                              <div className="text-[11px] text-gray-500 mt-0.5">{o.created_at ? new Date(o.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'} • {o.items_count || 1} items</div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-xs font-black text-gray-900 dark:text-white">₹{Number(o.total_amount || o.amount || 0).toLocaleString('en-IN')}</div>
+                              <span className={`inline-block mt-0.5 text-[10px] font-bold px-2 py-0.5 rounded-full ${ o.status === 'delivered' || o.status === 'DELIVERED' ? 'bg-emerald-100 text-emerald-700' : o.status === 'cancelled' || o.status === 'CANCELLED' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700' }`}>
+                                {o.status}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                        {(!selectedCustomer.orders_list || selectedCustomer.orders_list.length === 0) && safeOrders.filter(o => o.user_id === selectedCustomer.id).length === 0 && (
+                          <div className="text-center text-xs text-gray-400 py-4">No completed orders found for this customer.</div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Customer Product Reviews & Ratings */}
+                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 border border-gray-100 dark:border-gray-700">
+                      <h4 className="font-bold text-sm text-gray-900 dark:text-white mb-3">
+                        ⭐ Product Reviews & Ratings Written by Customer ({selectedCustomer.reviews_list?.length || 0})
+                      </h4>
+                      <div className="space-y-2">
+                        {(selectedCustomer.reviews_list || []).map((r: any) => (
+                          <div key={r.id} className="p-3 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 space-y-1 shadow-sm">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">{r.product_name || 'Store Product'}</span>
+                              <div className="flex items-center text-amber-500 text-xs font-bold">
+                                {'★'.repeat(r.rating || 5)}{'☆'.repeat(5 - (r.rating || 5))} <span className="ml-1 text-gray-600 text-[11px]">({r.rating}/5)</span>
+                              </div>
+                            </div>
+                            <p className="text-xs text-gray-700 dark:text-gray-300 italic">"{r.comment || 'Great product quality and fast shipping!'}"</p>
+                            <div className="text-[10px] text-gray-400 font-mono">{r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN') : 'Recently'}</div>
+                          </div>
+                        ))}
+                        {(!selectedCustomer.reviews_list || selectedCustomer.reviews_list.length === 0) && (
+                          <div className="text-center text-xs text-gray-400 py-4">No reviews written by this customer yet.</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* Customer List Table */
+          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
+                    <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase">Customer</th>
+                    <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase">Phone</th>
+                    <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase">Orders</th>
+                    <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase">Total Spent</th>
+                    <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase">Last Order</th>
+                    <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase">Status</th>
+                    <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 uppercase">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
+                  {customers
+                    .filter(c => !customerSearch || c.name?.toLowerCase().includes(customerSearch.toLowerCase()) || c.email?.toLowerCase().includes(customerSearch.toLowerCase()))
+                    .slice((customerPage - 1) * itemsPerPage, customerPage * itemsPerPage)
+                    .map((c: any) => (
+                      <tr key={c.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center text-white text-sm font-black flex-shrink-0">
+                              {(c.name || 'C')[0].toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="font-bold text-gray-900 dark:text-white">{c.name || 'Anonymous'}</div>
+                              <div className="text-xs text-gray-500">{c.email}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 dark:text-gray-400 text-xs">{c.phone || '—'}</td>
+                        <td className="px-4 py-3">
+                          <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-bold text-xs px-2 py-1 rounded-full">{c.total_orders} orders</span>
+                        </td>
+                        <td className="px-4 py-3 font-black text-emerald-600">₹{(c.total_spent || 0).toLocaleString('en-IN')}</td>
+                        <td className="px-4 py-3 text-xs text-gray-500">{c.last_order_date ? new Date(c.last_order_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '—'}</td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-1 rounded-full text-xs font-bold ${ c.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700' }`}>
+                            {c.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <button onClick={() => { setSelectedCustomer(c); setCustomerDetailTab('overview'); }}
+                            className="text-xs bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold px-3 py-1.5 rounded-lg transition">
+                            View Details
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  {customers.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="text-center py-12 text-gray-400">
+                        <div className="text-4xl mb-2">👥</div>
+                        <p className="text-sm font-semibold">No customers yet</p>
+                        <p className="text-xs text-gray-400">Customers who buy from your store will appear here</p>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            {/* Pagination */}
+            {customers.length > itemsPerPage && (
+              <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 dark:border-gray-700">
+                <span className="text-xs text-gray-500">Showing {Math.min((customerPage-1)*itemsPerPage+1, customers.length)}–{Math.min(customerPage*itemsPerPage, customers.length)} of {customers.length}</span>
+                <div className="flex gap-1">
+                  <button onClick={() => setCustomerPage(p => Math.max(1, p-1))} disabled={customerPage === 1} className="px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-lg disabled:opacity-40 font-bold">←</button>
+                  <button onClick={() => setCustomerPage(p => p+1)} disabled={customerPage * itemsPerPage >= customers.length} className="px-3 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-lg disabled:opacity-40 font-bold">→</button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderActiveTab = () => {
     try {
       switch (activeTab) {
+        case 'customers': return renderCustomersTab();
         case 'overview': case 'dashboard': return renderOverviewTab();
         case 'products': return renderProductsTab();
         case 'orders': return renderOrdersTab();

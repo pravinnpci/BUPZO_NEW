@@ -29,6 +29,8 @@ interface Seller {
   businessName: string;
 }
 
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004').split('#')[0].trim().replace(/\/$/, '');
+
 interface AdminProductsProps {
   products: Product[];
   categories: Category[];
@@ -971,6 +973,72 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({
               );
             })()}
 
+            <div className="mb-6">
+              <h2 className="text-lg font-bold font-heading mb-4">Category Requests Queue</h2>
+              <div className="bg-white dark:bg-[#15131b] border border-[#e8e1dd] dark:border-[#2f2b3b] p-6 rounded-2xl shadow-sm">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-400 font-bold uppercase tracking-wider text-[10px] select-none">
+                        <th className="py-2.5">Category Name</th>
+                        <th className="py-2.5">Description</th>
+                        <th className="py-2.5">Requested By</th>
+                        <th className="py-2.5">Date Requested</th>
+                        <th className="py-2.5">Status</th>
+                        <th className="py-2.5 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allCategories.filter(c => c.status === 'PENDING').map(cat => (
+                        <tr key={cat.id} className="border-b border-zinc-100 dark:border-zinc-900">
+                          <td className="py-3 font-bold text-zinc-800 dark:text-zinc-200">{cat.name}</td>
+                          <td className="py-3 text-zinc-500">{cat.description || "N/A"}</td>
+                          <td className="py-3 text-zinc-500">{cat.seller_store_name || "Unknown Seller"}</td>
+                          <td className="py-3 font-mono text-[10px] text-zinc-500">{(cat as any).created_at ? new Date((cat as any).created_at).toLocaleDateString() : 'N/A'}</td>
+                          <td className="py-3">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">PENDING</span>
+                          </td>
+                          <td className="py-3 text-right">
+                            <div className="flex justify-end gap-1.5">
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    const res = await fetch(`${API_URL}/api/categories/${cat.id}/approve`, { method: 'POST' });
+                                    if(res.ok) { showAdminToast('Category approved!'); if(onRefreshData) onRefreshData(); }
+                                    else showAdminToast('Approval failed.');
+                                  } catch (e) {}
+                                }}
+                                className="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded text-[10px] font-bold"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setRejectItemId(cat.id);
+                                  setRejectItemName(cat.name);
+                                  setRejectModalType('category');
+                                  setRejectionReason('');
+                                }}
+                                className="bg-red-500 hover:bg-red-650 text-white px-3 py-1.5 rounded text-[10px] font-bold"
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {allCategories.filter(c => c.status === 'PENDING').length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="py-6 text-center text-zinc-400">No pending category requests.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <h2 className="text-lg font-bold font-heading mb-4">All Categories</h2>
             <div className="flex justify-between items-center bg-zinc-50 dark:bg-[#110e16] p-4 rounded-xl border border-[#e8e1dd] dark:border-[#2f2b3b]">
               <div className="relative">
                 <span className="absolute left-3 top-2.5 text-zinc-400 text-xs">🔍</span>

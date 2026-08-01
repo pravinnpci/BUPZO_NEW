@@ -73,7 +73,7 @@ export function CustomerMessages({ user }: { user: any }) {
     if (!composeSubject.trim() || !composeContent.trim() || !composeReceiver.trim()) return;
     
     let finalReceiverId = composeReceiver;
-    const foundUser = allUsers.find(u => u.email.toLowerCase() === composeReceiver.toLowerCase().trim());
+    const foundUser = allUsers.find(u => u?.email && u.email.toLowerCase().trim() === composeReceiver.toLowerCase().trim());
     if (foundUser) {
       finalReceiverId = foundUser.id;
     }

@@ -1198,7 +1198,7 @@ export function CustomerSettings({ user, onNavigate }: { user: any; onNavigate?:
           {/* Change Password Card Section */}
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-200 space-y-4">
             <h2 className="text-lg font-bold text-gray-900 border-b pb-3">
-              {isGoogleOrNoPasswordUser ? 'Set Account Password' : 'Change Password'}
+              Change Account Password
             </h2>
 
             {passwordStatusMsg && (
@@ -1207,106 +1207,8 @@ export function CustomerSettings({ user, onNavigate }: { user: any; onNavigate?:
               </div>
             )}
 
-            {isGoogleOrNoPasswordUser ? (
-              <div className="space-y-4">
-                <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 space-y-3">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <span className="font-extrabold text-xs text-amber-900 flex items-center gap-1.5">
-                      🔒 Google Account — Set Password via Email OTP
-                    </span>
-                    <button
-                      type="button"
-                      onClick={handleSendPasswordEmailOtp}
-                      disabled={isLoading}
-                      className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-bold text-xs rounded-lg shadow-sm transition-all shrink-0"
-                    >
-                      {isLoading ? 'Sending OTP...' : 'Send Verification OTP to Email'}
-                    </button>
-                  </div>
-                </div>
-
-                <OutlinedField 
-                  label="Email Address" 
-                  value={user?.email || email || ''} 
-                  readOnly={true}
-                  disabled={true}
-                  verifiedBadge={isEmailVerifiedState ? "Verified" : null}
-                />
-
-                <OutlinedField 
-                  label="Email OTP" 
-                  value={passwordOtp} 
-                  onChange={setPasswordOtp} 
-                  placeholder="Enter 6-digit Email OTP"
-                  actionButton={
-                    <button
-                      type="button"
-                      onClick={handleSendPasswordEmailOtp}
-                      disabled={isLoading}
-                      className="text-[10px] font-bold px-2.5 py-1 rounded bg-amber-500 hover:bg-amber-600 text-white shadow-sm shrink-0 transition"
-                    >
-                      Send OTP
-                    </button>
-                  }
-                />
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <OutlinedField 
-                    label="New Password" 
-                    value={newPassword} 
-                    onChange={setNewPassword} 
-                    type={showNewPass ? "text" : "password"}
-                    placeholder="••••••••"
-                    showEyeToggle={true}
-                    onEyeClick={() => setShowNewPass(!showNewPass)}
-                  />
-                  <OutlinedField 
-                    label="Confirm New Password" 
-                    value={confirmPassword} 
-                    onChange={setConfirmPassword} 
-                    type={showConfirmPass ? "text" : "password"}
-                    placeholder="••••••••"
-                    showEyeToggle={true}
-                    onEyeClick={() => setShowConfirmPass(!showConfirmPass)}
-                  />
-                </div>
-
-                {/* Password Requirements Checklist */}
-                <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-200 text-xs space-y-1.5 text-gray-600">
-                  <div className="font-bold text-gray-800">Password Requirements:</div>
-                  <ul className="space-y-1 pl-1">
-                    <li className={`flex items-center gap-1.5 ${hasMinLength ? 'text-emerald-600 font-bold' : 'text-gray-500'}`}>
-                      <span>{hasMinLength ? '✓' : '•'}</span> Minimum 8 characters long
-                    </li>
-                    <li className={`flex items-center gap-1.5 ${hasLowercase ? 'text-emerald-600 font-bold' : 'text-gray-500'}`}>
-                      <span>{hasLowercase ? '✓' : '•'}</span> At least one lowercase character
-                    </li>
-                    <li className={`flex items-center gap-1.5 ${hasNumOrSymbol ? 'text-emerald-600 font-bold' : 'text-gray-500'}`}>
-                      <span>{hasNumOrSymbol ? '✓' : '•'}</span> At least one number, symbol, or special character
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="flex items-center gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={handleSetPasswordWithOtp}
-                    disabled={isLoading || !isPasswordValidForOtp}
-                    className={`px-6 py-2.5 font-bold rounded-lg shadow-sm transition-all text-xs uppercase tracking-wider ${isPasswordValidForOtp ? 'bg-[#f59e0b] hover:bg-[#d97706] text-white active:scale-95' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
-                  >
-                    {isLoading ? 'Setting Password...' : 'SET NEW PASSWORD'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setPasswordOtp(''); setNewPassword(''); setConfirmPassword(''); setPasswordStatusMsg(''); }}
-                    className="px-6 py-2.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold rounded-lg text-xs uppercase tracking-wider"
-                  >
-                    Reset
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
+            <div className="space-y-4">
+              {user?.has_password && (
                 <OutlinedField 
                   label="Current Password" 
                   value={currentPassword} 
@@ -1316,66 +1218,62 @@ export function CustomerSettings({ user, onNavigate }: { user: any; onNavigate?:
                   showEyeToggle={true}
                   onEyeClick={() => setShowCurrentPass(!showCurrentPass)}
                 />
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <OutlinedField 
-                    label="New Password" 
-                    value={newPassword} 
-                    onChange={setNewPassword} 
-                    type={showNewPass ? "text" : "password"}
-                    placeholder="••••••••"
-                    showEyeToggle={true}
-                    onEyeClick={() => setShowNewPass(!showNewPass)}
-                  />
-                  <OutlinedField 
-                    label="Confirm New Password" 
-                    value={confirmPassword} 
-                    onChange={setConfirmPassword} 
-                    type={showConfirmPass ? "text" : "password"}
-                    placeholder="••••••••"
-                    showEyeToggle={true}
-                    onEyeClick={() => setShowConfirmPass(!showConfirmPass)}
-                  />
-                </div>
-
-                {/* Password Requirements Checklist */}
-                <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-200 text-xs space-y-1.5 text-gray-600">
-                  <div className="font-bold text-gray-800">Password Requirements:</div>
-                  <ul className="space-y-1 pl-1">
-                    <li className={`flex items-center gap-1.5 ${hasMinLength ? 'text-emerald-600 font-bold' : 'text-gray-500'}`}>
-                      <span>{hasMinLength ? '✓' : '•'}</span> Minimum 8 characters long
-                    </li>
-                    <li className={`flex items-center gap-1.5 ${hasLowercase ? 'text-emerald-600 font-bold' : 'text-gray-500'}`}>
-                      <span>{hasLowercase ? '✓' : '•'}</span> At least one lowercase character
-                    </li>
-                    <li className={`flex items-center gap-1.5 ${hasNumOrSymbol ? 'text-emerald-600 font-bold' : 'text-gray-500'}`}>
-                      <span>{hasNumOrSymbol ? '✓' : '•'}</span> At least one number, symbol, or special character
-                    </li>
-                    <li className={`flex items-center gap-1.5 ${isNotSameAsCurrent ? 'text-emerald-600 font-bold' : 'text-gray-500'}`}>
-                      <span>{isNotSameAsCurrent ? '✓' : '•'}</span> Must be different from current password
-                    </li>
-                  </ul>
-                </div>
-
-                <div className="flex items-center gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={handleSavePasswordChange}
-                    disabled={isLoading || !isPasswordValid}
-                    className={`px-6 py-2.5 font-bold rounded-lg shadow-sm transition-all text-xs uppercase tracking-wider ${isPasswordValid ? 'bg-[#f59e0b] hover:bg-[#d97706] text-white active:scale-95' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`}
-                  >
-                    Save Changes
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); setPasswordStatusMsg(''); }}
-                    className="px-6 py-2.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold rounded-lg text-xs uppercase tracking-wider"
-                  >
-                    Reset
-                  </button>
-                </div>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <OutlinedField 
+                  label="New Password" 
+                  value={newPassword} 
+                  onChange={setNewPassword} 
+                  type={showNewPass ? "text" : "password"}
+                  placeholder="••••••••"
+                  showEyeToggle={true}
+                  onEyeClick={() => setShowNewPass(!showNewPass)}
+                />
+                <OutlinedField 
+                  label="Confirm New Password" 
+                  value={confirmPassword} 
+                  onChange={setConfirmPassword} 
+                  type={showConfirmPass ? "text" : "password"}
+                  placeholder="••••••••"
+                  showEyeToggle={true}
+                  onEyeClick={() => setShowConfirmPass(!showConfirmPass)}
+                />
               </div>
-            )}
+
+              {/* Password Requirements Checklist */}
+              <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-200 text-xs space-y-1.5 text-gray-600">
+                <div className="font-bold text-gray-800">Password Requirements:</div>
+                <ul className="space-y-1 pl-1">
+                  <li className={`flex items-center gap-1.5 ${hasMinLength ? 'text-emerald-600 font-bold' : 'text-gray-500'}`}>
+                    <span>{hasMinLength ? '✓' : '•'}</span> Minimum 8 characters long
+                  </li>
+                  <li className={`flex items-center gap-1.5 ${hasLowercase ? 'text-emerald-600 font-bold' : 'text-gray-500'}`}>
+                    <span>{hasLowercase ? '✓' : '•'}</span> At least one lowercase character
+                  </li>
+                  <li className={`flex items-center gap-1.5 ${hasNumOrSymbol ? 'text-emerald-600 font-bold' : 'text-gray-500'}`}>
+                    <span>{hasNumOrSymbol ? '✓' : '•'}</span> At least one number, symbol, or special character
+                  </li>
+                </ul>
+              </div>
+
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={handleSavePasswordChange}
+                  disabled={isLoading}
+                  className="px-6 py-2.5 bg-[#f59e0b] hover:bg-[#d97706] text-white font-bold rounded-lg shadow-sm transition-all active:scale-95 text-xs uppercase tracking-wider"
+                >
+                  {isLoading ? 'Saving...' : 'Save Password'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); setPasswordStatusMsg(''); }}
+                  className="px-6 py-2.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-bold rounded-lg text-xs uppercase tracking-wider"
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 

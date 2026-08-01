@@ -3209,16 +3209,10 @@ export default function AdminMainPage() {
                   <thead className="bg-zinc-50 dark:bg-zinc-800/50">
                     <tr className="select-none text-zinc-400 font-bold uppercase text-[10px]">
                       <th className="px-4 py-3 cursor-pointer hover:text-primary" onClick={() => handleMsgSort('sender_name')}>
-                        From {msgSortKey === 'sender_name' ? (msgSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
-                      </th>
-                      <th className="px-4 py-3 cursor-pointer hover:text-primary" onClick={() => handleMsgSort('sender_email')}>
-                        Email ID {msgSortKey === 'sender_email' ? (msgSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
-                      </th>
-                      <th className="px-4 py-3 cursor-pointer hover:text-primary" onClick={() => handleMsgSort('sender_phone')}>
-                        Phone Number {msgSortKey === 'sender_phone' ? (msgSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
+                        From (Sender) {msgSortKey === 'sender_name' ? (msgSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
                       </th>
                       <th className="px-4 py-3 cursor-pointer hover:text-primary" onClick={() => handleMsgSort('receiver_name')}>
-                        To {msgSortKey === 'receiver_name' ? (msgSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
+                        To (Recipient) {msgSortKey === 'receiver_name' ? (msgSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
                       </th>
                       <th className="px-4 py-3 cursor-pointer hover:text-primary" onClick={() => handleMsgSort('subject')}>
                         Subject {msgSortKey === 'subject' ? (msgSortOrder === 'asc' ? '▲' : '▼') : '⇅'}
@@ -3240,6 +3234,8 @@ export default function AdminMainPage() {
                                (m.sender_email || m.email || '').toLowerCase().includes(s) || 
                                (m.sender_phone || m.phone || '').toLowerCase().includes(s) || 
                                (m.receiver_name || '').toLowerCase().includes(s) || 
+                               (m.receiver_email || '').toLowerCase().includes(s) || 
+                               (m.receiver_phone || '').toLowerCase().includes(s) || 
                                (m.subject || '').toLowerCase().includes(s) || 
                                (m.content || '').toLowerCase().includes(s);
                       });
@@ -3250,12 +3246,6 @@ export default function AdminMainPage() {
                         if (msgSortKey === 'created_at' || msgSortKey === 'date') {
                           aVal = new Date(a.created_at || a.date || Date.now()).getTime();
                           bVal = new Date(b.created_at || b.date || Date.now()).getTime();
-                        } else if (msgSortKey === 'sender_email') {
-                          aVal = String(a.sender_email || a.email || '').toLowerCase();
-                          bVal = String(b.sender_email || b.email || '').toLowerCase();
-                        } else if (msgSortKey === 'sender_phone') {
-                          aVal = String(a.sender_phone || a.phone || '').toLowerCase();
-                          bVal = String(b.sender_phone || b.phone || '').toLowerCase();
                         } else {
                           aVal = String(aVal || '').toLowerCase();
                           bVal = String(bVal || '').toLowerCase();
@@ -3266,20 +3256,27 @@ export default function AdminMainPage() {
 
                       if (sorted.length === 0) {
                         return (
-                          <tr><td colSpan={8} className="px-4 py-8 text-center text-zinc-500 font-medium">No messages found matching criteria.</td></tr>
+                          <tr><td colSpan={6} className="px-4 py-8 text-center text-zinc-500 font-medium">No messages found matching criteria.</td></tr>
                         );
                       }
 
                       return sorted.map((m: any) => (
                         <tr key={m.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40">
-                          <td className="px-4 py-3 font-bold">{m.sender_name || 'System User'}</td>
-                          <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 font-medium">{m.sender_email || m.email || 'N/A'}</td>
-                          <td className="px-4 py-3 text-zinc-600 dark:text-zinc-400 font-medium">{m.sender_phone || m.phone || 'N/A'}</td>
-                          <td className="px-4 py-3 font-bold">{m.receiver_name || 'Bupzo Patron'}</td>
+                          <td className="px-4 py-3">
+                            <div className="font-bold text-zinc-900 dark:text-zinc-100">{m.sender_name || 'User / Customer'}</div>
+                            <div className="text-[11px] text-zinc-500">{m.sender_email || m.email || '—'}</div>
+                            <div className="text-[10px] text-zinc-400">{m.sender_phone || m.phone || '—'}</div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="font-bold text-zinc-900 dark:text-zinc-100">{m.receiver_name || 'Merchant / User'}</div>
+                            <div className="text-[11px] text-zinc-500">{m.receiver_email || '—'}</div>
+                            <div className="text-[10px] text-zinc-400">{m.receiver_phone || '—'}</div>
+                          </td>
                           <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300 font-bold">{m.subject || 'Message Notice'}</td>
                           <td className="px-4 py-3 max-w-xs text-zinc-600 dark:text-zinc-400 font-medium truncate">{m.content}</td>
                           <td className="px-4 py-3 font-mono text-zinc-500 text-[11px] whitespace-nowrap">{m.created_at ? new Date(m.created_at).toLocaleString() : new Date().toLocaleString()}</td>
                           <td className="px-4 py-3 text-right">
+
                             <div className="flex justify-end gap-1.5">
                               <button 
                                 onClick={() => {
