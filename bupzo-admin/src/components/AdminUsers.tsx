@@ -17,22 +17,25 @@ interface User {
   state?: string;
   created_at?: string;
   email_verified?: boolean;
+  is_suspended?: boolean;
   phone_verified?: boolean;
   last_login?: string;
 }
 
 interface AdminUsersProps {
   users: User[];
-  openEditUserModal: (u: User) => void;
-  setShowAddUserModal: (show: boolean) => void;
-  onDeleteUser: (userId: string) => void;
+  openEditUserModal?: (u: User) => void;
+  setShowAddUserModal?: (show: boolean) => void;
+  onDeleteUser?: (userId: string) => void;
+  onRefreshData?: () => void;
 }
 
 export const AdminUsers: React.FC<AdminUsersProps> = ({
   users,
   openEditUserModal,
   setShowAddUserModal,
-  onDeleteUser
+  onDeleteUser,
+  onRefreshData
 }) => {
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
   
@@ -51,18 +54,66 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
   const [previewOrders, setPreviewOrders] = useState<any[]>([]);
   const [previewActivity, setPreviewActivity] = useState<any[]>([]);
 
-  const handleSuspend = async (userId: string, suspend: boolean) => {
+  const refetchUsers = async () => {
     try {
-      const res = await fetch(`${API_URL}/api/users/${userId}/suspend`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ suspend })
+      const res = await fetch(`${API_URL}/api/users/`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setLocalUsers(data);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to refetch users:", e);
+    }
+    if (onRefreshData) {
+      onRefreshData();
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!window.confirm("Are you sure you want to delete this user?")) {
+      return;
+    }
+    try {
+      const res = await fetch(`${API_URL}/api/users/${userId}`, {
+        method: 'DELETE'
       });
       if (res.ok) {
-        showAdminToast(`User ${suspend ? 'suspended' : 'unsuspended'} successfully!`);
-        setLocalUsers(prev => prev.map(u => u.id === userId ? { ...u, status: suspend ? 'Suspended' : 'Active' } : u));
-        if (previewUser && previewUser.id === userId) {
-          setPreviewUser({ ...previewUser, status: suspend ? 'Suspended' : 'Active' });
+        showAdminToast("User deleted successfully!");
+      }
+    } catch (e) {
+      console.error("Error deleting user:", e);
+    }
+    if (onDeleteUser) {
+      onDeleteUser(userId);
+    }
+    await refetchUsers();
+  };
+
+  const handleSuspend = async (user: User) => {
+    const isCurrentlySuspended = Boolean(user.is_suspended || user.status === 'Suspended');
+    const suspendVal = user.is_suspended !== undefined ? !user.is_suspended : !isCurrentlySuspended;
+    try {
+      const res = await fetch(`${API_URL}/api/users/${user.id}/suspend`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ suspend: suspendVal })
+      });
+      if (res.ok) {
+        showAdminToast(`User ${suspendVal ? 'suspended' : 'unsuspended'} successfully!`);
+        const updatedStatus = suspendVal ? 'Suspended' : 'Active';
+        setLocalUsers(prev => prev.map(u => u.id === user.id ? { 
+          ...u, 
+          is_suspended: suspendVal, 
+          status: updatedStatus 
+        } : u));
+        if (previewUser && previewUser.id === user.id) {
+          setPreviewUser({ 
+            ...previewUser, 
+            is_suspended: suspendVal, 
+            status: updatedStatus 
+          });
         }
       } else {
         alert('Failed to update user status.');
@@ -80,7 +131,7 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
       u.email || '',
       u.phone || '',
       u.isAdmin ? 'Admin' : u.isSeller ? 'Seller' : 'Customer',
-      u.status || 'Active',
+      (u.is_suspended || u.status === 'Suspended') ? 'Suspended' : 'Active',
       u.wallet || 0,
       u.created_at ? new Date(u.created_at).toLocaleDateString() : ''
     ]);
@@ -104,8 +155,9 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
     if (roleFilter === 'Admin') matchRole = !!u.isAdmin;
     
     let matchStatus = true;
-    if (statusFilter === 'Active') matchStatus = u.status === 'Active';
-    if (statusFilter === 'Suspended') matchStatus = u.status === 'Suspended';
+    const isSuspended = Boolean(u.is_suspended || u.status === 'Suspended');
+    if (statusFilter === 'Active') matchStatus = !isSuspended;
+    if (statusFilter === 'Suspended') matchStatus = isSuspended;
     
     return matchSearch && matchRole && matchStatus;
   });
@@ -148,9 +200,9 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
 
   // Stats
   const totalUsers = localUsers.length;
-  const activeUsers = localUsers.filter(u => u.status !== 'Suspended').length;
+  const activeUsers = localUsers.filter(u => !u.is_suspended && u.status !== 'Suspended').length;
   const sellersCount = localUsers.filter(u => u.isSeller).length;
-  const suspendedUsers = localUsers.filter(u => u.status === 'Suspended').length;
+  const suspendedUsers = localUsers.filter(u => u.is_suspended || u.status === 'Suspended').length;
 
   return (
     <div className="space-y-6">
@@ -236,48 +288,67 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
               </tr>
             </thead>
             <tbody>
-              {filteredUsers.map(u => (
-                <tr key={u.id} className="border-b border-zinc-150 dark:border-zinc-800/50 hover:bg-zinc-50 dark:hover:bg-zinc-800/20 transition-colors">
-                  <td className="py-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center font-bold text-zinc-500 dark:text-zinc-400">
-                        {getInitials(u.name)}
+              {filteredUsers.map(u => {
+                const isSuspended = Boolean(u.is_suspended || u.status === 'Suspended');
+                return (
+                  <tr key={u.id} className="border-b border-zinc-150 dark:border-zinc-800/50 hover:bg-zinc-50 dark:hover:bg-zinc-800/20 transition-colors">
+                    <td className="py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center font-bold text-zinc-500 dark:text-zinc-400">
+                          {getInitials(u.name)}
+                        </div>
+                        <div>
+                          <p className="font-bold">{u.name || 'Bupzo Patron'}</p>
+                          <p className="text-[10px] text-zinc-500">{u.email}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-bold">{u.name || 'Bupzo Patron'}</p>
-                        <p className="text-[10px] text-zinc-500">{u.email}</p>
+                    </td>
+                    <td className="py-3">{u.phone?.startsWith('GOOG-') ? 'N/A' : u.phone}</td>
+                    <td className="py-3">{getRoleBadge(u)}</td>
+                    <td className="py-3">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${isSuspended ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'}`}>
+                        {isSuspended ? '🔴 Suspended' : '🟢 Active'}
+                      </span>
+                    </td>
+                    <td className="py-3">
+                      {u.email_verified ? (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                          ✓ Verified
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                          Unverified
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 font-bold text-lg">{u.phone_verified ? <span className="text-green-500">✓</span> : <span className="text-red-500">✗</span>}</td>
+                    <td className="py-3 font-mono text-[10px] text-zinc-500">{u.created_at ? new Date(u.created_at).toLocaleDateString() : 'N/A'}</td>
+                    <td className="py-3 font-mono text-[10px] text-zinc-500">{u.last_login ? new Date(u.last_login).toLocaleDateString() : 'N/A'}</td>
+                    <td className="py-3 text-right">
+                      <div className="flex justify-end gap-1.5">
+                        <button 
+                          onClick={() => loadUserDetails(u)}
+                          className="bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 px-2.5 py-1 rounded text-[10px] font-bold"
+                        >
+                          View Details
+                        </button>
+                        <button 
+                          onClick={() => handleSuspend(u)}
+                          className={`${isSuspended ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'} text-white px-2.5 py-1 rounded text-[10px] font-bold`}
+                        >
+                          {isSuspended ? 'Unsuspend' : 'Suspend'}
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteUser(u.id)}
+                          className="bg-red-600 hover:bg-red-700 text-white px-2.5 py-1 rounded text-[10px] font-bold"
+                        >
+                          Delete User
+                        </button>
                       </div>
-                    </div>
-                  </td>
-                  <td className="py-3">{u.phone?.startsWith('GOOG-') ? 'N/A' : u.phone}</td>
-                  <td className="py-3">{getRoleBadge(u)}</td>
-                  <td className="py-3">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${u.status === 'Active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
-                      {u.status || 'Active'}
-                    </span>
-                  </td>
-                  <td className="py-3 font-bold text-lg">{u.email_verified ? <span className="text-green-500">✓</span> : <span className="text-red-500">✗</span>}</td>
-                  <td className="py-3 font-bold text-lg">{u.phone_verified ? <span className="text-green-500">✓</span> : <span className="text-red-500">✗</span>}</td>
-                  <td className="py-3 font-mono text-[10px] text-zinc-500">{u.created_at ? new Date(u.created_at).toLocaleDateString() : 'N/A'}</td>
-                  <td className="py-3 font-mono text-[10px] text-zinc-500">{u.last_login ? new Date(u.last_login).toLocaleDateString() : 'N/A'}</td>
-                  <td className="py-3 text-right">
-                    <div className="flex justify-end gap-1.5">
-                      <button 
-                        onClick={() => loadUserDetails(u)}
-                        className="bg-zinc-200 hover:bg-zinc-300 dark:bg-zinc-800 dark:hover:bg-zinc-700 px-2.5 py-1 rounded text-[10px] font-bold"
-                      >
-                        View Details
-                      </button>
-                      <button 
-                        onClick={() => handleSuspend(u.id, u.status !== 'Suspended')}
-                        className={`${u.status === 'Suspended' ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'} text-white px-2.5 py-1 rounded text-[10px] font-bold`}
-                      >
-                        {u.status === 'Suspended' ? 'Unsuspend' : 'Suspend'}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                  </tr>
+                );
+              })}
               {filteredUsers.length === 0 && (
                 <tr>
                   <td colSpan={9} className="py-8 text-center text-zinc-400">No users found matching filters.</td>
@@ -304,8 +375,8 @@ export const AdminUsers: React.FC<AdminUsersProps> = ({
               <p className="text-sm text-zinc-500 mb-2">{previewUser.email}</p>
               <div className="flex gap-2">
                 {getRoleBadge(previewUser)}
-                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${previewUser.status === 'Suspended' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                  {previewUser.status || 'Active'}
+                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${(previewUser.is_suspended || previewUser.status === 'Suspended') ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'}`}>
+                  {(previewUser.is_suspended || previewUser.status === 'Suspended') ? '🔴 Suspended' : '🟢 Active'}
                 </span>
               </div>
             </div>

@@ -772,6 +772,7 @@ class ProductResponse(BaseModel):
     sku: Optional[str] = None
     barcode: Optional[str] = None
     discounted_price: Optional[float] = None
+    category_name: Optional[str] = "General"
     dimensions: Optional[Any] = None
     variants: Optional[Any] = None
     tags: Optional[Any] = None
@@ -1539,8 +1540,14 @@ async def read_products(seller_id: Optional[str] = Query(None), all: Optional[bo
             """, str(seller_id).strip())
         elif all:
             rows = await conn.fetch("""
-            SELECT p.id, p.name, p.category_id, p.price, p.weight_grams, p.image_url, p.images, p.is_combo, p.stock_quantity, p.seller_id, p.description, p.created_at, p.is_approved, p.status, p.rejection_reason, p.sku, p.barcode, p.discounted_price, p.cost_price, p.dimensions, p.variants, p.tags
+            SELECT p.id, p.name, p.category_id, p.price, p.weight_grams, p.image_url,
+                   p.images, p.is_combo, p.stock_quantity, p.seller_id, p.description,
+                   p.created_at, p.is_approved, p.status, p.rejection_reason, p.sku,
+                   p.barcode, p.discounted_price, p.cost_price, p.dimensions, p.variants, p.tags,
+                   COALESCE(c.name, 'General') as category_name
             FROM products p
+            LEFT JOIN categories c ON c.id = p.category_id
+            ORDER BY p.created_at DESC
             """)
         else:
             rows = await conn.fetch("""
@@ -2263,25 +2270,29 @@ async def send_whatsapp_otp(payload: WhatsAppOTPRequest):
     whatsapp_otps[clean_phone] = otp_code
     whatsapp_otps[clean_phone[-10:]] = otp_code
     
-    instance_id = ULTRAMSG_INSTANCE_ID
-    token = ULTRAMSG_TOKEN
+    instance_id = os.getenv("ULTRAMSG_INSTANCE_ID", ULTRAMSG_INSTANCE_ID)
+    token = os.getenv("ULTRAMSG_TOKEN", ULTRAMSG_TOKEN)
     
     try:
         msg = f"🎉 *BUPZO Marketplace Two-Step Verification*\n\nYour 6-digit verification code is: *{otp_code}*\n\nDo not share this OTP with anyone."
         params = {
             "token": token,
-            "to": f"+{clean_phone}",
+            "to": clean_phone if clean_phone.startswith("+") else f"+{clean_phone}",
             "body": msg
         }
-        url = f"https://api.ultramsg.com/{instance_id}/messages/chat"
+        url = f"https://api.ultramsg.com/{instance_id}/messages/chat?token={token}"
         data = urllib.parse.urlencode(params).encode('utf-8')
-        req = urllib.request.Request(url, data=data, headers={'User-Agent': 'Mozilla/5.0'})
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Content-Type': 'application/x-www-form-urlencoded'
+        }
+        req = urllib.request.Request(url, data=data, headers=headers)
         with urllib.request.urlopen(req, timeout=12) as response:
             res_data = response.read().decode('utf-8')
-            print(f"UltraMsg WhatsApp Response: {res_data}")
+            print(f"UltraMsg WhatsApp Response ({instance_id}): {res_data}")
     except Exception as e:
         import traceback
-        print(f"UltraMsg dispatch ERROR: {traceback.format_exc()}")
+        print(f"UltraMsg dispatch ERROR for {instance_id}: {traceback.format_exc()}")
 
     return {
         "status": "success",
@@ -3622,8 +3633,9 @@ async def mark_ready_for_pickup(order_id: UUID, req: ReadyForPickupRequest):
         )
         if not order:
             raise HTTPException(status_code=404, detail="Order not found")
-        if order['status'] not in ('processing', 'paid'):
-            raise HTTPException(status_code=400, detail=f"Order must be in 'processing' status. Current: {order['status']}")
+        current_status = str(order['status']).lower() if order['status'] else ''
+        if current_status not in ('processing', 'paid', 'pending', 'new', 'pending_cod'):
+            raise HTTPException(status_code=400, detail=f"Order must be in 'processing' or 'paid' status. Current: {order['status']}")
 
         # Fetch order items for Shiprocket payload
         items = await conn.fetch("""
@@ -4589,6 +4601,18 @@ async def mark_all_messages_read(user_id: str = Query(...)):
             pass
         return {"success": True, "marked_user": user_id}
 
+@app.get("/api/messages/unread-count/{user_id}")
+async def get_unread_message_count(user_id: str):
+    async with pool.acquire() as conn:
+        try:
+            cnt = await conn.fetchval(
+                "SELECT COUNT(*) FROM messages WHERE (receiver_id::text = $1::text OR recipient_id::text = $1::text) AND (is_read = FALSE OR is_read IS NULL)",
+                str(user_id)
+            ) or 0
+            return {"user_id": user_id, "unread_count": int(cnt)}
+        except Exception:
+            return {"user_id": user_id, "unread_count": 0}
+
 @app.delete("/api/messages/{message_id}")
 async def delete_message(message_id: UUID):
     async with pool.acquire() as conn:
@@ -5467,14 +5491,12 @@ async def get_seller_customers(seller_id: str):
                     u.is_suspended,
                     u.created_at,
                     u.last_login,
-                    COUNT(DISTINCT o.id) as total_orders,
-                    COALESCE(SUM(oi.price * oi.quantity), 0) as total_spent,
+                    COUNT(o.id) as total_orders,
+                    COALESCE(SUM(o.total_amount), 0) as total_spent,
                     MAX(o.created_at) as last_order_date
                 FROM users u
-                JOIN orders o ON o.user_id = u.id
-                JOIN order_items oi ON oi.order_id = o.id
-                WHERE oi.seller_id::text = $1::text
-                    AND o.status NOT IN ('cancelled', 'CANCELLED', 'failed', 'FAILED')
+                JOIN orders o ON o.user_id::text = u.id::text
+                WHERE o.seller_id::text = $1::text
                 GROUP BY u.id, u.name, u.email, u.phone, u.is_suspended, u.created_at, u.last_login
                 ORDER BY total_spent DESC
             """, str(seller_id))
@@ -5485,11 +5507,9 @@ async def get_seller_customers(seller_id: str):
                 
                 # Fetch orders for this customer from this seller
                 order_rows = await conn.fetch("""
-                    SELECT o.id, o.status, o.created_at, o.total_amount, COUNT(oi.id) as items_count
+                    SELECT o.id, o.status, o.created_at, o.total_amount
                     FROM orders o
-                    JOIN order_items oi ON oi.order_id = o.id
-                    WHERE o.user_id::text = $1::text AND oi.seller_id::text = $2::text
-                    GROUP BY o.id, o.status, o.created_at, o.total_amount
+                    WHERE o.user_id::text = $1::text AND o.seller_id::text = $2::text
                     ORDER BY o.created_at DESC
                 """, cust_id, str(seller_id))
                 
@@ -5498,12 +5518,12 @@ async def get_seller_customers(seller_id: str):
                     "status": orow["status"],
                     "created_at": orow["created_at"].isoformat() if orow["created_at"] else None,
                     "total_amount": float(orow["total_amount"] or 0),
-                    "items_count": int(orow["items_count"])
+                    "items_count": 1
                 } for orow in order_rows]
 
                 # Fetch reviews submitted by this customer for this seller's products
                 review_rows = await conn.fetch("""
-                    SELECT r.id, r.rating, r.comment, r.created_at, p.name as product_name
+                    SELECT r.id, r.rating, r.content as comment, r.created_at, p.name as product_name
                     FROM reviews r
                     JOIN products p ON r.product_id = p.id
                     WHERE r.user_id::text = $1::text AND p.seller_id::text = $2::text

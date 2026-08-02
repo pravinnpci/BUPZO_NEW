@@ -73,7 +73,7 @@ export function CustomerMessages({ user }: { user: any }) {
     if (!composeSubject.trim() || !composeContent.trim() || !composeReceiver.trim()) return;
     
     let finalReceiverId = composeReceiver;
-    const foundUser = allUsers.find(u => u?.email && typeof u.email === 'string' && u.email.toLowerCase().trim() === composeReceiver.toLowerCase().trim());
+    const foundUser = allUsers.find(u => (u?.email || '').toLowerCase().trim() === (composeReceiver || '').toLowerCase().trim() || (u?.name || '').toLowerCase().trim() === (composeReceiver || '').toLowerCase().trim());
     if (foundUser) {
       finalReceiverId = foundUser.id;
     }
@@ -123,7 +123,8 @@ export function CustomerMessages({ user }: { user: any }) {
         ) : (
           <div className="divide-y divide-gray-100">
             {messages.map((m: any) => {
-              const isSent = m.sender_id === user?.id;
+              const currentUserId = user?.id;
+              const isSent = m.sender_id === currentUserId;
               const isRead = m.is_read;
               return (
                 <div key={m.id} className={`p-4 hover:bg-gray-50 transition-colors border-b border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${!isRead && !isSent ? 'bg-blue-50' : ''}`}>

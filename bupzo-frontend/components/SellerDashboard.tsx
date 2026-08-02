@@ -394,6 +394,16 @@ export function SellerDashboard({ onSwitchToCustomer }: { onSwitchToCustomer?: (
   };
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const urlTab = params.get('tab');
+      if (urlTab) {
+        const normalized = urlTab.toLowerCase();
+        if (['overview', 'customers', 'products', 'orders', 'followers', 'followers-ratings', 'settings', 'add-product', 'analytics', 'returns', 'messages'].includes(normalized)) {
+          setActiveTab(normalized);
+        }
+      }
+    }
     loadDashboardData();
     const activeUserId = effectiveUser?.id;
     if (!activeUserId) return;
@@ -405,6 +415,15 @@ export function SellerDashboard({ onSwitchToCustomer }: { onSwitchToCustomer?: (
     }, 10000);
     return () => clearInterval(interval);
   }, [user?.id]);
+
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', tabId);
+      window.history.replaceState({}, '', url.toString());
+    }
+  };
 
   // Leaflet JS Map Initialization Effect for Settings Business Address tab
   useEffect(() => {
@@ -3492,7 +3511,7 @@ export function SellerDashboard({ onSwitchToCustomer }: { onSwitchToCustomer?: (
           {tabs.map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleTabChange(tab.id)}
               className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
                 activeTab === tab.id 
                   ? 'bg-blue-600 text-white shadow-md' 

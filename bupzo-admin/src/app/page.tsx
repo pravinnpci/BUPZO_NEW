@@ -2009,6 +2009,7 @@ export default function AdminMainPage() {
               openEditUserModal={openEditUserModal}
               setShowAddUserModal={setShowAddUserModal}
               onDeleteUser={handleDeleteUser}
+              onRefreshData={refreshAllAdminData}
             />
           )}
 

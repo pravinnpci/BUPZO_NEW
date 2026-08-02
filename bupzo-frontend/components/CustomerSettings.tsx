@@ -1081,13 +1081,11 @@ export function CustomerSettings({ user, onNavigate }: { user: any; onNavigate?:
 
             <OutlinedField 
               label="E-mail" 
-              value={user?.email || email} 
+              value={email || user?.email || ''} 
               onChange={setEmail} 
               type="email"
-              readOnly={Boolean(!user?.has_password)}
-              disabled={Boolean(!user?.has_password)}
-              verifiedBadge={isEmailVerifiedState ? "Verified" : null}
-              actionButton={!isEmailVerifiedState && (
+              verifiedBadge={(Boolean(user?.email_verified) || Boolean(user?.google_verified) || isEmailVerifiedState) ? "Verified" : null}
+              actionButton={!(Boolean(user?.email_verified) || Boolean(user?.google_verified) || isEmailVerifiedState) && (
                 <button onClick={handleSendEmailOTP} className="text-[10px] font-bold px-2.5 py-1 rounded bg-blue-500 hover:bg-blue-600 text-white shadow-sm shrink-0 transition">
                   Verify Email
                 </button>
@@ -1211,17 +1209,15 @@ export function CustomerSettings({ user, onNavigate }: { user: any; onNavigate?:
             )}
 
             <div className="space-y-4">
-              {user?.has_password && (
-                <OutlinedField 
-                  label="Current Password" 
-                  value={currentPassword} 
-                  onChange={setCurrentPassword} 
-                  type={showCurrentPass ? "text" : "password"}
-                  placeholder="••••••••"
-                  showEyeToggle={true}
-                  onEyeClick={() => setShowCurrentPass(!showCurrentPass)}
-                />
-              )}
+              <OutlinedField 
+                label="Current Password" 
+                value={currentPassword} 
+                onChange={setCurrentPassword} 
+                type={showCurrentPass ? "text" : "password"}
+                placeholder="••••••••"
+                showEyeToggle={true}
+                onEyeClick={() => setShowCurrentPass(!showCurrentPass)}
+              />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <OutlinedField 
                   label="New Password" 
