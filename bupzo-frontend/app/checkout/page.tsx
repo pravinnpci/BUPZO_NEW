@@ -31,8 +31,11 @@ export default function CheckoutPage() {
   }, [cart.length]);
 
   const TRUST_DONATION_AMOUNT = 2;
+  const PLATFORM_FEE = 5;
+  const GST_RATE = 0.18;
   const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-  const totalAmountDue = subtotal + shippingCost + TRUST_DONATION_AMOUNT; 
+  const gstAmount = parseFloat((subtotal * GST_RATE).toFixed(2));
+  const totalAmountDue = subtotal + gstAmount + shippingCost + PLATFORM_FEE + TRUST_DONATION_AMOUNT;
   const maxWalletUsable = Math.min(totalAmountDue, user?.walletBalance || 0);
   const remainingAmount = totalAmountDue - walletAmountToUse;
 
@@ -61,6 +64,24 @@ export default function CheckoutPage() {
         <div className="text-center">
           <h2 className="text-xl font-bold mb-4">Your cart is empty or you are not logged in.</h2>
           <button onClick={() => window.location.href = '/'} className="bg-brand-blue text-white px-6 py-2 rounded font-bold">Go Home</button>
+        </div>
+      </div>
+    );
+  }
+
+  // A3: Verification gate — block checkout for unverified users
+  const isVerified = user?.email_verified || user?.phone_verified || user?.google_verified;
+  if (!isVerified) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Verification Required</h2>
+          <p className="text-gray-600 mb-6">Please verify your email or phone number in Account Settings before placing an order.</p>
+          <button onClick={() => window.location.href = '/account'} className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition">Go to Account Settings</button>
+          <button onClick={() => window.location.href = '/'} className="w-full mt-3 text-gray-500 text-sm hover:text-gray-700">Continue Shopping</button>
         </div>
       </div>
     );
@@ -146,9 +167,31 @@ export default function CheckoutPage() {
           <div className="bg-white p-6 rounded shadow-sm border border-gray-200">
             <h2 className="text-lg font-bold mb-4">Payment Summary</h2>
             
-            <div className="flex justify-between text-sm mb-2">
-              <span className="text-gray-600">Total Item Price</span>
-              <span className="font-bold">₹{totalAmountDue.toFixed(2)}</span>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Subtotal</span>
+                <span className="font-semibold">₹{subtotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">GST (18%)</span>
+                <span className="font-semibold">₹{gstAmount.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Shipping ({shippingProvider || 'Standard'})</span>
+                <span className="font-semibold">{shippingCost > 0 ? `₹${shippingCost.toFixed(2)}` : 'Free'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Platform Fee</span>
+                <span className="font-semibold">₹{PLATFORM_FEE.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Trust Donation</span>
+                <span className="font-semibold">₹{TRUST_DONATION_AMOUNT.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between pt-2 border-t border-gray-100 font-bold text-base">
+                <span>Total</span>
+                <span>₹{totalAmountDue.toFixed(2)}</span>
+              </div>
             </div>
 
             <div className="mt-4 pt-4 border-t border-gray-100">

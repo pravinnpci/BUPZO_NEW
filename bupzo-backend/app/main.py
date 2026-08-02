@@ -49,15 +49,35 @@ async def add_cors_headers(request: Request, call_next):
             status_code=200,
             headers={
                 "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Methods": "*",
+                "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
                 "Access-Control-Allow-Headers": "*",
+                "Access-Control-Max-Age": "86400",
             }
         )
-    response = await call_next(request)
+    try:
+        response = await call_next(request)
+    except Exception as exc:
+        from fastapi.responses import JSONResponse
+        response = JSONResponse(
+            status_code=500,
+            content={"detail": str(exc)}
+        )
     response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Methods"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
     response.headers["Access-Control-Allow-Headers"] = "*"
     return response
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    from fastapi.responses import JSONResponse
+    import traceback
+    print(f"[UNHANDLED ERROR] {request.method} {request.url}\n{traceback.format_exc()}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Internal server error: {str(exc)}"},
+        headers={"Access-Control-Allow-Origin": "*"},
+    )
 
 # Database Configuration
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://bupzo_user:bupzo_password@db:5432/bupzo_db")
@@ -656,7 +676,9 @@ class CategoryResponse(BaseModel):
 
 class CouponCreate(BaseModel):
     code: str
-    discount_percent: float
+    discount_percent: float = 0.0
+    discount_type: Optional[str] = 'percentage'  # 'percentage' or 'flat'
+    flat_amount: Optional[float] = None
     is_premium_only: bool = False
     expiry_date: datetime
     usage_limit: Optional[int] = None
@@ -668,6 +690,8 @@ class CouponResponse(BaseModel):
     id: UUID
     code: str
     discount_percent: float
+    discount_type: Optional[str] = 'percentage'
+    flat_amount: Optional[float] = None
     is_premium_only: bool
     expiry_date: datetime
     usage_limit: Optional[int]
@@ -907,10 +931,13 @@ async def create_user(user: UserCreate):
     
     password_hash = get_password_hash(user.password) if user.password else None
 
+    # Default signup wallet bonus: ₹5
+    SIGNUP_WALLET_BONUS = float(os.getenv("SIGNUP_WALLET_BONUS", "5.0"))
+
     query = """
     INSERT INTO users
-    (id, name, phone, email, is_premium, signup_platform, referred_by, privacy_accepted, password_hash)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    (id, name, phone, email, is_premium, signup_platform, referred_by, privacy_accepted, password_hash, wallet_balance)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
     """
     values = (
         user_id,
@@ -921,10 +948,16 @@ async def create_user(user: UserCreate):
         user.signup_platform,
         user.referred_by,
         user.privacy_accepted,
-        password_hash
+        password_hash,
+        SIGNUP_WALLET_BONUS
     )
     try:
         await execute_query_none(query, *values)
+        # Log signup wallet bonus transaction
+        await execute_query_none(
+            "INSERT INTO wallet_transactions (id, user_id, amount, type, description) VALUES ($1, $2, $3, 'SIGNUP_BONUS', $4)",
+            uuid4(), user_id, SIGNUP_WALLET_BONUS, "Welcome signup bonus"
+        )
         if user.referred_by:
             ref_bonus = 5.00
             await execute_query_none("UPDATE users SET wallet_balance = wallet_balance + $1 WHERE id = $2", ref_bonus, user.referred_by)
@@ -1154,6 +1187,10 @@ async def auth_login(payload: AuthLoginRequest):
     )
     if not user or not verify_password(payload.password, user.get('password_hash')):
         raise HTTPException(status_code=401, detail="Invalid email or password")
+    # Check if account is suspended
+    susp = await execute_query_one("SELECT is_suspended FROM users WHERE id = $1", user['id'])
+    if susp and susp.get('is_suspended'):
+        raise HTTPException(status_code=403, detail="Your account has been suspended. Please contact support.")
         
     full_user = await get_user_by_id(user['id'])
     
@@ -1190,17 +1227,26 @@ async def auth_register(payload: AuthRegisterRequest):
         email_verified = True if (user_email and '@' in user_email) else False
         phone_verified = True
 
+        SIGNUP_WALLET_BONUS = float(os.getenv("SIGNUP_WALLET_BONUS", "5.0"))
         query = """
         INSERT INTO users
-        (id, name, phone, email, is_premium, signup_platform, referred_by, privacy_accepted, password_hash, phone_verified, email_verified)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        (id, name, phone, email, is_premium, signup_platform, referred_by, privacy_accepted, password_hash, phone_verified, email_verified, wallet_balance)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         """
         platform_val = (payload.signup_platform or "WEB").upper()
         await execute_query_none(
             query, user_id, user_name, formatted_phone, user_email, payload.is_premium or False,
             platform_val, payload.referred_by, payload.privacy_accepted or True, password_hash,
-            phone_verified, email_verified
+            phone_verified, email_verified, SIGNUP_WALLET_BONUS
         )
+        # Log signup wallet bonus
+        try:
+            await execute_query_none(
+                "INSERT INTO wallet_transactions (id, user_id, amount, type, description) VALUES ($1, $2, $3, 'SIGNUP_BONUS', $4)",
+                uuid4(), user_id, SIGNUP_WALLET_BONUS, "Welcome signup bonus"
+            )
+        except Exception:
+            pass
         full_user = await get_user_by_id(user_id)
     
     access_token = create_access_token({"user_id": str(full_user['id'])})
@@ -1237,7 +1283,7 @@ async def auth_google(payload: AuthGoogleRequest):
     if not user:
         user_id = uuid4()
         await execute_query_none(
-            "INSERT INTO users (id, name, phone, email, is_premium, signup_platform, privacy_accepted, wallet_balance, email_verified, google_verified, phone_verified) VALUES ($1, $2, $3, $4, $5, $6, $7, 0, TRUE, TRUE, FALSE)",
+            "INSERT INTO users (id, name, phone, email, is_premium, signup_platform, privacy_accepted, wallet_balance, email_verified, google_verified, phone_verified) VALUES ($1, $2, $3, $4, $5, $6, $7, 5.0, TRUE, TRUE, FALSE)",
             user_id,
             payload.name,
             f"GOOG-{str(user_id)[:8]}",
@@ -1481,8 +1527,15 @@ async def read_products(seller_id: Optional[str] = Query(None), all: Optional[bo
     async with pool.acquire() as conn:
         if seller_id and str(seller_id).strip():
             rows = await conn.fetch("""
-            SELECT p.id, p.name, p.category_id, p.price, p.weight_grams, p.image_url, p.images, p.is_combo, p.stock_quantity, p.seller_id, p.description, p.created_at, p.is_approved, p.status, p.rejection_reason, p.sku, p.barcode, p.discounted_price, p.cost_price, p.dimensions, p.variants, p.tags
-            FROM products p WHERE p.seller_id::text = $1::text
+            SELECT p.id, p.name, p.category_id, p.price, p.weight_grams, p.image_url,
+                   p.images, p.is_combo, p.stock_quantity, p.seller_id, p.description,
+                   p.created_at, p.is_approved, p.status, p.rejection_reason, p.sku,
+                   p.barcode, p.discounted_price, p.cost_price, p.dimensions, p.variants, p.tags,
+                   COALESCE(c.name, 'General') as category_name
+            FROM products p
+            LEFT JOIN categories c ON c.id = p.category_id
+            WHERE p.seller_id::text = $1::text
+            ORDER BY p.created_at DESC
             """, str(seller_id).strip())
         elif all:
             rows = await conn.fetch("""
@@ -1491,8 +1544,15 @@ async def read_products(seller_id: Optional[str] = Query(None), all: Optional[bo
             """)
         else:
             rows = await conn.fetch("""
-            SELECT p.id, p.name, p.category_id, p.price, p.weight_grams, p.image_url, p.images, p.is_combo, p.stock_quantity, p.seller_id, p.description, p.created_at, p.is_approved, p.status, p.rejection_reason, p.sku, p.barcode, p.discounted_price, p.cost_price, p.dimensions, p.variants, p.tags
-            FROM products p WHERE p.is_approved = TRUE
+            SELECT p.id, p.name, p.category_id, p.price, p.weight_grams, p.image_url,
+                   p.images, p.is_combo, p.stock_quantity, p.seller_id, p.description,
+                   p.created_at, p.is_approved, p.status, p.rejection_reason, p.sku,
+                   p.barcode, p.discounted_price, p.cost_price, p.dimensions, p.variants, p.tags,
+                   COALESCE(c.name, 'General') as category_name
+            FROM products p
+            LEFT JOIN categories c ON c.id = p.category_id
+            WHERE p.is_approved = TRUE AND (p.stock_quantity IS NULL OR p.stock_quantity > 0)
+            ORDER BY p.created_at DESC
             """)
         results = [dict(r) for r in rows]
     import json
@@ -2225,9 +2285,7 @@ async def send_whatsapp_otp(payload: WhatsAppOTPRequest):
 
     return {
         "status": "success",
-        "message": "WhatsApp OTP dispatched successfully",
-        "otp": otp_code,
-        "free_test_mode": True
+        "message": "WhatsApp OTP dispatched successfully"
     }
 
 @app.get("/api/auth/whatsapp-status")
@@ -3113,13 +3171,20 @@ async def validate_coupon(payload: CouponValidateRequest):
     if payload.order_value < float(res['min_order_value']):
         raise HTTPException(status_code=400, detail=f"Minimum order value of ₹{res['min_order_value']} required.")
 
-    discount = (payload.order_value * float(res['discount_percent'])) / 100.0
+    # Support both percentage and flat discount types
+    discount_type = res.get('discount_type', 'percentage') or 'percentage'
+    flat_amount = res.get('flat_amount')
+    if discount_type == 'flat' and flat_amount is not None:
+        discount = float(flat_amount)
+    else:
+        discount = (payload.order_value * float(res['discount_percent'])) / 100.0
 
     return {
         "success": True,
         "code": res['code'],
         "discount_amount": discount,
-        "discount_percentage": float(res['discount_percent'])
+        "discount_percentage": float(res['discount_percent']),
+        "discount_type": discount_type
     }
 
 # Update Coupon
@@ -3316,14 +3381,37 @@ async def get_seller_orders(seller_id: str):
 # Get Single Order Details
 @app.get("/api/orders/{order_id}", response_model=OrderResponse)
 async def get_order_details(order_id: UUID):
-    query = """
-    SELECT id, user_id, seller_id, total_amount, status, tracking_id, order_source, shipping_partner, payment_gateway, trust_donation_amount, currency, exchange_rate, created_at
-    FROM orders WHERE id = $1
-    """
-    res = await execute_query_one(query, order_id)
-    if not res:
-        raise HTTPException(status_code=404, detail="Order not found")
-    return res
+    async with pool.acquire() as conn:
+        order = await conn.fetchrow("""
+            SELECT id, user_id, seller_id, total_amount, status, tracking_id, order_source,
+                   shipping_partner, payment_gateway, trust_donation_amount, currency,
+                   exchange_rate, created_at, awb_code, courier_name, tracking_url,
+                   pickup_scheduled_date, shiprocket_order_id, shiprocket_shipment_id
+            FROM orders WHERE id = $1
+        """, order_id)
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+        order_dict = dict(order)
+        # Fetch order items with product details
+        items = await conn.fetch("""
+            SELECT oi.id, oi.product_id, oi.quantity, oi.price_at_purchase,
+                   p.name as product_name, p.image_url
+            FROM order_items oi
+            LEFT JOIN products p ON p.id = oi.product_id
+            WHERE oi.order_id = $1
+        """, order_id)
+        order_dict['items'] = [
+            {
+                'id': str(r['id']),
+                'product_id': str(r['product_id']),
+                'product_name': r['product_name'] or 'Product',
+                'quantity': r['quantity'],
+                'price': float(r['price_at_purchase'] or 0),
+                'image_url': r['image_url'] or ''
+            }
+            for r in items
+        ]
+        return order_dict
 
 # Get User Wallet Transactions
 @app.get("/api/wallet/transactions/{user_id}", response_model=List[WalletTransactionResponse])
@@ -3373,7 +3461,9 @@ async def delete_wallet_transaction(tx_id: UUID):
 # Update Order Status
 @app.put("/api/orders/{order_id}/status")
 async def update_order_status(order_id: UUID, status: str):
-    valid_statuses = ['pending', 'paid', 'failed', 'processing', 'shipped', 'delivered', 'cancelled', 'disputed']
+    valid_statuses = ['pending', 'paid', 'failed', 'processing', 'shipped', 'delivered',
+                      'cancelled', 'disputed', 'ready_for_pickup', 'out_of_stock',
+                      'refunded', 'returned']
     if status.lower() not in valid_statuses:
         raise HTTPException(status_code=400, detail="Invalid order status.")
     
@@ -3573,10 +3663,29 @@ async def mark_ready_for_pickup(order_id: UUID, req: ReadyForPickupRequest):
             "shipping_is_billing": True,
         }
 
-        sr_result = await create_shiprocket_order(sr_order_data)
+        try:
+            sr_result = await create_shiprocket_order(sr_order_data)
+        except Exception as sr_exc:
+            print(f"[Shiprocket] create_shiprocket_order exception: {sr_exc}")
+            sr_result = {"success": False, "error": str(sr_exc)}
 
         if not sr_result.get("success"):
-            raise HTTPException(status_code=502, detail=f"Shiprocket order creation failed: {sr_result.get('error', 'Unknown error')}")
+            # Graceful fallback: mark order as ready_for_pickup without Shiprocket
+            print(f"[Shiprocket] Falling back to manual pickup for order {order_id}: {sr_result.get('error')}")
+            await conn.execute("""
+                UPDATE orders SET status = 'ready_for_pickup', updated_at = NOW()
+                WHERE id = $1
+            """, order_id)
+            return {
+                "status": "ready_for_pickup",
+                "shiprocket_order_id": None,
+                "shipment_id": None,
+                "awb_code": None,
+                "courier_name": req.courier_name or "Manual",
+                "tracking_url": None,
+                "pickup_date": None,
+                "note": f"Marked ready without Shiprocket: {sr_result.get('error', 'Service unavailable')}"
+            }
 
         shipment_id = sr_result.get("shipment_id", "")
         shiprocket_order_id = sr_result.get("shiprocket_order_id", "")

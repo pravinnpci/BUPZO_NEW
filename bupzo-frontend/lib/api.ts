@@ -236,6 +236,7 @@ export async function createCheckout(order: {
   order_source: string;
   shipping_partner?: string;
   payment_gateway?: string;
+  payment_status?: string;
   trust_donation_amount?: number;
 }): Promise<{ success: boolean; message: string; order_id: string }> {
   const response = await authFetch('/api/checkout/', {

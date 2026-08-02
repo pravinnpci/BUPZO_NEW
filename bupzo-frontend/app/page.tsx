@@ -188,16 +188,24 @@ export default function Home() {
     }
     const checkUnread = async () => {
       try {
-        const resp = await fetch(`${API_URL}/api/messages/?user_id=${user.id}`);
+        // Use dedicated unread-count endpoint for efficiency
+        const resp = await fetch(`${API_URL}/api/messages/unread-count?user_id=${user.id}`);
         if (resp.ok) {
-          const msgs: any[] = await resp.json();
-          const unread = msgs.filter((m: any) => m.receiver_id === user.id && !m.is_read).length;
-          setUnreadMsgs(unread);
+          const data = await resp.json();
+          setUnreadMsgs(data.unread_count || 0);
+        } else {
+          // Fallback: filter from message list
+          const fallback = await fetch(`${API_URL}/api/messages/?user_id=${user.id}`);
+          if (fallback.ok) {
+            const msgs: any[] = await fallback.json();
+            const unread = msgs.filter((m: any) => m.receiver_id === user.id && !m.is_read).length;
+            setUnreadMsgs(unread);
+          }
         }
       } catch (e) {}
     };
     checkUnread();
-    const interval = setInterval(checkUnread, 5000);
+    const interval = setInterval(checkUnread, 30000);
     return () => clearInterval(interval);
   }, [user?.id, customerTab]);
 

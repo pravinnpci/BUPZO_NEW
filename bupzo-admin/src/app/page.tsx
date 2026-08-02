@@ -68,6 +68,7 @@ export default function AdminMainPage() {
   const [coupons, setCoupons] = useState<any[]>([]);
   const [newCouponCode, setNewCouponCode] = useState('');
   const [newCouponDiscount, setNewCouponDiscount] = useState('');
+  const [newCouponDiscountType, setNewCouponDiscountType] = useState<'PERCENTAGE' | 'FLAT'>('PERCENTAGE');
   const [newCouponMinSpend, setNewCouponMinSpend] = useState('');
   const [newCouponExpiry, setNewCouponExpiry] = useState('');
   const [voucherSearchTerm, setVoucherSearchTerm] = useState('');
@@ -695,7 +696,9 @@ export default function AdminMainPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           code: newCouponCode,
-          discount_percent: parseFloat(newCouponDiscount),
+          discount_percent: newCouponDiscountType === 'PERCENTAGE' ? parseFloat(newCouponDiscount) : 0,
+          discount_value: newCouponDiscountType === 'FLAT' ? parseFloat(newCouponDiscount) : 0,
+          discount_type: newCouponDiscountType,
           is_premium_only: false,
           min_order_value: parseFloat(newCouponMinSpend) || 0,
           expiry_date: newCouponExpiry ? new Date(newCouponExpiry).toISOString() : new Date(Date.now() + 30*24*60*60*1000).toISOString(),
@@ -3380,12 +3383,18 @@ export default function AdminMainPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-zinc-500 mb-1">Discount Percentage (%)</label>
+                      {/* AD7: Discount Type toggle */}
+                      <label className="block text-zinc-500 mb-1">Discount Type</label>
+                      <div className="flex gap-2 mb-3">
+                        <button type="button" onClick={() => setNewCouponDiscountType('PERCENTAGE')} className={`flex-1 py-2 rounded-lg font-bold text-xs border transition ${newCouponDiscountType === 'PERCENTAGE' ? 'bg-violet-600 text-white border-violet-700' : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-600'}`}>% Percentage Off</button>
+                        <button type="button" onClick={() => setNewCouponDiscountType('FLAT')} className={`flex-1 py-2 rounded-lg font-bold text-xs border transition ${newCouponDiscountType === 'FLAT' ? 'bg-emerald-600 text-white border-emerald-700' : 'bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-700 text-zinc-600'}`}>₹ Flat Amount Off</button>
+                      </div>
+                      <label className="block text-zinc-500 mb-1">{newCouponDiscountType === 'FLAT' ? 'Flat Discount Amount (₹)' : 'Discount Percentage (%)'}</label>
                       <input 
                         type="number" 
                         min="1"
-                        max="100"
-                        placeholder="25" 
+                        max={newCouponDiscountType === 'PERCENTAGE' ? '100' : undefined}
+                        placeholder={newCouponDiscountType === 'FLAT' ? '50' : '25'} 
                         value={newCouponDiscount}
                         onChange={(e) => setNewCouponDiscount(e.target.value)}
                         className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg text-sm font-mono"
@@ -3485,7 +3494,7 @@ export default function AdminMainPage() {
                             >
                               {cp.code}
                             </td>
-                            <td className="py-3 font-mono">{cp.discount_percent}%</td>
+                            <td className="py-3 font-mono">{cp.discount_type === 'FLAT' ? `₹${cp.discount_value || cp.discount_percent}` : `${cp.discount_percent}%`}</td>
                             <td className="py-3 font-mono text-zinc-600 dark:text-zinc-400">{cp.max_uses || 500}</td>
                             <td className="py-3 font-mono font-bold text-emerald-600 dark:text-emerald-400">{cp.usage_count || (cp.code === 'WELCOME100' ? 142 : 28)}</td>
                             <td className="py-3 text-zinc-500">{new Date(cp.expiry_date).toLocaleDateString()}</td>
@@ -3580,7 +3589,7 @@ export default function AdminMainPage() {
                         </div>
                         <div className="flex justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
                           <span className="font-bold text-zinc-500">Discount:</span>
-                          <span className="font-mono font-bold text-green-600">{previewCoupon.discount_percent}%</span>
+                          <span className="font-mono font-bold text-green-600">{previewCoupon.discount_type === 'FLAT' ? `₹${previewCoupon.discount_value || previewCoupon.discount_percent} flat off` : `${previewCoupon.discount_percent}% off`}</span>
                         </div>
                         <div className="flex justify-between border-b border-zinc-100 dark:border-zinc-800 pb-2">
                           <span className="font-bold text-zinc-500">Min Spend:</span>

@@ -24,6 +24,10 @@ interface User {
   is_seller?: boolean;
   is_admin?: boolean;
   seller_status?: string;
+  email_verified?: boolean;
+  phone_verified?: boolean;
+  google_verified?: boolean;
+  is_verified?: boolean;
 }
 
 interface AuthState {
@@ -68,6 +72,10 @@ const normalizeUser = (user: any): User | null => {
     address_lat: user.address_lat ? Number(user.address_lat) : undefined,
     address_lng: user.address_lng ? Number(user.address_lng) : undefined,
     is_2fa_enabled: user.is_2fa_enabled ?? false,
+    email_verified: user.email_verified ?? Boolean(user.is_email_verified || user.emailVerified),
+    phone_verified: user.phone_verified ?? Boolean(user.is_phone_verified || user.phoneVerified),
+    google_verified: user.google_verified ?? Boolean(user.is_google_verified || user.googleVerified),
+    is_verified: user.is_verified ?? Boolean(user.isVerified || user.email_verified || user.phone_verified),
   };
 };
 

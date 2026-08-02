@@ -1118,7 +1118,10 @@ export function CustomerSettings({ user, onNavigate }: { user: any; onNavigate?:
               </div>
             )}
 
-            <OutlinedField label="Store Name" value={storeName} onChange={setStoreName} placeholder="Store Name" />
+            {/* C1: Only show Store Name for approved sellers */}
+            {(user?.is_seller || user?.isSeller || user?.seller_status === 'APPROVED') && (
+              <OutlinedField label="Store Name" value={storeName} onChange={setStoreName} placeholder="Store Name" />
+            )}
 
             <OutlinedField 
               label="Phone Number" 
@@ -1384,7 +1387,7 @@ export function CustomerSettings({ user, onNavigate }: { user: any; onNavigate?:
                     <p className="text-xs text-gray-600 leading-snug">{addr.street}, {addr.city}</p>
                     <p className="text-xs text-gray-500 font-mono">{addr.state} - {addr.zip_code}</p>
                     <p className="text-[10px] font-bold text-amber-600 flex items-center gap-1 mt-1">
-                      📍 Pinpoint: Lat {addr.address_lat ? Number(addr.address_lat).toFixed(4) : lat.toFixed(4)}, Lng {addr.address_lng ? Number(addr.address_lng).toFixed(4) : lng.toFixed(4)}
+                      📍 Pinpoint: Lat {addr.address_lat ? Number(addr.address_lat).toFixed(4) : '—'}, Lng {addr.address_lng ? Number(addr.address_lng).toFixed(4) : '—'}
                     </p>
                   </div>
                 ))

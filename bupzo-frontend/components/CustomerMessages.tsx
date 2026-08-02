@@ -73,7 +73,7 @@ export function CustomerMessages({ user }: { user: any }) {
     if (!composeSubject.trim() || !composeContent.trim() || !composeReceiver.trim()) return;
     
     let finalReceiverId = composeReceiver;
-    const foundUser = allUsers.find(u => u?.email && u.email.toLowerCase().trim() === composeReceiver.toLowerCase().trim());
+    const foundUser = allUsers.find(u => u?.email && typeof u.email === 'string' && u.email.toLowerCase().trim() === composeReceiver.toLowerCase().trim());
     if (foundUser) {
       finalReceiverId = foundUser.id;
     }
@@ -122,33 +122,42 @@ export function CustomerMessages({ user }: { user: any }) {
           <div className="p-8 text-center text-gray-500">You have no messages.</div>
         ) : (
           <div className="divide-y divide-gray-100">
-            {messages.map((m: any) => (
-              <div key={m.id} className="p-4 hover:bg-gray-50 transition-colors border-b border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-1">
-                    <span className="font-bold text-sm text-gray-900">
-                      {m.sender_id === user?.id ? `To: ${m.receiver_name || 'Seller'}` : `From: ${m.sender_name || 'Admin / Seller'}`}
-                    </span>
-                    <span className="text-[11px] text-gray-400 font-mono">
-                      {m.created_at ? new Date(m.created_at).toLocaleString() : '2026-07-25 20:45'}
-                    </span>
+            {messages.map((m: any) => {
+              const isSent = m.sender_id === user?.id;
+              const isRead = m.is_read;
+              return (
+                <div key={m.id} className={`p-4 hover:bg-gray-50 transition-colors border-b border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${!isRead && !isSent ? 'bg-blue-50' : ''}`}>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      {isSent ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 uppercase tracking-wide">↑ SENT</span>
+                      ) : (
+                        <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${isRead ? 'bg-gray-100 text-gray-500' : 'bg-green-100 text-green-700'}`}>↓ {isRead ? 'READ' : 'NEW'}</span>
+                      )}
+                      <span className="font-semibold text-sm text-gray-900">
+                        {isSent ? `To: ${m.receiver_name || 'Seller'}` : `From: ${m.sender_name || 'Admin / Seller'}`}
+                      </span>
+                      <span className="text-[11px] text-gray-400 font-mono ml-auto">
+                        {m.created_at ? new Date(m.created_at).toLocaleString() : ''}
+                      </span>
+                    </div>
+                    <div className="font-semibold text-sm text-blue-700 dark:text-blue-400 mb-1">{m.subject}</div>
+                    <p className="text-xs text-gray-600 dark:text-gray-300 font-medium leading-relaxed">{m.content}</p>
                   </div>
-                  <div className="font-semibold text-sm text-blue-700 dark:text-blue-400 mb-1">{m.subject}</div>
-                  <p className="text-xs text-gray-600 dark:text-gray-300 font-medium leading-relaxed">{m.content}</p>
-                </div>
 
-                <button
-                  onClick={() => {
-                    setReplyTo(m);
-                    setReplyContent('');
-                    setShowReplyModal(true);
-                  }}
-                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3.5 py-1.5 rounded-lg shadow-sm transition flex items-center gap-1 shrink-0"
-                >
-                  <span>Reply ↩️</span>
-                </button>
-              </div>
-            ))}
+                  <button
+                    onClick={() => {
+                      setReplyTo(m);
+                      setReplyContent('');
+                      setShowReplyModal(true);
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3.5 py-1.5 rounded-lg shadow-sm transition flex items-center gap-1 shrink-0"
+                  >
+                    <span>Reply ↩️</span>
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
@@ -184,7 +193,7 @@ export function CustomerMessages({ user }: { user: any }) {
                   className="w-full border p-2 rounded text-sm outline-none focus:border-blue-500 bg-white"
                 >
                   <option value="a01b1234-5678-abcd-ef01-1234567890aa">Admin Support</option>
-                  {allUsers.filter(u => u.id !== "a01b1234-5678-abcd-ef01-1234567890aa").map(u => (
+                  {allUsers.filter(u => u.id !== "a01b1234-5678-abcd-ef01-1234567890aa" && u.id !== user?.id).map(u => (
                     <option key={u.id} value={u.id}>
                       {u.name || u.email || u.phone || u.id}
                     </option>

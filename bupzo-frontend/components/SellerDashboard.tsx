@@ -2231,7 +2231,10 @@ export function SellerDashboard({ onSwitchToCustomer }: { onSwitchToCustomer?: (
                     {filteredFollowers.map((f, i) => (
                       <tr key={f.id || i} className="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/40 transition">
                         <td className="px-4 py-3 font-bold text-zinc-900 dark:text-white flex items-center gap-3">
-                          <img src={f.avatar || `https://i.pravatar.cc/150?img=${i + 1}`} alt="" className="w-8 h-8 rounded-full border" />
+                          {/* S4: Use initial avatar instead of 3rd-party profile images for privacy */}
+                          <div className="w-8 h-8 rounded-full border border-blue-200 bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-extrabold text-xs shrink-0">
+                            {(f.name || f.user_name || 'F').charAt(0).toUpperCase()}
+                          </div>
                           <span>{f.name || f.user_name || 'Verified Fan'}</span>
                         </td>
                         <td className="px-4 py-3 text-zinc-500 font-mono">{f.email || f.user_email || 'follower@bupzo.com'}</td>
