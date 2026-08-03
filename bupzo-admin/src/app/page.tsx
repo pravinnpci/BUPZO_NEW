@@ -697,12 +697,12 @@ export default function AdminMainPage() {
         body: JSON.stringify({
           code: newCouponCode,
           discount_percent: newCouponDiscountType === 'PERCENTAGE' ? parseFloat(newCouponDiscount) : 0,
-          discount_value: newCouponDiscountType === 'FLAT' ? parseFloat(newCouponDiscount) : 0,
-          discount_type: newCouponDiscountType,
+          flat_amount: newCouponDiscountType === 'FLAT' ? parseFloat(newCouponDiscount) : null,
+          discount_type: newCouponDiscountType.toLowerCase(),
           is_premium_only: false,
           min_order_value: parseFloat(newCouponMinSpend) || 0,
           expiry_date: newCouponExpiry ? new Date(newCouponExpiry).toISOString() : new Date(Date.now() + 30*24*60*60*1000).toISOString(),
-          status: 'PENDING'
+          status: 'APPROVED'
         })
       });
       if (resp.ok) {

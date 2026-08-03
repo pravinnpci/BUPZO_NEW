@@ -283,7 +283,10 @@ async def startup_event():
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS privacy_accepted BOOLEAN DEFAULT TRUE;")
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);")
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS state VARCHAR(100);")
+        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS pincode VARCHAR(20);")
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS gstin VARCHAR(20);")
+        await conn.execute("CREATE TABLE IF NOT EXISTS transactions (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID, order_id UUID, amount NUMERIC(10,2), payment_gateway VARCHAR(50), transaction_id VARCHAR(255), status VARCHAR(50) DEFAULT 'SUCCESS', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);")
+        await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_id VARCHAR(255);")
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;")
         await conn.execute("UPDATE users SET created_at = NOW() WHERE created_at IS NULL;")
         await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS cgst_amount NUMERIC(10,2) DEFAULT 0.0;")
@@ -357,6 +360,7 @@ async def startup_event():
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP;")
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS total_spent NUMERIC(12,2) DEFAULT 0;")
         await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS store_name VARCHAR(200);")
+        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS pincode VARCHAR(20);")
 
         # Product images support
         await conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]'::jsonb;")
@@ -727,6 +731,8 @@ class CouponValidateRequest(BaseModel):
 class CouponUpdate(BaseModel):
     code: Optional[str] = None
     discount_percent: Optional[float] = None
+    discount_type: Optional[str] = None
+    flat_amount: Optional[float] = None
     is_premium_only: Optional[bool] = None
     expiry_date: Optional[datetime] = None
     usage_limit: Optional[int] = None
@@ -1158,56 +1164,54 @@ async def update_user_profile(request: Request, payload: UserProfileUpdateReques
         return res_dict
 
 @app.get("/api/users/{user_id}", response_model=UserResponse)
-async def read_user(user_id: UUID):
+async def read_user(user_id: str):
+    uid_str = str(user_id).strip()
+    try:
+        val_uuid = UUID(uid_str)
+    except Exception:
+        val_uuid = None
+
     query = """
     SELECT u.id, u.name, u.phone, u.email, u.is_premium, u.signup_platform, u.wallet_balance, u.privacy_accepted, u.created_at, u.address, u.pincode,
            CASE WHEN s.id IS NOT NULL THEN TRUE ELSE FALSE END AS is_seller,
            CASE WHEN u.password_hash IS NOT NULL AND u.password_hash != '' THEN TRUE ELSE FALSE END AS has_password
     FROM users u
     LEFT JOIN sellers s ON s.user_id = u.id
-    WHERE u.id = $1
+    WHERE u.id = $1 OR u.id::text = $2
     """
-    result = await execute_query_one(query, user_id)
+    result = await execute_query_one(query, val_uuid or uid_str, uid_str)
     if not result:
         raise HTTPException(status_code=404, detail="User not found")
     result['is_admin'] = result.get('phone', '') in ADMIN_PHONES
     return result
 
 @app.delete("/api/users/{user_id}")
-async def delete_user(user_id: UUID):
+async def delete_user(user_id: str):
     async with pool.acquire() as conn:
-        u = await conn.fetchrow("SELECT id FROM users WHERE id = $1", user_id)
-        if not u:
-            raise HTTPException(status_code=444, detail="User not found")
-        
-        # Delete referencing orders (seller side)
-        seller = await conn.fetchrow("SELECT id FROM sellers WHERE user_id = $1", user_id)
-        if seller:
-            await conn.execute("DELETE FROM orders WHERE seller_id = $1", seller['id'])
-            
-        # Delete referencing orders (customer side)
-        await conn.execute("DELETE FROM orders WHERE user_id = $1", user_id)
-        
-        # Delete referencing referrals
-        await conn.execute("DELETE FROM referrals WHERE referrer_id = $1 OR referee_id = $1", user_id)
-        
-        # Delete wishlist
-        await conn.execute("DELETE FROM wishlist WHERE user_id = $1", user_id)
-        
-        # Delete messages
-        await conn.execute("DELETE FROM messages WHERE sender_id = $1 OR receiver_id = $1", user_id)
+        uid_str = str(user_id).strip()
+        try:
+            val_uuid = UUID(uid_str)
+        except Exception:
+            val_uuid = None
 
-        # Delete reviews
-        await conn.execute("DELETE FROM reviews WHERE user_id = $1", user_id)
+        if val_uuid:
+            u = await conn.fetchrow("SELECT id FROM users WHERE id = $1", val_uuid)
+            if u:
+                seller = await conn.fetchrow("SELECT id FROM sellers WHERE user_id = $1", val_uuid)
+                if seller:
+                    await conn.execute("DELETE FROM orders WHERE seller_id = $1", seller['id'])
+                await conn.execute("DELETE FROM orders WHERE user_id = $1", val_uuid)
+                await conn.execute("DELETE FROM referrals WHERE referrer_id = $1 OR referee_id = $1", val_uuid)
+                await conn.execute("DELETE FROM wishlist WHERE user_id = $1", val_uuid)
+                await conn.execute("DELETE FROM messages WHERE sender_id = $1 OR receiver_id = $1", val_uuid)
+                await conn.execute("DELETE FROM reviews WHERE user_id = $1", val_uuid)
+                await conn.execute("DELETE FROM wallet_transactions WHERE user_id = $1", val_uuid)
+                await conn.execute("DELETE FROM addresses WHERE user_id = $1", val_uuid)
+                await conn.execute("DELETE FROM users WHERE id = $1", val_uuid)
+                await invalidate_cache(["cache:users"])
+                return {"success": True, "message": "User deleted successfully"}
 
-        # Delete wallet transactions
-        await conn.execute("DELETE FROM wallet_transactions WHERE user_id = $1", user_id)
-
-        # Delete addresses
-        await conn.execute("DELETE FROM addresses WHERE user_id = $1", user_id)
-        
-        # Finally delete the user
-        await conn.execute("DELETE FROM users WHERE id = $1", user_id)
+        await conn.execute("DELETE FROM users WHERE id::text = $1", uid_str)
         await invalidate_cache(["cache:users"])
         return {"success": True, "message": "User deleted successfully"}
 
@@ -3181,26 +3185,26 @@ async def update_category(category_id: UUID, payload: CategoryCreate):
     return res
 
 # Coupon/Voucher Management
-# Coupon/Voucher Management
 @app.get("/api/coupons/", response_model=List[CouponResponse])
 async def read_coupons(seller_id: Optional[UUID] = None):
     if seller_id:
-        query = "SELECT id, code, discount_percent, is_premium_only, expiry_date, usage_limit, min_order_value, created_at, created_by_seller_id, status FROM coupons WHERE created_by_seller_id = $1 ORDER BY created_at DESC"
+        query = "SELECT id, code, discount_percent, discount_type, flat_amount, is_premium_only, expiry_date, usage_limit, min_order_value, created_at, created_by_seller_id, status FROM coupons WHERE created_by_seller_id = $1 ORDER BY created_at DESC"
         return await execute_query(query, seller_id)
     else:
-        query = "SELECT id, code, discount_percent, is_premium_only, expiry_date, usage_limit, min_order_value, created_at, created_by_seller_id, status FROM coupons ORDER BY created_at DESC"
+        query = "SELECT id, code, discount_percent, discount_type, flat_amount, is_premium_only, expiry_date, usage_limit, min_order_value, created_at, created_by_seller_id, status FROM coupons ORDER BY created_at DESC"
         return await execute_query(query)
 
 @app.post("/api/coupons/", response_model=CouponResponse)
 async def create_coupon(payload: CouponCreate):
     # Auto status: PENDING if created by a seller, APPROVED if created by an admin
     assigned_status = payload.status if payload.status is not None else ('PENDING' if payload.created_by_seller_id else 'APPROVED')
+    discount_type = (payload.discount_type or 'percentage').lower()
     
     query = """
     INSERT INTO coupons 
-    (id, code, discount_percent, is_premium_only, expiry_date, usage_limit, min_order_value, created_by_seller_id, status) 
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
-    RETURNING id, code, discount_percent, is_premium_only, expiry_date, usage_limit, min_order_value, created_at, created_by_seller_id, status
+    (id, code, discount_percent, discount_type, flat_amount, is_premium_only, expiry_date, usage_limit, min_order_value, created_by_seller_id, status) 
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) 
+    RETURNING id, code, discount_percent, discount_type, flat_amount, is_premium_only, expiry_date, usage_limit, min_order_value, created_at, created_by_seller_id, status
     """
     try:
         res = await execute_query_one(
@@ -3208,6 +3212,8 @@ async def create_coupon(payload: CouponCreate):
             uuid4(), 
             payload.code.upper(), 
             payload.discount_percent, 
+            discount_type,
+            payload.flat_amount,
             payload.is_premium_only, 
             payload.expiry_date, 
             payload.usage_limit, 
@@ -3271,13 +3277,15 @@ async def validate_coupon(payload: CouponValidateRequest):
 @app.put("/api/coupons/{coupon_id}", response_model=CouponResponse)
 async def update_coupon(coupon_id: UUID, payload: CouponUpdate):
     # Retrieve current coupon
-    query_select = "SELECT id, code, discount_percent, is_premium_only, expiry_date, usage_limit, min_order_value, created_at, created_by_seller_id, status FROM coupons WHERE id = $1"
+    query_select = "SELECT id, code, discount_percent, discount_type, flat_amount, is_premium_only, expiry_date, usage_limit, min_order_value, created_at, created_by_seller_id, status FROM coupons WHERE id = $1"
     current = await execute_query_one(query_select, coupon_id)
     if not current:
         raise HTTPException(status_code=404, detail="Coupon not found")
 
     code = payload.code.upper() if payload.code is not None else current['code']
     discount_percent = payload.discount_percent if payload.discount_percent is not None else float(current['discount_percent'])
+    discount_type = payload.discount_type if payload.discount_type is not None else current['discount_type']
+    flat_amount = payload.flat_amount if payload.flat_amount is not None else (float(current['flat_amount']) if current['flat_amount'] is not None else None)
     is_premium_only = payload.is_premium_only if payload.is_premium_only is not None else current['is_premium_only']
     expiry_date = payload.expiry_date if payload.expiry_date is not None else current['expiry_date']
     usage_limit = payload.usage_limit if payload.usage_limit is not None else current['usage_limit']
@@ -3286,12 +3294,12 @@ async def update_coupon(coupon_id: UUID, payload: CouponUpdate):
 
     query_update = """
     UPDATE coupons 
-    SET code = $1, discount_percent = $2, is_premium_only = $3, expiry_date = $4, usage_limit = $5, min_order_value = $6, status = $7 
-    WHERE id = $8 
-    RETURNING id, code, discount_percent, is_premium_only, expiry_date, usage_limit, min_order_value, created_at, created_by_seller_id, status
+    SET code = $1, discount_percent = $2, discount_type = $3, flat_amount = $4, is_premium_only = $5, expiry_date = $6, usage_limit = $7, min_order_value = $8, status = $9 
+    WHERE id = $10 
+    RETURNING id, code, discount_percent, discount_type, flat_amount, is_premium_only, expiry_date, usage_limit, min_order_value, created_at, created_by_seller_id, status
     """
     try:
-        res = await execute_query_one(query_update, code, discount_percent, is_premium_only, expiry_date, usage_limit, min_order_value, status, coupon_id)
+        res = await execute_query_one(query_update, code, discount_percent, discount_type, flat_amount, is_premium_only, expiry_date, usage_limit, min_order_value, status, coupon_id)
         return res
     except asyncpg.exceptions.UniqueViolationError:
         raise HTTPException(status_code=400, detail="Coupon code already exists.")
@@ -3447,16 +3455,36 @@ async def get_all_orders():
 
 @app.get("/api/orders/seller/{seller_id}")
 async def get_seller_orders(seller_id: str):
-    try:
-        sid = UUID(seller_id)
-    except Exception:
-        return []
-    query = """
-    SELECT id, user_id, seller_id, total_amount, status, tracking_id, order_source, shipping_partner, payment_gateway, trust_donation_amount, currency, exchange_rate, created_at
-    FROM orders WHERE seller_id = $1 ORDER BY created_at DESC
-    """
-    res = await execute_query(query, sid)
-    return res or []
+    async with pool.acquire() as conn:
+        try:
+            seller_uuid = UUID(seller_id)
+            rows = await conn.fetch("""
+                SELECT o.id, o.user_id, o.seller_id, o.total_amount, o.status, o.tracking_id, 
+                       o.order_source, o.shipping_partner, o.payment_gateway, o.trust_donation_amount, 
+                       o.currency, o.exchange_rate, o.created_at, o.awb_code, o.courier_name, o.tracking_url,
+                       u.name as customer_name, u.email as customer_email, u.phone as customer_phone
+                FROM orders o
+                LEFT JOIN users u ON u.id = o.user_id
+                WHERE o.seller_id = $1
+                ORDER BY o.created_at DESC
+            """, seller_uuid)
+
+            orders = []
+            for row in rows:
+                r = dict(row)
+                items = await conn.fetch("""
+                    SELECT oi.id, oi.product_id, oi.quantity, oi.price_at_purchase,
+                           p.name, p.image_url, p.images
+                    FROM order_items oi
+                    LEFT JOIN products p ON p.id = oi.product_id
+                    WHERE oi.order_id = $1
+                """, row['id'])
+                r['items'] = [dict(i) for i in items]
+                orders.append(r)
+            return orders
+        except Exception as e:
+            print("Error fetching seller orders:", e)
+            return []
 
 # Get Single Order Details
 @app.get("/api/orders/{order_id}", response_model=OrderResponse)
@@ -3606,9 +3634,9 @@ class InventoryCheckResponse(BaseModel):
     sufficient: bool
 
 class ReadyForPickupRequest(BaseModel):
-    courier_id: int
-    courier_name: str
-    shipping_cost: float
+    courier_id: Optional[int] = 1
+    courier_name: Optional[str] = "Shiprocket Express"
+    shipping_cost: Optional[float] = 50.0
     pickup_pincode: Optional[str] = None
     delivery_pincode: Optional[str] = None
     weight_kg: Optional[float] = 0.5
@@ -4670,12 +4698,29 @@ async def mark_all_messages_read(user_id: str = Query(...)):
             pass
         return {"success": True, "marked_user": user_id}
 
-@app.get("/api/messages/unread-count/{user_id}")
-async def get_unread_message_count(user_id: str):
+@app.get("/api/messages/unread-count")
+async def get_unread_message_count_query(user_id: Optional[str] = Query(None), uid: Optional[str] = Query(None)):
+    target_uid = user_id or uid
+    if not target_uid:
+        return {"unread_count": 0}
     async with pool.acquire() as conn:
         try:
             cnt = await conn.fetchval(
-                "SELECT COUNT(*) FROM messages WHERE (receiver_id::text = $1::text OR recipient_id::text = $1::text) AND (is_read = FALSE OR is_read IS NULL)",
+                "SELECT COUNT(*) FROM messages WHERE (receiver_id::text = $1::text OR recipient_id::text = $1::text) AND (is_read = FALSE OR is_read IS NULL OR read = FALSE OR read IS NULL)",
+                str(target_uid)
+            ) or 0
+            return {"user_id": target_uid, "unread_count": int(cnt)}
+        except Exception:
+            return {"user_id": target_uid, "unread_count": 0}
+
+@app.get("/api/messages/unread-count/{user_id}")
+async def get_unread_message_count_path(user_id: str):
+    if not user_id:
+        return {"unread_count": 0}
+    async with pool.acquire() as conn:
+        try:
+            cnt = await conn.fetchval(
+                "SELECT COUNT(*) FROM messages WHERE (receiver_id::text = $1::text OR recipient_id::text = $1::text) AND (is_read = FALSE OR is_read IS NULL OR read = FALSE OR read IS NULL)",
                 str(user_id)
             ) or 0
             return {"user_id": user_id, "unread_count": int(cnt)}
