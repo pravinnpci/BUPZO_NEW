@@ -228,9 +228,9 @@ export async function fetchProducts(sellerId?: string): Promise<Product[]> {
   return parseJsonResponse<Product[]>(response);
 }
 
-export async function createCheckout(order: {
+export async function createOrder(order: {
   user_id: string;
-  seller_id: string;
+  seller_id?: string;
   items: { product_id: string; quantity: number }[];
   total_amount: number;
   order_source: string;
@@ -238,6 +238,15 @@ export async function createCheckout(order: {
   payment_gateway?: string;
   payment_status?: string;
   trust_donation_amount?: number;
+  cgst_amount?: number;
+  sgst_amount?: number;
+  igst_amount?: number;
+  shipping_gst?: number;
+  taxable_amount?: number;
+  customer_gstin?: string;
+  seller_gstin?: string;
+  seller_state?: string;
+  shipping_state?: string;
 }): Promise<{ success: boolean; message: string; order_id: string }> {
   const response = await authFetch('/api/checkout/', {
     method: 'POST',
@@ -245,6 +254,8 @@ export async function createCheckout(order: {
   });
   return parseJsonResponse(response);
 }
+
+export const createCheckout = createOrder;
 
 export async function addToWishlist(productId: string, userId: string): Promise<WishlistItem> {
   const response = await authFetch('/api/wishlist/', {

@@ -15,6 +15,7 @@ const fetchShiprocketTracking = async (trackingId: string) => {
 export const CustomerOrders = ({ customerOrders, user }: any) => {
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [trackingData, setTrackingData] = useState<{[key: string]: any}>({});
+  const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<any>(null);
 
   useEffect(() => {
     if (expandedOrderId) {
@@ -51,9 +52,21 @@ export const CustomerOrders = ({ customerOrders, user }: any) => {
                       </h3>
                       <p className="text-sm text-gray-500">{new Date(ord.created_at).toLocaleString()}</p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right flex flex-col items-end gap-2">
                       <p className="text-[#e52e06] font-extrabold text-xl">₹{ord.total_amount.toLocaleString()}</p>
-                      <span className={`text-xs font-bold px-2 py-1 rounded ${ord.status === 'DELIVERED' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{ord.status}</span>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs font-bold px-2 py-1 rounded ${ord.status === 'DELIVERED' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{ord.status}</span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedInvoiceOrder(ord);
+                          }}
+                          className="px-2.5 py-1 bg-gray-900 hover:bg-black text-white text-xs font-bold rounded-lg shadow flex items-center gap-1 transition"
+                        >
+                          <span>🧾</span> Invoice
+                        </button>
+                      </div>
                     </div>
                   </div>
                   
@@ -240,6 +253,124 @@ export const CustomerOrders = ({ customerOrders, user }: any) => {
           )}
         </div>
       </div>
+
+      {/* TAX INVOICE MODAL */}
+      {selectedInvoiceOrder && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto" onClick={() => setSelectedInvoiceOrder(null)}>
+          <div className="bg-white text-zinc-900 rounded-2xl max-w-2xl w-full p-6 shadow-2xl relative border border-zinc-200" onClick={(e) => e.stopPropagation()}>
+            <button 
+              onClick={() => setSelectedInvoiceOrder(null)} 
+              className="absolute top-4 right-4 text-zinc-400 hover:text-zinc-700 text-lg font-bold w-8 h-8 rounded-full bg-zinc-100 flex items-center justify-center"
+            >
+              ✕
+            </button>
+
+            {/* Header */}
+            <div className="flex items-center justify-between border-b pb-4 mb-4">
+              <div>
+                <h2 className="text-xl font-black text-zinc-900 tracking-tight flex items-center gap-2">
+                  <span>🧾</span> TAX INVOICE
+                </h2>
+                <p className="text-xs text-zinc-500 font-mono">Invoice #: INV-{String(selectedInvoiceOrder.id || '9812').slice(-8).toUpperCase()}</p>
+              </div>
+              <div className="text-right text-xs text-zinc-500">
+                <div><span className="font-bold text-zinc-700">Date:</span> {new Date(selectedInvoiceOrder.created_at || Date.now()).toLocaleDateString('en-IN')}</div>
+                <div><span className="font-bold text-zinc-700">Payment:</span> {selectedInvoiceOrder.payment_gateway || 'Online Escrow/UPI'}</div>
+              </div>
+            </div>
+
+            {/* Address Grid: Delivery Address vs Billing Address */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs mb-6">
+              {/* Delivery Address */}
+              <div className="bg-blue-50/60 p-3.5 rounded-xl border border-blue-100">
+                <h4 className="font-extrabold text-blue-900 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                  <span>🚚</span> Delivery Address
+                </h4>
+                <p className="font-bold text-zinc-800">{user?.name || selectedInvoiceOrder.customer_name || 'Customer'}</p>
+                <p className="text-zinc-600 mt-1 leading-relaxed">
+                  {selectedInvoiceOrder.shipping_address || selectedInvoiceOrder.address || user?.address || 'Standard Shipping Location'}
+                </p>
+                <p className="text-zinc-500 font-mono mt-1">Pincode: {selectedInvoiceOrder.pincode || user?.pincode || '—'}</p>
+                <p className="text-zinc-500 mt-0.5">Phone: +91 {selectedInvoiceOrder.phone || user?.phone || '—'}</p>
+              </div>
+
+              {/* Billing Address */}
+              <div className="bg-emerald-50/60 p-3.5 rounded-xl border border-emerald-100">
+                <h4 className="font-extrabold text-emerald-900 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                  <span>🏬</span> Billing Address (Customer Account Profile)
+                </h4>
+                <p className="font-bold text-zinc-800">{user?.name || 'Registered Account User'}</p>
+                <p className="text-zinc-600 mt-1 leading-relaxed">
+                  {user?.address || selectedInvoiceOrder.shipping_address || 'Profile Billing Location'}
+                </p>
+                <p className="text-zinc-500 font-mono mt-1">Pincode: {user?.pincode || selectedInvoiceOrder.pincode || '—'}</p>
+                <p className="text-zinc-500 mt-0.5">Email: {user?.email || '—'}</p>
+                <p className="text-zinc-500 mt-0.5">Phone: +91 {user?.phone || '—'}</p>
+              </div>
+            </div>
+
+            {/* Itemized Table */}
+            <div className="border rounded-xl overflow-hidden mb-6">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-zinc-100 text-zinc-700 font-bold uppercase tracking-wider">
+                  <tr>
+                    <th className="p-3">Item Description</th>
+                    <th className="p-3 text-center">Qty</th>
+                    <th className="p-3 text-right">Price</th>
+                    <th className="p-3 text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100">
+                  {Array.isArray(selectedInvoiceOrder.items) && selectedInvoiceOrder.items.length > 0 ? (
+                    selectedInvoiceOrder.items.map((item: any, idx: number) => (
+                      <tr key={idx}>
+                        <td className="p-3 font-semibold text-zinc-800">{item.name || item.title || 'Product'}</td>
+                        <td className="p-3 text-center font-mono">{item.quantity || 1}</td>
+                        <td className="p-3 text-right font-mono">₹{item.price || 0}</td>
+                        <td className="p-3 text-right font-bold text-zinc-900">₹{((item.price || 0) * (item.quantity || 1)).toLocaleString()}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td className="p-3 font-semibold text-zinc-800">{selectedInvoiceOrder.product_name || 'Marketplace Item'}</td>
+                      <td className="p-3 text-center font-mono">1</td>
+                      <td className="p-3 text-right font-mono">₹{selectedInvoiceOrder.total_amount || 0}</td>
+                      <td className="p-3 text-right font-bold text-zinc-900">₹{selectedInvoiceOrder.total_amount || 0}</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Totals Summary */}
+            <div className="flex justify-between items-center bg-zinc-50 p-4 rounded-xl mb-6">
+              <div className="text-xs text-zinc-500">
+                <span>GST / Tax Included</span> • <span className="text-emerald-600 font-bold">Paid via Bupzo Escrow Gateway</span>
+              </div>
+              <div className="text-right">
+                <div className="text-xs text-zinc-500 font-medium">Grand Total:</div>
+                <div className="text-2xl font-black text-emerald-600">₹{selectedInvoiceOrder.total_amount?.toLocaleString() || '0'}</div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button 
+                onClick={() => setSelectedInvoiceOrder(null)} 
+                className="px-4 py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-700 font-bold text-xs rounded-xl"
+              >
+                Close
+              </button>
+              <button 
+                onClick={() => window.print()} 
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow flex items-center gap-1.5"
+              >
+                <span>🖨️</span> Print Tax Invoice
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -108,16 +108,35 @@ export default function CheckoutPage() {
       for (const sellerId of Object.keys(sellerCarts)) {
         const sellerItems = sellerCarts[sellerId];
         const sellerSubtotal = sellerItems.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+        const sellerShip = shippingCost / numSellers;
+        const sellerDonation = TRUST_DONATION_AMOUNT / numSellers;
+        const taxableAmount = Math.round((sellerSubtotal / 1.18) * 100) / 100;
+        const totalGst = Math.round((sellerSubtotal - taxableAmount) * 100) / 100;
+        const shippingGst = Math.round((sellerShip * 0.18) * 100) / 100;
         
+        // Intra-state standard calculation for default Tamil Nadu (TN)
+        const isIntraState = true;
+        const cgst = isIntraState ? Math.round((totalGst / 2) * 100) / 100 : 0;
+        const sgst = isIntraState ? Math.round((totalGst / 2) * 100) / 100 : 0;
+        const igst = !isIntraState ? totalGst : 0;
+
         await createCheckout({
           user_id: user.id,
           seller_id: sellerId,
           items: sellerItems.map(item => ({ product_id: item.product.id, quantity: item.quantity })),
-          total_amount: sellerSubtotal + (shippingCost / numSellers) + (TRUST_DONATION_AMOUNT / numSellers),
+          total_amount: sellerSubtotal + sellerShip + sellerDonation,
           order_source: 'WEB',
           payment_gateway: remainingAmount <= 0 ? 'Wallet' : paymentMethod,
           payment_status: paymentMethod === 'COD' ? 'PENDING_COD' : 'COMPLETED',
-          trust_donation_amount: TRUST_DONATION_AMOUNT / numSellers
+          trust_donation_amount: sellerDonation,
+          taxable_amount: taxableAmount,
+          cgst_amount: cgst,
+          sgst_amount: sgst,
+          igst_amount: igst,
+          shipping_gst: shippingGst,
+          customer_gstin: (user as any).gstin || '',
+          seller_state: 'Tamil Nadu',
+          shipping_state: 'Tamil Nadu'
         });
       }
       

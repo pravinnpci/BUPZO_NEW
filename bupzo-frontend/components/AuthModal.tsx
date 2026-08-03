@@ -386,23 +386,12 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
             console.warn('GIS id prompt error:', promptErr);
           }
         }
-
-        // Try window.prompt if popup blocked
-        if (!selectedEmail && typeof window !== 'undefined') {
-          try {
-            const directEmail = window.prompt("Google Popup blocked by browser. Please enter your Google email address:");
-            if (directEmail && directEmail.includes('@')) {
-              selectedEmail = directEmail.trim();
-              selectedName = selectedEmail.split('@')[0];
-            }
-          } catch (e) {}
-        }
       }
 
       if (!selectedEmail) {
         setIsLoading(false);
         setShowGoogleEmailModal(true);
-        return setMessage("Google Popup blocked by browser. Please enter your Google email address:");
+        return setMessage("✨ Enter your Google email address below to sign in:");
       }
 
       let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';

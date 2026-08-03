@@ -131,6 +131,7 @@ export function CustomerSettings({ user, onNavigate }: { user: any; onNavigate?:
   const [address, setAddress] = useState(user?.address || '');
   const [userState, setUserState] = useState(user?.state || 'Tamil Nadu');
   const [zipCode, setZipCode] = useState(user?.pincode || '');
+  const [gstin, setGstin] = useState(user?.gstin || '');
   
   // Seller Application & Status State
   const [sellerStatus, setSellerStatus] = useState<any>(null);
@@ -229,6 +230,7 @@ export function CustomerSettings({ user, onNavigate }: { user: any; onNavigate?:
       setZipCode(user.pincode || '');
       setUserState(user.state || 'Tamil Nadu');
       setStoreName(user.store_name || user.business_name || '');
+      setGstin(user.gstin || '');
       if (user.address_lat) setLat(Number(user.address_lat));
       if (user.address_lng) setLng(Number(user.address_lng));
     }
@@ -618,6 +620,15 @@ export function CustomerSettings({ user, onNavigate }: { user: any; onNavigate?:
   };
 
   const handleSaveSettings = async () => {
+    if (zipCode.trim() && !/^\d{6}$/.test(zipCode.trim())) {
+      setStatusMsg("⚠️ Please enter a valid 6-digit Pincode.");
+      return;
+    }
+    if (address.trim() && address.trim().length < 4) {
+      setStatusMsg("⚠️ Please enter a valid street address.");
+      return;
+    }
+
     setIsLoading(true);
     setStatusMsg('');
     try {
@@ -645,6 +656,7 @@ export function CustomerSettings({ user, onNavigate }: { user: any; onNavigate?:
       if (address.trim()) updatedData.address = address.trim();
       if (userState) updatedData.state = userState;
       if (zipCode.trim()) updatedData.pincode = zipCode.trim();
+      if (gstin.trim()) updatedData.gstin = gstin.trim().toUpperCase();
       if (lat !== undefined && lat !== null) updatedData.address_lat = lat;
       if (lng !== undefined && lng !== null) updatedData.address_lng = lng;
 
