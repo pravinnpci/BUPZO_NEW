@@ -40,13 +40,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   walletTransactionCount
 }) => {
   const [orders, setOrders] = useState<any[]>([]);
+  const [trackingOrders, setTrackingOrders] = useState<any[]>([]);
 
   useEffect(() => {
     fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004'}/api/orders/`)
       .then(res => res.json())
       .then(data => setOrders(data))
       .catch(console.error);
+
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004'}/api/orders/tracking`)
+      .then(res => res.json())
+      .then(data => setTrackingOrders(Array.isArray(data) ? data : (data.orders || [])))
+      .catch(console.error);
   }, []);
+
+  const totalGst = (Array.isArray(trackingOrders) ? trackingOrders : []).reduce((acc, curr) => acc + (parseFloat(curr.gst_amount) || 0), 0);
+
 
   const handleUpdateOrderStatus = async (orderId: string, status: string) => {
     try {
@@ -144,6 +153,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
           <div className="flex items-center gap-1 text-zinc-500 dark:text-zinc-400 text-xs font-bold mt-3 relative z-10">
             <span>{pendingPayoutCount} pending payouts</span>
+          </div>
+          <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-primary-container/10 rounded-full blur-xl group-hover:bg-primary-container/20 transition-all duration-300"></div>
+        </div>
+
+        {/* Card: Total GST */}
+        <div className="bg-surface-container-lowest dark:bg-[#15131b] rounded-2xl border border-[#e8e1dd] dark:border-[#2f2b3b] p-6 flex flex-col justify-between min-h-[140px] shadow-sm relative overflow-hidden group hover:border-primary/60 hover:shadow-md transition-all duration-300">
+          <div className="flex flex-col gap-1 relative z-10">
+            <span className="text-[10px] uppercase font-extrabold tracking-wider text-zinc-500 dark:text-zinc-400">Total GST Collected</span>
+            <span className="text-3xl font-black font-heading text-zinc-900 dark:text-zinc-100 mt-1">₹{totalGst.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+          </div>
+          <div className="flex items-center gap-1 text-zinc-500 dark:text-zinc-400 text-xs font-bold mt-3 relative z-10">
+            <span>Across all orders</span>
           </div>
           <div className="absolute -right-4 -bottom-4 w-16 h-16 bg-primary-container/10 rounded-full blur-xl group-hover:bg-primary-container/20 transition-all duration-300"></div>
         </div>

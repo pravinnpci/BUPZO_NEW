@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useUser } from '@/lib/authStore';
-import { auth, GoogleAuthProvider, signInWithPopup } from '@/lib/firebase';
+import { auth, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from '@/lib/firebase';
 
 
 interface AuthModalProps {
@@ -61,6 +61,64 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
       })
       .catch(() => {});
   }, []);
+
+  // Handle Google Redirect Result safely
+  useEffect(() => {
+    const handleRedirect = async () => {
+      try {
+        if (typeof getRedirectResult === 'function' && auth) {
+          const result = await getRedirectResult(auth);
+          if (result?.user) {
+            setIsLoading(true);
+            const fbUser = result.user;
+            const selectedEmail = fbUser.email || '';
+            const selectedName = fbUser.displayName || (selectedEmail ? selectedEmail.split('@')[0] : 'Google User');
+            const googleUid = fbUser.uid;
+            const googleToken = await fbUser.getIdToken();
+            
+            let apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
+            apiUrl = apiUrl.split('#')[0].trim().replace(/\/$/, '');
+            const resp = await fetch(`${apiUrl}/api/auth/google`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                email: selectedEmail,
+                name: selectedName,
+                google_token: googleToken,
+                google_id_token: googleToken,
+                google_uid: googleUid
+              })
+            });
+
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data.detail || 'Google Authentication failed.');
+
+            const finalUser = data.user;
+            const token = data.access_token;
+            setTokens(token, token);
+            setUser(finalUser);
+            localStorage.setItem('user', JSON.stringify(finalUser));
+            localStorage.setItem('bupzo_user', JSON.stringify(finalUser));
+
+            if (!finalUser.has_password) {
+              setGoogleSignedInUser(finalUser);
+              setGoogleSetPwMsg('');
+              setMode('google-set-password');
+            } else {
+              setMessage(`🎉 Signed in as ${finalUser.email} with Google successfully!`);
+              setTimeout(() => onClose(), 1000);
+            }
+          }
+        }
+      } catch (err: any) {
+        console.warn('Google Redirect Result handler error:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    handleRedirect();
+  }, []);
+
 
   // Registration & Forgot Password Live Validation
   const hasMinLength = password.length >= 8;
@@ -270,6 +328,21 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
   };
 
   const handleGoogleSignIn = async (overrideEmail?: string) => {
+    if (!overrideEmail && typeof window !== 'undefined') {
+      try {
+        if (auth) {
+          const provider = new GoogleAuthProvider();
+          provider.addScope('email');
+          provider.addScope('profile');
+          provider.setCustomParameters({ prompt: 'select_account' });
+          signInWithRedirect(auth, provider);
+          return;
+        }
+      } catch (err) {
+        console.warn(err);
+      }
+    }
+
     setIsLoading(true);
     setMessage('');
     try {
@@ -279,26 +352,6 @@ export function AuthModal({ onClose, initialMode = 'login' }: AuthModalProps) {
       let googleUid = '';
 
       const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '110313675568-6eoovlbd5871e5v48qn7p3f1e8vhs0vc.apps.googleusercontent.com';
-
-      // Primary flow: Use Firebase Auth GoogleAuthProvider with signInWithPopup
-      if (!selectedEmail) {
-        try {
-          if (auth) {
-            const provider = new GoogleAuthProvider();
-            provider.setCustomParameters({ prompt: 'select_account' });
-            const result = await signInWithPopup(auth, provider);
-            if (result?.user) {
-              const user = result.user;
-              selectedEmail = user.email || '';
-              selectedName = user.displayName || (selectedEmail ? selectedEmail.split('@')[0] : 'Google User');
-              googleUid = user.uid;
-              googleToken = await user.getIdToken();
-            }
-          }
-        } catch (firebaseErr: any) {
-          console.warn('Firebase Google Auth popup error/blocked (handled silently):', firebaseErr?.message || firebaseErr);
-        }
-      }
 
       // Fallback to Google Identity Services (GIS) if Firebase Auth popup is unconfigured or blocked
       if (!selectedEmail && typeof window !== 'undefined') {

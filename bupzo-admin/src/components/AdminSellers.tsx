@@ -41,6 +41,12 @@ export const AdminSellers: React.FC<AdminSellersProps> = ({
   const [rejectSellerName, setRejectSellerName] = useState<string | null>(null);
   const [sellerRejectionReason, setSellerRejectionReason] = useState('');
 
+  // Seller Approval Modal state
+  const [showApproveModal, setShowApproveModal] = useState(false);
+  const [approveSellerId, setApproveSellerId] = useState<string | null>(null);
+  const [approveSellerName, setApproveSellerName] = useState<string | null>(null);
+  const [approveCommissionRate, setApproveCommissionRate] = useState('10.0');
+
   // Sellers state & auto re-fetch from GET /api/sellers/
   const [localSellers, setLocalSellers] = useState<Seller[]>(sellers || []);
 
@@ -101,11 +107,23 @@ export const AdminSellers: React.FC<AdminSellersProps> = ({
     }
   }, [sellers]);
 
-  const handleApproveSellerAction = async (sellerId: string) => {
+  const openApproveSellerModal = (sellerId: string, storeName: string) => {
+    setApproveSellerId(sellerId);
+    setApproveSellerName(storeName);
+    setApproveCommissionRate('10.0');
+    setShowApproveModal(true);
+  };
+
+  const handleApproveSellerSubmit = async () => {
+    if (!approveSellerId) return;
     try {
       const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
       const API_URL = rawApiUrl.split('#')[0].trim().replace(/\/$/, '');
-      const resp = await fetch(`${API_URL}/api/sellers/${sellerId}/approve`, { method: 'POST' });
+      const resp = await fetch(`${API_URL}/api/sellers/${approveSellerId}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ commission_rate: parseFloat(approveCommissionRate) || 10.0 })
+      });
       if (resp.ok) {
         showAdminToast("Merchant approved successfully!");
       } else {
@@ -115,6 +133,9 @@ export const AdminSellers: React.FC<AdminSellersProps> = ({
       console.error(err);
       showAdminToast("Error approving merchant.", "error");
     }
+    setShowApproveModal(false);
+    setApproveSellerId(null);
+    setApproveSellerName(null);
     await fetchSellersFromApi();
     if (onRefreshData) onRefreshData();
   };
@@ -435,7 +456,7 @@ export const AdminSellers: React.FC<AdminSellersProps> = ({
                       )}
                       {s.status !== 'Approved' && s.status !== 'APPROVED' && (
                         <button
-                          onClick={() => handleApproveSellerAction(s.id)}
+                          onClick={() => openApproveSellerModal(s.id, s.businessName)}
                           className="bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 py-1 rounded text-[10px] font-bold shadow-sm transition"
                         >
                           Approve Merchant
@@ -786,6 +807,43 @@ export const AdminSellers: React.FC<AdminSellersProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* APPROVE SELLER MODAL */}
+      {showApproveModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-[#fff8f4] dark:bg-[#15131b] border border-[#e8e1dd] dark:border-[#2f2b3b] rounded-2xl w-full max-w-sm p-6 shadow-2xl relative text-zinc-900 dark:text-zinc-100">
+            <h3 className="text-lg font-bold font-heading mb-2">Approve Merchant</h3>
+            <p className="text-sm text-zinc-500 mb-4">Set commission rate for {approveSellerName}</p>
+            
+            <div className="mb-4">
+              <label className="block text-zinc-500 mb-1">Commission Rate (%)</label>
+              <input 
+                type="number"
+                step="0.1"
+                value={approveCommissionRate}
+                onChange={(e) => setApproveCommissionRate(e.target.value)}
+                className="w-full px-3 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-800 rounded-lg text-sm font-mono"
+              />
+            </div>
+            
+            <div className="flex gap-3 justify-end">
+              <button 
+                type="button"
+                onClick={() => setShowApproveModal(false)}
+                className="px-4 py-2 border border-zinc-300 dark:border-zinc-800 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 font-bold text-sm"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleApproveSellerSubmit}
+                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-bold text-sm"
+              >
+                Approve
+              </button>
+            </div>
           </div>
         </div>
       )}

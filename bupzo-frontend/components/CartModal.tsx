@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Product } from '@/lib/api';
-import { fetchShippingRates } from '@/lib/api';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004';
 
 type CartModalProps = {
   isOpen: boolean;
@@ -8,7 +9,7 @@ type CartModalProps = {
   cart: any[];
   updateQuantity: (id: string, qty: number) => void;
   user: any;
-  onCheckout: (walletAmountUsed: number, shippingCost: number, shippingPartner: string, trustDonation?: number) => void;
+  onCheckout: (walletAmountUsed: number, shippingCost: number, shippingPartner: string, trustDonation?: number, gstAmount?: number, platformCharge?: number) => void;
   promoCode: string;
   setPromoCode: (code: string) => void;
   appliedPromo: any;
@@ -17,15 +18,30 @@ type CartModalProps = {
 
 // Haversine Distance Calculation Formula in Kilometers
 function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371; // Earth's radius in km
+  const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = 
+  const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return Math.max(1, Math.round(R * c * 10) / 10);
+}
+
+function calculateGST(amount: number, gstRate: number = 18, sellerState: string = 'Tamil Nadu', customerState: string = 'Tamil Nadu') {
+  const taxable = Math.round(amount * 100) / 100;
+  const gstTotal = Math.round(taxable * gstRate) / 100;
+  const isIntraState = sellerState.trim().toLowerCase() === customerState.trim().toLowerCase();
+  return {
+    taxable,
+    cgst: isIntraState ? Math.round(gstTotal / 2 * 100) / 100 : 0,
+    sgst: isIntraState ? Math.round(gstTotal / 2 * 100) / 100 : 0,
+    igst: isIntraState ? 0 : Math.round(gstTotal * 100) / 100,
+    rate: gstRate,
+    total_gst: Math.round(gstTotal * 100) / 100,
+    tax_type: isIntraState ? 'CGST + SGST' : 'IGST'
+  };
 }
 
 export default function CartModal({
@@ -33,24 +49,30 @@ export default function CartModal({
   promoCode, setPromoCode, appliedPromo, handleApplyPromo
 }: CartModalProps) {
   const [cartTotal, setCartTotal] = useState(0);
+  const [gstBreakdown, setGstBreakdown] = useState<{taxable: number; cgst: number; sgst: number; igst: number; rate: number; total_gst: number; tax_type: string}>({taxable: 0, cgst: 0, sgst: 0, igst: 0, rate: 18, total_gst: 0, tax_type: 'CGST + SGST'});
   const [deliveryAddress, setDeliveryAddress] = useState<string>('');
   const [selectedAddrId, setSelectedAddrId] = useState<string>('personal');
   const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
   const [useWallet, setUseWallet] = useState<boolean>(false);
-  
+  const [loadingRates, setLoadingRates] = useState(false);
+
   // Coordinates
-  const [sellerLat] = useState<number>(13.0827); // Bupzo Central Seller Origin
-  const [sellerLng] = useState<number>(80.2707);
+  const [sellerLat] = useState<number>(11.0168); // Nagore/Nagapattinam area
+  const [sellerLng] = useState<number>(79.8412);
   const [customerLat, setCustomerLat] = useState<number>(user?.address_lat ? Number(user.address_lat) : 13.0827);
   const [customerLng, setCustomerLng] = useState<number>(user?.address_lng ? Number(user.address_lng) : 80.2707);
+  const [customerPincode, setCustomerPincode] = useState<string>(user?.pincode || '600001');
   const [distanceKm, setDistanceKm] = useState<number>(5.2);
 
-  const [shippingPartners, setShippingPartners] = useState<{name: string, cost: number, estimated_delivery_days?: string}[]>([
-    { name: '📦 Shiprocket Standard (Delhivery / BlueDart)', cost: 50, estimated_delivery_days: '3-5 Days' },
-    { name: '⚡ Bupzo Express Hyperlocal', cost: 90, estimated_delivery_days: 'Same Day' },
-    { name: '🚚 Dunzo / Porter Local Courier', cost: 40, estimated_delivery_days: '2 Hours' }
+  // Seller resolved from first cart item
+  const sellerIdFromCart = cart[0]?.product?.seller_id || null;
+
+  const [shippingPartners, setShippingPartners] = useState<{name: string; aggregator: string; courier_id: any; cost: number; estimated_delivery_days?: string; rating?: number}[]>([
+    { aggregator: 'shiprocket', courier_id: 1, name: '📦 Shiprocket Standard (Delhivery / BlueDart)', cost: 55, estimated_delivery_days: '3-5 Days', rating: 4.5 },
+    { aggregator: 'nimbuspost', courier_id: 101, name: '⚡ NimbusPost BlueDart Express', cost: 75, estimated_delivery_days: '1-2 Days', rating: 4.8 },
+    { aggregator: 'shiprocket', courier_id: 2, name: '🚚 Shiprocket DTDC Air', cost: 65, estimated_delivery_days: '2-3 Days', rating: 4.3 }
   ]);
-  const [selectedShipping, setSelectedShipping] = useState('📦 Shiprocket Standard (Delhivery / BlueDart)');
+  const [selectedShipping, setSelectedShipping] = useState(shippingPartners[0].name);
 
   useEffect(() => {
     let total = 0;
@@ -58,24 +80,64 @@ export default function CartModal({
       total += (item.product?.price || 0) * item.quantity;
     });
     setCartTotal(total);
+    // Calculate GST on subtotal (default 18% intra-state)
+    const avgGstRate = cart.length > 0 
+      ? cart.reduce((sum: number, item: any) => sum + (item.product?.gst_rate || 18), 0) / cart.length
+      : 18;
+    const gst = calculateGST(total, avgGstRate);
+    setGstBreakdown(gst);
   }, [cart]);
 
-  // Recalculate distance and live partner rates whenever customer coordinates update
+  // Fetch LIVE rates from backend when customer pincode changes
+  const fetchLiveRates = useCallback(async (delivPincode: string) => {
+    if (!delivPincode || delivPincode.length < 5) return;
+    setLoadingRates(true);
+    try {
+      const totalWeightKg = cart.reduce((acc: number, item: any) => {
+        return acc + ((item.product?.weight_grams || 300) / 1000) * item.quantity;
+      }, 0) || 0.5;
+
+      let url = `${API_BASE}/api/shipping-rates/?delivery_pincode=${delivPincode}&weight_kg=${totalWeightKg.toFixed(2)}`;
+      if (sellerIdFromCart) url += `&seller_id=${sellerIdFromCart}`;
+
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        const rates = data.rates || data;
+        if (Array.isArray(rates) && rates.length > 0) {
+          const mapped = rates.map((r: any) => ({
+            aggregator: r.aggregator || 'shiprocket',
+            courier_id: r.courier_id,
+            name: `${r.aggregator === 'nimbuspost' ? '⚡' : '📦'} ${r.name}`,
+            cost: Math.round(r.cost || 0),
+            estimated_delivery_days: r.estimated_delivery_days || '3-5 Days',
+            rating: r.rating || 4.5
+          }));
+          setShippingPartners(mapped);
+          setSelectedShipping(mapped[0].name);
+        }
+      }
+    } catch (err) {
+      console.warn('[Cart] Live rates fetch failed, using static fallback:', err);
+    } finally {
+      setLoadingRates(false);
+    }
+  }, [cart, sellerIdFromCart]);
+
+  // Recalculate distance whenever customer coordinates update
   useEffect(() => {
     const dist = calculateDistanceKm(sellerLat, sellerLng, customerLat, customerLng);
     setDistanceKm(dist);
-
-    const shiprocketRate = Math.max(40, Math.round(40 + dist * 2.5));
-    const expressRate = Math.max(70, Math.round(60 + dist * 5.0));
-    const dunzoRate = Math.max(30, Math.round(30 + dist * 3.5));
-
-    const updatedRates = [
-      { name: '📦 Shiprocket Standard (Delhivery / BlueDart)', cost: shiprocketRate, estimated_delivery_days: '3-5 Days' },
-      { name: '⚡ Bupzo Express Hyperlocal', cost: expressRate, estimated_delivery_days: 'Same Day Delivery' },
-      { name: '🚚 Dunzo / Porter Local Courier', cost: dunzoRate, estimated_delivery_days: 'Within 2 Hours' }
-    ];
-    setShippingPartners(updatedRates);
   }, [sellerLat, sellerLng, customerLat, customerLng]);
+
+  // Fetch live rates when cart opens or customer pincode changes
+  useEffect(() => {
+    if (isOpen && customerPincode) {
+      fetchLiveRates(customerPincode);
+    }
+  }, [isOpen, customerPincode]);
+
+
 
   const handleSaveAddress = async () => {
     if (!user || !deliveryAddress) return;
@@ -103,7 +165,7 @@ export default function CartModal({
 
   useEffect(() => {
     if (user && isOpen) {
-      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8004'}/api/addresses/user/${user.id}`)
+      fetch(`${API_BASE}/api/addresses/user/${user.id}`)
         .then(res => res.json())
         .then(data => {
           if (Array.isArray(data)) {
@@ -116,10 +178,13 @@ export default function CartModal({
         setDeliveryAddress(`${user.address}, ${user.pincode || ''}`);
         if (user.address_lat) setCustomerLat(Number(user.address_lat));
         if (user.address_lng) setCustomerLng(Number(user.address_lng));
+        if (user.pincode) setCustomerPincode(user.pincode);
       }
     }
   }, [user, isOpen]);
 
+
+  const PLATFORM_CHARGE = 5;
   const TRUST_DONATION_AMOUNT = 2;
   const [addDonation, setAddDonation] = useState<boolean>(true);
   const donationAmount = addDonation ? TRUST_DONATION_AMOUNT : 0;
@@ -128,9 +193,17 @@ export default function CartModal({
 
   const discount = appliedPromo?.discount_amount || 0;
   const totalAfterDiscount = Math.max(0, cartTotal - discount);
-  
+
+  // Recalculate GST on discounted amount
+  const avgGstRate = cart.length > 0 
+    ? cart.reduce((sum: number, item: any) => sum + (item.product?.gst_rate || 18), 0) / cart.length
+    : 18;
+  const gstOnDiscounted = calculateGST(totalAfterDiscount, avgGstRate);
+  const gstTotal = gstOnDiscounted.total_gst;
+
   const currentShippingCost = shippingPartners.find(p => p.name === selectedShipping)?.cost || shippingPartners[0].cost;
-  const totalWithDonation = totalAfterDiscount + currentShippingCost + donationAmount;
+  const totalWithDonation = totalAfterDiscount + gstTotal + currentShippingCost + donationAmount + PLATFORM_CHARGE;
+
   
   const maxWalletUsable = user?.wallet_balance ? Math.min(totalWithDonation, parseFloat(user.wallet_balance)) : 0;
   const walletAmountUsed = useWallet ? maxWalletUsable : 0;
@@ -233,6 +306,36 @@ export default function CartModal({
                     <span>Subtotal</span>
                     <span className="font-bold text-gray-900">₹{cartTotal.toLocaleString()}</span>
                   </div>
+                  {/* GST Breakdown */}
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 space-y-1 my-1">
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-amber-800 flex items-center gap-1">🧾 GST ({gstBreakdown.rate}%)</span>
+                      <span className="font-bold text-amber-900">+₹{gstBreakdown.total_gst.toLocaleString()}</span>
+                    </div>
+                    {gstBreakdown.tax_type === 'CGST + SGST' ? (
+                      <div className="space-y-0.5 text-[10px] text-amber-700 pl-2">
+                        <div className="flex justify-between">
+                          <span>CGST ({gstBreakdown.rate/2}%)</span>
+                          <span>₹{gstBreakdown.cgst.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>SGST ({gstBreakdown.rate/2}%)</span>
+                          <span>₹{gstBreakdown.sgst.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-[10px] text-amber-700 pl-2 flex justify-between">
+                        <span>IGST ({gstBreakdown.rate}%)</span>
+                        <span>₹{gstBreakdown.igst.toLocaleString()}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Platform Charge */}
+                  <div className="flex justify-between text-gray-600">
+                    <span className="flex items-center gap-1">⚙️ Platform Charge</span>
+                    <span className="font-bold text-gray-800">+₹{PLATFORM_CHARGE}</span>
+                  </div>
                   {appliedPromo && (
                     <div className="flex justify-between text-green-600">
                       <span>Discount ({appliedPromo?.code || 'Promo'})</span>
@@ -240,29 +343,46 @@ export default function CartModal({
                     </div>
                   )}
                   
-                  {/* Distance-Based Multi-Partner Shipping Aggregator Selection */}
+                  {/* Live Multi-Partner Shipping Aggregator Selection */}
                   <div className="space-y-2 border-t border-gray-100 pt-2">
                     <div className="flex justify-between items-center text-xs">
                       <span className="text-gray-700 font-bold flex items-center gap-1">
                         🚚 Shipping Partner Aggregator
+                        {loadingRates && <span className="ml-1 text-[10px] text-blue-500 animate-pulse">⟳ Fetching live rates...</span>}
                       </span>
                       <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
                         📍 {distanceKm} km from Seller
                       </span>
                     </div>
 
-                    <select 
+                    <select
                        value={selectedShipping}
                        onChange={(e) => setSelectedShipping(e.target.value)}
-                       className="w-full text-xs p-2.5 border border-gray-300 rounded-lg bg-gray-50 outline-none cursor-pointer font-bold text-gray-800"
+                       disabled={loadingRates}
+                       className="w-full text-xs p-2.5 border border-gray-300 rounded-lg bg-gray-50 outline-none cursor-pointer font-bold text-gray-800 disabled:opacity-60"
                     >
                       {shippingPartners.map(p => (
                         <option key={p.name} value={p.name}>
-                          {p.name} ({p.estimated_delivery_days}) - ₹{p.cost}
+                          {p.name} ({p.estimated_delivery_days}) - ₹{p.cost} {p.rating ? `★${p.rating}` : ''}
                         </option>
                       ))}
                     </select>
+
+                    {/* Active Aggregator Badge */}
+                    {(() => {
+                      const activePartner = shippingPartners.find(p => p.name === selectedShipping);
+                      return activePartner ? (
+                        <div className="flex items-center gap-2 text-[10px]">
+                          <span className={`px-2 py-0.5 rounded font-bold uppercase tracking-wider border ${activePartner.aggregator === 'nimbuspost' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>
+                            {activePartner.aggregator === 'nimbuspost' ? '⚡ NimbusPost' : '📦 Shiprocket'}
+                          </span>
+                          <span className="text-gray-500">{activePartner.estimated_delivery_days} delivery</span>
+                          {activePartner.rating && <span className="text-amber-600 font-bold">★ {activePartner.rating}</span>}
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
+
 
                   {/* ₹2 Trust Donation Row */}
                   <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-200 text-xs flex justify-between items-center my-2">
@@ -334,14 +454,17 @@ export default function CartModal({
                           setDeliveryAddress(`${user.address || ''}, ${user.pincode || ''}`);
                           if (user.address_lat) setCustomerLat(Number(user.address_lat));
                           if (user.address_lng) setCustomerLng(Number(user.address_lng));
+                          if (user.pincode) setCustomerPincode(user.pincode);
                         } else {
                           const found = savedAddresses.find(a => String(a.id) === val);
                           if (found) {
                             setDeliveryAddress(`${found.name}, ${found.street}, ${found.city}, ${found.state} - ${found.zip_code}`);
                             if (found.address_lat) setCustomerLat(Number(found.address_lat));
                             if (found.address_lng) setCustomerLng(Number(found.address_lng));
+                            if (found.zip_code) setCustomerPincode(found.zip_code);
                           }
                         }
+
                       }}
                     >
                       <option value="personal">📍 Personal Info Address ({user?.address ? `${user.address.substring(0, 30)}...` : 'Default Profile Address'})</option>
@@ -382,7 +505,7 @@ export default function CartModal({
                   return;
                 }
                 onClose();
-                onCheckout(walletAmountUsed, currentShippingCost, selectedShipping, donationAmount);
+                onCheckout(walletAmountUsed, currentShippingCost, selectedShipping, donationAmount, gstTotal, PLATFORM_CHARGE);
               }}
               className="w-full bg-[#e52e06] text-white py-3.5 rounded-xl font-extrabold text-sm uppercase tracking-wider hover:bg-[#cc2805] transition shadow-xl flex items-center justify-center gap-2"
             >

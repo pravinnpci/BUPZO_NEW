@@ -9,16 +9,14 @@ import json
 import redis.asyncio as aioredis
 import asyncpg
 from dotenv import load_dotenv
-from typing import Optional, List, Any, Dict
-from app.shiprocket_service import (
+from typing import Optional, List, Any, Dict, Union
+from app.shipping_service import (
     fetch_shipping_rates,
     create_shiprocket_order,
+    create_nimbuspost_order,
     generate_awb,
-    schedule_pickup,
-    get_tracking,
-    cancel_shipment,
-    generate_label,
-    generate_manifest,
+    get_universal_tracking,
+    create_reverse_pickup,
 )
 
 from datetime import datetime, timedelta
@@ -43,12 +41,14 @@ app.add_middleware(
 
 @app.middleware("http")
 async def add_cors_headers(request: Request, call_next):
+    req_origin = request.headers.get("origin", "*")
     if request.method == "OPTIONS":
         from fastapi.responses import Response
         return Response(
             status_code=200,
             headers={
-                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Origin": req_origin,
+                "Access-Control-Allow-Credentials": "true",
                 "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
                 "Access-Control-Allow-Headers": "*",
                 "Access-Control-Max-Age": "86400",
@@ -62,10 +62,12 @@ async def add_cors_headers(request: Request, call_next):
             status_code=500,
             content={"detail": str(exc)}
         )
-    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Origin"] = req_origin
+    response.headers["Access-Control-Allow-Credentials"] = "true"
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
     response.headers["Access-Control-Allow-Headers"] = "*"
     return response
+
 
 
 @app.exception_handler(Exception)
@@ -79,28 +81,36 @@ async def global_exception_handler(request: Request, exc: Exception):
         headers={"Access-Control-Allow-Origin": "*"},
     )
 
-# Database Configuration
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://bupzo_user:bupzo_password@db:5432/bupzo_db")
+# Database & Host Resolution Configuration
+import socket
 
-# MinIO Config
-MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "minio:9000")
+def resolve_service_host(host: str, fallback: str) -> str:
+    try:
+        socket.gethostbyname(host)
+        return host
+    except Exception:
+        return fallback
+
+DB_HOST = resolve_service_host("db", "127.0.0.1")
+DB_PORT = "5432" if DB_HOST == "db" else "5435"
+DEFAULT_DB_URL = f"postgresql://bupzo_user:bupzo_password@{DB_HOST}:{DB_PORT}/bupzo_db"
+DATABASE_URL = os.getenv("DATABASE_URL", DEFAULT_DB_URL)
+
+MINIO_HOST = resolve_service_host("minio", "127.0.0.1")
+MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", f"{MINIO_HOST}:9000")
 MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minio_admin")
 MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minio_password")
 MINIO_BUCKET = os.getenv("MINIO_BUCKET", "bupzo-assets")
 
-minio_client = Minio(
-    MINIO_ENDPOINT,
-    access_key=MINIO_ACCESS_KEY,
-    secret_key=MINIO_SECRET_KEY,
-    secure=False
-)
-
-# Ensure bucket exists
 try:
+    minio_client = Minio(
+        MINIO_ENDPOINT,
+        access_key=MINIO_ACCESS_KEY,
+        secret_key=MINIO_SECRET_KEY,
+        secure=False
+    )
     if not minio_client.bucket_exists(MINIO_BUCKET):
         minio_client.make_bucket(MINIO_BUCKET)
-    
-    # Configure public read access policy
     import json
     public_policy = {
         "Version": "2012-10-17",
@@ -115,10 +125,10 @@ try:
     }
     minio_client.set_bucket_policy(MINIO_BUCKET, json.dumps(public_policy))
 except Exception as e:
-    print(f"Error checking/creating MinIO bucket: {e}")
+    print(f"MinIO Initialization Warning: {e}")
 
-# Redis Configuration
-REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379")
+REDIS_HOST = resolve_service_host("redis", "127.0.0.1")
+REDIS_URL = os.getenv("REDIS_URL", f"redis://{REDIS_HOST}:6379")
 redis_client = None
 
 # UltraMsg WhatsApp Credentials
@@ -261,264 +271,334 @@ pool = None
 
 async def init_db_pool():
     global pool
-    pool = await asyncpg.create_pool(
+    urls_to_try = [
         DATABASE_URL,
-        min_size=2,
-        max_size=15,
-        command_timeout=30,
-        server_settings={"application_name": "bupzo_backend"}
-    )
+        "postgresql://bupzo_user:bupzo_password@127.0.0.1:5435/bupzo_db",
+        "postgresql://bupzo_user:bupzo_password@localhost:5435/bupzo_db",
+        "postgresql://bupzo_user:bupzo_password@127.0.0.1:5432/bupzo_db"
+    ]
+    for url in urls_to_try:
+        try:
+            pool = await asyncpg.create_pool(
+                url,
+                min_size=1,
+                max_size=15,
+                command_timeout=30,
+                server_settings={"application_name": "bupzo_backend"}
+            )
+            print(f"[DB] Connected successfully to {url}")
+            return pool
+        except Exception as e:
+            print(f"[DB] Could not connect to {url}: {e}")
+    print("[DB Warning] Proceeding without active database pool connection.")
 
 @app.on_event("startup")
 async def startup_event():
     await init_db_pool()
     await init_redis()
-    # Dynamic DB Schema Migration: Ensure columns exist
-    async with pool.acquire() as conn:
-        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS name VARCHAR(100);")
-        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE;")
-        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified BOOLEAN DEFAULT FALSE;")
-        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS google_verified BOOLEAN DEFAULT FALSE;")
-        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by UUID;")
-        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS privacy_accepted BOOLEAN DEFAULT TRUE;")
-        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);")
-        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS state VARCHAR(100);")
-        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS pincode VARCHAR(20);")
-        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS gstin VARCHAR(20);")
-        await conn.execute("CREATE TABLE IF NOT EXISTS transactions (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID, order_id UUID, amount NUMERIC(10,2), payment_gateway VARCHAR(50), transaction_id VARCHAR(255), status VARCHAR(50) DEFAULT 'SUCCESS', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);")
-        await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_id VARCHAR(255);")
-        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;")
-        await conn.execute("UPDATE users SET created_at = NOW() WHERE created_at IS NULL;")
-        await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS cgst_amount NUMERIC(10,2) DEFAULT 0.0;")
-        await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS sgst_amount NUMERIC(10,2) DEFAULT 0.0;")
-        await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS igst_amount NUMERIC(10,2) DEFAULT 0.0;")
-        await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_gst NUMERIC(10,2) DEFAULT 0.0;")
-        await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_gstin VARCHAR(20);")
-        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT 'India';")
-        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS address_lat DECIMAL(10,8);")
-        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS address_lng DECIMAL(11,8);")
-        await conn.execute("ALTER TABLE addresses ADD COLUMN IF NOT EXISTS address_lat DECIMAL(10,8);")
-        await conn.execute("ALTER TABLE addresses ADD COLUMN IF NOT EXISTS address_lng DECIMAL(11,8);")
-        await conn.execute("ALTER TABLE categories ALTER COLUMN description TYPE TEXT;")
+    if not pool:
+        return
+    try:
+        async with pool.acquire() as conn:
+            await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS name VARCHAR(100);")
+            await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE;")
+            await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_verified BOOLEAN DEFAULT FALSE;")
+            await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS google_verified BOOLEAN DEFAULT FALSE;")
+            await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by UUID;")
+            await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS privacy_accepted BOOLEAN DEFAULT TRUE;")
+            await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);")
+            await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS state VARCHAR(100);")
+            await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS pincode VARCHAR(20);")
+            await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS gstin VARCHAR(20);")
+            await conn.execute("CREATE TABLE IF NOT EXISTS transactions (id UUID PRIMARY KEY DEFAULT gen_random_uuid(), user_id UUID, order_id UUID, amount NUMERIC(10,2), payment_gateway VARCHAR(50), transaction_id VARCHAR(255), status VARCHAR(50) DEFAULT 'SUCCESS', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);")
+            await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_id VARCHAR(255);")
+            await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;")
+            await conn.execute("UPDATE users SET created_at = NOW() WHERE created_at IS NULL;")
+            await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS cgst_amount NUMERIC(10,2) DEFAULT 0.0;")
+            await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS sgst_amount NUMERIC(10,2) DEFAULT 0.0;")
+            await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS igst_amount NUMERIC(10,2) DEFAULT 0.0;")
+            await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_gst NUMERIC(10,2) DEFAULT 0.0;")
+            await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_gstin VARCHAR(20);")
+            await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS country VARCHAR(100) DEFAULT 'India';")
+            await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS address_lat DECIMAL(10,8);")
+            await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS address_lng DECIMAL(11,8);")
+            await conn.execute("ALTER TABLE addresses ADD COLUMN IF NOT EXISTS address_lat DECIMAL(10,8);")
+            await conn.execute("ALTER TABLE addresses ADD COLUMN IF NOT EXISTS address_lng DECIMAL(11,8);")
+            await conn.execute("ALTER TABLE categories ALTER COLUMN description TYPE TEXT;")
+            await conn.execute("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_signup_platform_check;")
+            await conn.execute("ALTER TABLE users ADD CONSTRAINT users_signup_platform_check CHECK (UPPER(signup_platform) IN ('WEB', 'APP'));")
+            await conn.execute("ALTER TABLE coupons ADD COLUMN IF NOT EXISTS created_by_seller_id UUID REFERENCES sellers(id) ON DELETE CASCADE;")
+            await conn.execute("ALTER TABLE coupons ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'PENDING';")
+            await conn.execute("UPDATE coupons SET status = 'APPROVED' WHERE status IS NULL;")
+            await conn.execute("ALTER TABLE wallet_transactions DROP CONSTRAINT IF EXISTS wallet_transactions_type_check;")
+            await conn.execute("ALTER TABLE wallet_transactions ADD CONSTRAINT wallet_transactions_type_check CHECK (type IN ('REFERRAL','PURCHASE','TOPUP','REFUND','ADMIN_ADJUSTMENT','ADMIN_REFUND','SALE','PAYOUT','SIGNUP_BONUS','WELCOME_BONUS'));")
+            await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS seller_gstin VARCHAR(100);")
+            await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS seller_state VARCHAR(100);")
+            await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_state VARCHAR(100);")
+            await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS taxable_amount NUMERIC(10,2) DEFAULT 0.0;")
+            await conn.execute("ALTER TABLE categories ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'APPROVED';")
+            await conn.execute("ALTER TABLE categories ADD COLUMN IF NOT EXISTS icon VARCHAR(100) DEFAULT 'category';")
+            await conn.execute("UPDATE categories SET status = 'APPROVED' WHERE status IS NULL;")
+            await conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS rejection_reason TEXT;")
+            await conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'PENDING';")
+            await conn.execute("ALTER TABLE categories ADD COLUMN IF NOT EXISTS rejection_reason TEXT;")
+            await conn.execute("ALTER TABLE categories ADD COLUMN IF NOT EXISTS description TEXT;")
+            await conn.execute("ALTER TABLE categories ADD COLUMN IF NOT EXISTS requested_by_seller_id UUID;")
+            await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS rejection_reason TEXT;")
+            await conn.execute("ALTER TABLE seller_reviews ADD COLUMN IF NOT EXISTS reply TEXT;")
+            await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS address TEXT;")
+            await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS bank_name VARCHAR(255);")
+            await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS account_number VARCHAR(100);")
+            await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS ifsc VARCHAR(50);")
+            await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS gstin VARCHAR(100);")
+            await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS pan VARCHAR(100);")
+            await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS fssai VARCHAR(100);")
+            await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS email VARCHAR(255);")
+            await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS phone VARCHAR(50);")
+            await conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS sku VARCHAR(100);")
+            await conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS barcode VARCHAR(100);")
+            await conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS discounted_price NUMERIC(10,2);")
+            await conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS cost_price NUMERIC(10,2);")
+            await conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS dimensions JSONB DEFAULT '{}';")
+            await conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS variants JSONB DEFAULT '[]';")
+            await conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}';")
+            await conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT FALSE;")
+            await conn.execute("ALTER TABLE categories ADD COLUMN IF NOT EXISTS slug VARCHAR(200);")
+            await conn.execute("ALTER TABLE categories ADD COLUMN IF NOT EXISTS parent_category_id UUID;")
+            await conn.execute("ALTER TABLE categories ADD COLUMN IF NOT EXISTS total_earnings NUMERIC(12,2) DEFAULT 0;")
+            await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS social_links JSONB DEFAULT '{}';")
+            await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS checkout_settings JSONB DEFAULT '{}';")
+            await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS service_pincodes TEXT[] DEFAULT '{}';")
+            await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS store_slug VARCHAR(200);")
+            await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS upi_id VARCHAR(100);")
+            await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_suspended BOOLEAN DEFAULT FALSE;")
+            await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP;")
+            await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS total_spent NUMERIC(12,2) DEFAULT 0;")
+            await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS store_name VARCHAR(200);")
+            await conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]'::jsonb;")
 
-        await conn.execute("ALTER TABLE users DROP CONSTRAINT IF EXISTS users_signup_platform_check;")
-        await conn.execute("ALTER TABLE users ADD CONSTRAINT users_signup_platform_check CHECK (UPPER(signup_platform) IN ('WEB', 'APP'));")
-        await conn.execute("ALTER TABLE coupons ADD COLUMN IF NOT EXISTS created_by_seller_id UUID REFERENCES sellers(id) ON DELETE CASCADE;")
-        await conn.execute("ALTER TABLE coupons ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'PENDING';")
-        await conn.execute("UPDATE coupons SET status = 'APPROVED' WHERE status IS NULL;")
-        await conn.execute("ALTER TABLE wallet_transactions DROP CONSTRAINT IF EXISTS wallet_transactions_type_check;")
-        await conn.execute("ALTER TABLE wallet_transactions ADD CONSTRAINT wallet_transactions_type_check CHECK (type IN ('REFERRAL','PURCHASE','TOPUP','REFUND','ADMIN_ADJUSTMENT','ADMIN_REFUND','SALE','PAYOUT','SIGNUP_BONUS','WELCOME_BONUS'));")
-        
-        await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS seller_gstin VARCHAR(100);")
-        await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS seller_state VARCHAR(100);")
-        await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_state VARCHAR(100);")
-        await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS taxable_amount NUMERIC(10,2) DEFAULT 0.0;")
-        
-        await conn.execute("ALTER TABLE categories ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'APPROVED';")
-        await conn.execute("ALTER TABLE categories ADD COLUMN IF NOT EXISTS icon VARCHAR(100) DEFAULT 'category';")
-        await conn.execute("UPDATE categories SET status = 'APPROVED' WHERE status IS NULL;")
-        
-        # Additional DB Schema Migrations for Approval Queues
-        await conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS rejection_reason TEXT;")
-        await conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'PENDING';")
-        await conn.execute("ALTER TABLE categories ADD COLUMN IF NOT EXISTS rejection_reason TEXT;")
-        await conn.execute("ALTER TABLE categories ADD COLUMN IF NOT EXISTS description TEXT;")
-        await conn.execute("ALTER TABLE categories ADD COLUMN IF NOT EXISTS requested_by_seller_id UUID;")
-        await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS rejection_reason TEXT;")
-        await conn.execute("ALTER TABLE seller_reviews ADD COLUMN IF NOT EXISTS reply TEXT;")
-        await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS address TEXT;")
-        await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS bank_name VARCHAR(255);")
-        await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS account_number VARCHAR(100);")
-        await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS ifsc VARCHAR(50);")
-        await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS gstin VARCHAR(100);")
-        await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS pan VARCHAR(100);")
-        await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS fssai VARCHAR(100);")
-        await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS email VARCHAR(255);")
-        await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS phone VARCHAR(50);")
-        
-        # Phase 1 DB Migrations
-        await conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS sku VARCHAR(100);")
-        await conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS barcode VARCHAR(100);")
-        await conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS discounted_price NUMERIC(10,2);")
-        await conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS cost_price NUMERIC(10,2);")
-        await conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS dimensions JSONB DEFAULT '{}';")
-        await conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS variants JSONB DEFAULT '[]';")
-        await conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}';")
-        await conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT FALSE;")
+            # Shipping & Refund tables
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS shipping_settings (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    provider VARCHAR(50) NOT NULL UNIQUE,
+                    is_active BOOLEAN DEFAULT TRUE,
+                    email VARCHAR(255),
+                    password VARCHAR(255),
+                    api_token TEXT,
+                    webhook_secret VARCHAR(255),
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS refund_requests (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
+                    user_id UUID,
+                    seller_id UUID,
+                    reason TEXT NOT NULL,
+                    images JSONB DEFAULT '[]'::jsonb,
+                    return_type VARCHAR(50) DEFAULT 'wallet',
+                    status VARCHAR(50) DEFAULT 'requested',
+                    reverse_awb VARCHAR(100),
+                    reverse_shipping_partner VARCHAR(50),
+                    refund_amount NUMERIC(10,2) DEFAULT 0.0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS latitude DECIMAL(10,8);")
+            await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS longitude DECIMAL(11,8);")
+            await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS pickup_address TEXT;")
+            await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS pickup_city VARCHAR(100);")
+            await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS pickup_state VARCHAR(100);")
+            await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS pickup_pincode VARCHAR(20);")
+            await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS pickup_phone VARCHAR(50);")
+            await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS nimbuspost_order_id VARCHAR(100);")
+            await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS nimbuspost_shipment_id VARCHAR(100);")
+            await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS awb_code VARCHAR(100);")
+            await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS courier_name VARCHAR(100);")
+            await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_url TEXT;")
+            await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS pickup_scheduled_date VARCHAR(100);")
+            await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_address TEXT;")
+            await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_pincode VARCHAR(20);")
+            await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS latitude DECIMAL(10,8);")
+            await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS longitude DECIMAL(11,8);")
 
-        await conn.execute("ALTER TABLE categories ADD COLUMN IF NOT EXISTS slug VARCHAR(200);")
-        await conn.execute("ALTER TABLE categories ADD COLUMN IF NOT EXISTS parent_category_id UUID;")
-        await conn.execute("ALTER TABLE categories ADD COLUMN IF NOT EXISTS total_earnings NUMERIC(12,2) DEFAULT 0;")
-
-        await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS social_links JSONB DEFAULT '{}';")
-        await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS checkout_settings JSONB DEFAULT '{}';")
-        await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS service_pincodes TEXT[] DEFAULT '{}';")
-        await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS store_slug VARCHAR(200);")
-        await conn.execute("ALTER TABLE sellers ADD COLUMN IF NOT EXISTS upi_id VARCHAR(100);")
-
-        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS is_suspended BOOLEAN DEFAULT FALSE;")
-        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP;")
-        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS total_spent NUMERIC(12,2) DEFAULT 0;")
-        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS store_name VARCHAR(200);")
-        await conn.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS pincode VARCHAR(20);")
-
-        # Product images support
-        await conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]'::jsonb;")
-        
-        # Ensure seller_followers, seller_reviews, and invoices tables exist
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS seller_followers (
+            await conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS gst_rate NUMERIC(5,2) DEFAULT 18.0;")
+            await conn.execute("ALTER TABLE products ADD COLUMN IF NOT EXISTS hsn_code VARCHAR(20) DEFAULT '';")
+            await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS platform_charge NUMERIC(10,2) DEFAULT 5.0;")
+            await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS gst_amount NUMERIC(10,2) DEFAULT 0.0;")
+            await conn.execute("ALTER TABLE orders ADD COLUMN IF NOT EXISTS gst_rate NUMERIC(5,2) DEFAULT 18.0;")
+            await conn.execute("""CREATE TABLE IF NOT EXISTS cancelled_orders (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                seller_id UUID REFERENCES sellers(id) ON DELETE CASCADE,
-                user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-                created_at TIMESTAMP DEFAULT NOW(),
-                UNIQUE(seller_id, user_id)
-            );
-        """)
-
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS messages (
-                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                sender_id UUID REFERENCES users(id) ON DELETE SET NULL,
-                receiver_id UUID REFERENCES users(id) ON DELETE SET NULL,
                 order_id UUID,
-                subject VARCHAR(255),
-                content TEXT,
-                read BOOLEAN DEFAULT FALSE,
-                created_at TIMESTAMP DEFAULT NOW()
-            );
-        """)
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS seller_reviews (
-                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                seller_id UUID REFERENCES sellers(id) ON DELETE CASCADE,
-                user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-                rating INT CHECK (rating >= 1 AND rating <= 5),
-                comment TEXT,
-                created_at TIMESTAMP DEFAULT NOW()
-            );
-        """)
-
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS invoices (
-                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-                invoice_number VARCHAR(50) UNIQUE,
-                order_id UUID,
-                seller_id UUID,
                 user_id UUID,
-                amount DECIMAL(10,2),
-                tax_amount DECIMAL(10,2),
-                status VARCHAR(20) DEFAULT 'PAID',
-                due_date TIMESTAMP,
-                created_at TIMESTAMP DEFAULT NOW()
-            );
-        """)
-        
-        # Create disputes table
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS disputes (
-                id VARCHAR(50) PRIMARY KEY,
-                customer VARCHAR(100) NOT NULL,
-                seller VARCHAR(100) NOT NULL,
-                amount DECIMAL(12,2) NOT NULL,
-                risk INT DEFAULT 0,
-                status VARCHAR(50) DEFAULT 'Under Review',
-                description TEXT,
-                created_at TIMESTAMP DEFAULT NOW()
-            );
-        """)
+                seller_id UUID,
+                reason TEXT,
+                cancelled_by VARCHAR(20) DEFAULT 'customer',
+                refund_amount NUMERIC(10,2) DEFAULT 0.0,
+                refund_status VARCHAR(50) DEFAULT 'pending',
+                reverse_awb VARCHAR(100),
+                aggregator VARCHAR(50),
+                cancelled_at TIMESTAMP DEFAULT NOW(),
+                metadata JSONB DEFAULT '{}'
+            );""")
+            await conn.execute("""CREATE TABLE IF NOT EXISTS shipping_dispatches (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                order_id UUID,
+                aggregator VARCHAR(50),
+                courier_name VARCHAR(100),
+                awb_code VARCHAR(100),
+                shiprocket_order_id VARCHAR(100),
+                nimbuspost_order_id VARCHAR(100),
+                shipment_id VARCHAR(100),
+                dispatch_status VARCHAR(50) DEFAULT 'pending',
+                tracking_url TEXT,
+                pickup_pincode VARCHAR(20),
+                delivery_pincode VARCHAR(20),
+                estimated_delivery DATE,
+                dispatched_at TIMESTAMP DEFAULT NOW(),
+                delivered_at TIMESTAMP
+            );""")
 
-        # Seed mock disputes if empty
-        disputes_count = await conn.fetchval("SELECT COUNT(*) FROM disputes;")
-        if disputes_count == 0:
             await conn.execute("""
-                INSERT INTO disputes (id, customer, seller, amount, risk, status, description)
-                VALUES 
-                ('DISP-10482', 'Meera S.', 'Nagore Halwa Palace', 2499.00, 82, 'Under Review', 'Mismatched shipping address + high quantity order of premium Halwa.'),
-                ('DISP-10480', 'Anitha P.', 'Siva Ceramics & Crafts', 899.00, 15, 'Resolved', 'Minor crack in ceramic base, refund completed to wallet.'),
-                ('DISP-10485', 'Ravi K.', 'Alpha Electronics', 5120.00, 65, 'Under Review', 'Third transaction failure follow-up.');
+                CREATE TABLE IF NOT EXISTS seller_followers (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    seller_id UUID REFERENCES sellers(id) ON DELETE CASCADE,
+                    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+                    created_at TIMESTAMP DEFAULT NOW(),
+                    UNIQUE(seller_id, user_id)
+                );
             """)
-
-        # Create notifications table
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS notifications (
-                id VARCHAR(100) PRIMARY KEY,
-                title VARCHAR(255) NOT NULL,
-                body TEXT NOT NULL,
-                target_tab VARCHAR(50),
-                target_id VARCHAR(100),
-                user_id VARCHAR(100),
-                created_at TIMESTAMP DEFAULT NOW(),
-                read BOOLEAN DEFAULT FALSE
-            );
-        """)
-
-        # Alter table in case it already exists
-        await conn.execute("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS target_id VARCHAR(100);")
-        await conn.execute("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS user_id VARCHAR(100);")
-
-        # Seed mock notifications if empty
-        notifs_count = await conn.fetchval("SELECT COUNT(*) FROM notifications;")
-        if notifs_count == 0:
             await conn.execute("""
-                INSERT INTO notifications (id, title, body, target_tab, read)
-                VALUES 
-                ('notif-seed-1', 'Voucher Approval Required', 'Voucher code "SWEET50" created by seller. Approval required.', 'vouchers', FALSE),
-                ('notif-seed-2', 'Seller KYC Pending', 'Merchant "Nagore Halwa Palace" is pending KYC approval.', 'kyc', FALSE);
+                CREATE TABLE IF NOT EXISTS messages (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    sender_id UUID REFERENCES users(id) ON DELETE SET NULL,
+                    receiver_id UUID REFERENCES users(id) ON DELETE SET NULL,
+                    order_id UUID,
+                    subject VARCHAR(255),
+                    content TEXT,
+                    read BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMP DEFAULT NOW()
+                );
             """)
-
-        # Create store_followers table
-        await conn.execute("""
-            CREATE TABLE IF NOT EXISTS store_followers (
-                user_id UUID NOT NULL,
-                seller_id UUID NOT NULL,
-                created_at TIMESTAMP DEFAULT NOW(),
-                PRIMARY KEY (user_id, seller_id)
-            );
-        """)
-
-        # Seed Mock Users and merchants so storefront and admin populate immediately
-        await conn.execute("""
-            DELETE FROM users
-            WHERE id IN (
-                'a01b1234-5678-abcd-ef01-1234567890aa',
-                'a01b1234-5678-abcd-ef01-1234567890ab',
-                'a01b1234-5678-abcd-ef01-1234567890ac'
-            )
-            OR phone IN ('+919876543210', '+919876543211', '+919876543212');
-        """)
-        await conn.execute("""
-            INSERT INTO users (id, phone, email, is_premium, signup_platform, privacy_accepted, wallet_balance, name)
-            VALUES
-                ('a01b1234-5678-abcd-ef01-1234567890aa', '+919876543210', 'admin@bupzo.com', TRUE, 'WEB', TRUE, 2500.00, 'Bupzo Patron'),
-                ('a01b1234-5678-abcd-ef01-1234567890ab', '+919876543211', 'seller@bupzo.com', FALSE, 'WEB', TRUE, 5000.00, 'Bupzo Seller'),
-                ('a01b1234-5678-abcd-ef01-1234567890ac', '+919876543212', 'customer@bupzo.com', FALSE, 'WEB', TRUE, 250.00, 'Bupzo Customer');
-        """)
-
-        await conn.execute("""
-            INSERT INTO categories (id, name, description)
-            VALUES
-                ('d04b1234-5678-abcd-ef01-1234567890ab', 'Nagore Specialties', 'Traditional sweets and regional premium foods.'),
-                ('d04b1234-5678-abcd-ef01-1234567890ac', 'Artisan Gifts', 'Curated handcrafted items from local merchants.')
-            ON CONFLICT (name) DO UPDATE SET description = EXCLUDED.description;
-        """)
-
-        await conn.execute("""
-            INSERT INTO sellers (id, user_id, business_name, commission_rate, status, kyc_details)
-            VALUES
-                ('c03b1234-5678-abcd-ef01-1234567890ab', 'a01b1234-5678-abcd-ef01-1234567890ab', 'Nagore Halwa Palace', 8.00, 'APPROVED', '{"gstin": "33AAAAA1111A1Z1", "fssai": "10022020000001"}'),
-                ('c03b1234-5678-abcd-ef01-1234567890ac', 'a01b1234-5678-abcd-ef01-1234567890ac', 'Panna Crafts & Gifts', 10.00, 'APPROVED', '{"gstin": "33BBBBB2222B2Z2", "fssai": "10022020000002"}')
-            ON CONFLICT (business_name) DO NOTHING;
-        """)
-
-        await conn.execute("""
-            INSERT INTO products (id, name, category_id, price, weight_grams, image_url, is_combo, stock_quantity, seller_id, description)
-            VALUES
-                ('e05b1234-5678-abcd-ef01-1234567890aa', 'Nagore Ghee Halwa', 'd04b1234-5678-abcd-ef01-1234567890ab', 299.00, 500.00, 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=400&q=80', FALSE, 150, 'c03b1234-5678-abcd-ef01-1234567890ab', 'Traditional ghee halwa with cashews and premium saffron.'),
-                ('e05b1234-5678-abcd-ef01-1234567890ab', 'Premium Dry Fruit Combo', 'd04b1234-5678-abcd-ef01-1234567890ab', 799.00, 1000.00, 'https://images.unsplash.com/photo-1596560548464-f010689b771a?auto=format&fit=crop&w=400&q=80', TRUE, 80, 'c03b1234-5678-abcd-ef01-1234567890ab', 'Assorted premium dry fruits perfect for gifting.'),
-                ('e05b1234-5678-abcd-ef01-1234567890ac', 'Handcrafted Brass Lamp', 'd04b1234-5678-abcd-ef01-1234567890ac', 1249.00, 650.00, 'https://images.unsplash.com/photo-1542831371-d531d36971e6?auto=format&fit=crop&w=400&q=80', FALSE, 45, 'c03b1234-5678-abcd-ef01-1234567890ac', 'Elegant artisan brass lamp for home décor.')
-            ON CONFLICT (id) DO NOTHING;
-        """)
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS seller_reviews (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    seller_id UUID REFERENCES sellers(id) ON DELETE CASCADE,
+                    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+                    rating INT CHECK (rating >= 1 AND rating <= 5),
+                    comment TEXT,
+                    created_at TIMESTAMP DEFAULT NOW()
+                );
+            """)
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS invoices (
+                    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                    invoice_number VARCHAR(50) UNIQUE,
+                    order_id UUID,
+                    seller_id UUID,
+                    user_id UUID,
+                    amount DECIMAL(10,2),
+                    tax_amount DECIMAL(10,2),
+                    status VARCHAR(20) DEFAULT 'PAID',
+                    due_date TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT NOW()
+                );
+            """)
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS disputes (
+                    id VARCHAR(50) PRIMARY KEY,
+                    customer VARCHAR(100) NOT NULL,
+                    seller VARCHAR(100) NOT NULL,
+                    amount DECIMAL(12,2) NOT NULL,
+                    risk INT DEFAULT 0,
+                    status VARCHAR(50) DEFAULT 'Under Review',
+                    description TEXT,
+                    created_at TIMESTAMP DEFAULT NOW()
+                );
+            """)
+            disputes_count = await conn.fetchval("SELECT COUNT(*) FROM disputes;")
+            if disputes_count == 0:
+                await conn.execute("""
+                    INSERT INTO disputes (id, customer, seller, amount, risk, status, description)
+                    VALUES
+                    ('DISP-10482', 'Meera S.', 'Nagore Halwa Palace', 2499.00, 82, 'Under Review', 'Mismatched shipping address + high quantity order of premium Halwa.'),
+                    ('DISP-10480', 'Anitha P.', 'Siva Ceramics & Crafts', 899.00, 15, 'Resolved', 'Minor crack in ceramic base, refund completed to wallet.'),
+                    ('DISP-10485', 'Ravi K.', 'Alpha Electronics', 5120.00, 65, 'Under Review', 'Third transaction failure follow-up.');
+                """)
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS notifications (
+                    id VARCHAR(100) PRIMARY KEY,
+                    title VARCHAR(255) NOT NULL,
+                    body TEXT NOT NULL,
+                    target_tab VARCHAR(50),
+                    target_id VARCHAR(100),
+                    user_id VARCHAR(100),
+                    created_at TIMESTAMP DEFAULT NOW(),
+                    read BOOLEAN DEFAULT FALSE
+                );
+            """)
+            await conn.execute("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS target_id VARCHAR(100);")
+            await conn.execute("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS user_id VARCHAR(100);")
+            notifs_count = await conn.fetchval("SELECT COUNT(*) FROM notifications;")
+            if notifs_count == 0:
+                await conn.execute("""
+                    INSERT INTO notifications (id, title, body, target_tab, read)
+                    VALUES
+                    ('notif-seed-1', 'Voucher Approval Required', 'Voucher code "SWEET50" created by seller. Approval required.', 'vouchers', FALSE),
+                    ('notif-seed-2', 'Seller KYC Pending', 'Merchant "Nagore Halwa Palace" is pending KYC approval.', 'kyc', FALSE);
+                """)
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS store_followers (
+                    user_id UUID NOT NULL,
+                    seller_id UUID NOT NULL,
+                    created_at TIMESTAMP DEFAULT NOW(),
+                    PRIMARY KEY (user_id, seller_id)
+                );
+            """)
+            # Seed mock users
+            await conn.execute("""
+                DELETE FROM users
+                WHERE id IN (
+                    'a01b1234-5678-abcd-ef01-1234567890aa',
+                    'a01b1234-5678-abcd-ef01-1234567890ab',
+                    'a01b1234-5678-abcd-ef01-1234567890ac'
+                )
+                OR phone IN ('+919876543210', '+919876543211', '+919876543212');
+            """)
+            await conn.execute("""
+                INSERT INTO users (id, phone, email, is_premium, signup_platform, privacy_accepted, wallet_balance, name)
+                VALUES
+                    ('a01b1234-5678-abcd-ef01-1234567890aa', '+919876543210', 'admin@bupzo.com', TRUE, 'WEB', TRUE, 2500.00, 'Bupzo Patron'),
+                    ('a01b1234-5678-abcd-ef01-1234567890ab', '+919876543211', 'seller@bupzo.com', FALSE, 'WEB', TRUE, 5000.00, 'Bupzo Seller'),
+                    ('a01b1234-5678-abcd-ef01-1234567890ac', '+919876543212', 'customer@bupzo.com', FALSE, 'WEB', TRUE, 250.00, 'Bupzo Customer');
+            """)
+            await conn.execute("""
+                INSERT INTO categories (id, name, description)
+                VALUES
+                    ('d04b1234-5678-abcd-ef01-1234567890ab', 'Nagore Specialties', 'Traditional sweets and regional premium foods.'),
+                    ('d04b1234-5678-abcd-ef01-1234567890ac', 'Artisan Gifts', 'Curated handcrafted items from local merchants.')
+                ON CONFLICT (name) DO UPDATE SET description = EXCLUDED.description;
+            """)
+            await conn.execute("""
+                INSERT INTO sellers (id, user_id, business_name, commission_rate, status, kyc_details)
+                VALUES
+                    ('c03b1234-5678-abcd-ef01-1234567890ab', 'a01b1234-5678-abcd-ef01-1234567890ab', 'Nagore Halwa Palace', 8.00, 'APPROVED', '{"gstin": "33AAAAA1111A1Z1", "fssai": "10022020000001"}'),
+                    ('c03b1234-5678-abcd-ef01-1234567890ac', 'a01b1234-5678-abcd-ef01-1234567890ac', 'Panna Crafts & Gifts', 10.00, 'APPROVED', '{"gstin": "33BBBBB2222B2Z2", "fssai": "10022020000002"}')
+                ON CONFLICT (business_name) DO NOTHING;
+            """)
+            await conn.execute("""
+                INSERT INTO products (id, name, category_id, price, weight_grams, image_url, is_combo, stock_quantity, seller_id, description)
+                VALUES
+                    ('e05b1234-5678-abcd-ef01-1234567890aa', 'Nagore Ghee Halwa', 'd04b1234-5678-abcd-ef01-1234567890ab', 299.00, 500.00, 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=400&q=80', FALSE, 150, 'c03b1234-5678-abcd-ef01-1234567890ab', 'Traditional ghee halwa with cashews and premium saffron.'),
+                    ('e05b1234-5678-abcd-ef01-1234567890ab', 'Premium Dry Fruit Combo', 'd04b1234-5678-abcd-ef01-1234567890ab', 799.00, 1000.00, 'https://images.unsplash.com/photo-1596560548464-f010689b771a?auto=format&fit=crop&w=400&q=80', TRUE, 80, 'c03b1234-5678-abcd-ef01-1234567890ab', 'Assorted premium dry fruits perfect for gifting.'),
+                    ('e05b1234-5678-abcd-ef01-1234567890ac', 'Handcrafted Brass Lamp', 'd04b1234-5678-abcd-ef01-1234567890ac', 1249.00, 650.00, 'https://images.unsplash.com/photo-1542831371-d531d36971e6?auto=format&fit=crop&w=400&q=80', FALSE, 45, 'c03b1234-5678-abcd-ef01-1234567890ac', 'Elegant artisan brass lamp for home décor.')
+                ON CONFLICT (id) DO NOTHING;
+            """)
+    except Exception as e:
+        print(f"[DB] Startup migration warning: {e}")
 
 @app.on_event("shutdown")
 async def shutdown_event():
@@ -571,32 +651,34 @@ class TokenData(BaseModel):
 ADMIN_PHONES = ['+919876543210', '9876543210']
 
 class UserResponse(BaseModel):
-    seller_status: Optional[str] = None
-    id: UUID
+    id: Any
     name: Optional[str] = None
-    phone: str
-    email: Optional[EmailStr] = None
-    is_premium: bool
-    signup_platform: str
-    wallet_balance: float
-    privacy_accepted: bool
-    created_at: datetime
+    phone: Optional[str] = ""
+    email: Optional[str] = None
+    is_premium: Optional[bool] = False
+    signup_platform: Optional[str] = "WEB"
+    wallet_balance: Optional[float] = 0.0
+    privacy_accepted: Optional[bool] = True
+    created_at: Optional[Any] = None
     address: Optional[str] = None
     pincode: Optional[str] = None
     state: Optional[str] = None
     gstin: Optional[str] = None
-    is_seller: bool = False
-    is_admin: bool = False
-    has_password: bool = False
+    is_seller: Optional[bool] = False
+    is_admin: Optional[bool] = False
+    has_password: Optional[bool] = False
     is_suspended: Optional[bool] = False
-    last_login: Optional[datetime] = None
+    last_login: Optional[Any] = None
     total_spent: Optional[float] = 0.0
     email_verified: Optional[bool] = False
     phone_verified: Optional[bool] = False
     google_verified: Optional[bool] = False
+    seller_status: Optional[str] = None
 
     class Config:
         from_attributes = True
+        extra = "ignore"
+
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -839,6 +921,8 @@ class OrderCreate(BaseModel):
     igst_amount: Optional[float] = 0.0
     shipping_gst: Optional[float] = 0.0
     taxable_amount: Optional[float] = 0.0
+    platform_charge: Optional[float] = 5.0
+    gst_amount: Optional[float] = 0.0
     customer_gstin: Optional[str] = None
     seller_gstin: Optional[str] = None
     seller_state: Optional[str] = None
@@ -1018,7 +1102,7 @@ async def read_users():
     query = """
     SELECT
         u.id, u.name, u.phone, u.email, u.is_premium, u.signup_platform,
-        u.wallet_balance, u.privacy_accepted, u.created_at, u.address, u.pincode, u.is_suspended, u.last_login, u.total_spent, u.email_verified, u.phone_verified, u.google_verified,
+        u.wallet_balance, u.privacy_accepted, u.created_at, u.address, u.pincode, u.state, u.country, u.address_lat, u.address_lng, u.is_suspended, u.last_login, u.total_spent, u.email_verified, u.phone_verified, u.google_verified,
         CASE WHEN s.id IS NOT NULL THEN TRUE ELSE FALSE END AS is_seller,
         CASE WHEN u.password_hash IS NOT NULL AND u.password_hash != '' THEN TRUE ELSE FALSE END AS has_password
     FROM users u
@@ -1779,12 +1863,77 @@ async def remove_from_wishlist(wishlist_id: UUID):
     return {"success": True, "message": "Item removed from wishlist"}
 
 @app.get("/api/shipping-rates/")
-async def get_shipping_rates(delivery_pincode: str, weight_kg: float = 1.0, pickup_pincode: str = "110020"):
+async def get_shipping_rates(
+    delivery_pincode: str,
+    weight_kg: float = 0.5,
+    pickup_pincode: Optional[str] = None,
+    seller_id: Optional[str] = None,
+    customer_lat: Optional[float] = None,
+    customer_lng: Optional[float] = None
+):
+    """
+    Fetch live multi-aggregator courier rates from Shiprocket & NimbusPost.
+    Uses seller GPS pickup pincode when seller_id is provided.
+    Falls back to haversine-distance mock rates when API keys aren't set.
+    """
     try:
-        rates = await fetch_shipping_rates(pickup_pincode, delivery_pincode, weight_kg)
-        return rates
+        resolved_pickup_pincode = pickup_pincode or "600001"
+        db_credentials = {}
+
+        if pool:
+            async with pool.acquire() as conn:
+                # Pull seller pickup pincode from GPS-captured data
+                if seller_id:
+                    seller = await conn.fetchrow("""
+                        SELECT pickup_pincode, address, latitude, longitude
+                        FROM sellers WHERE id::text = $1::text
+                    """, str(seller_id))
+                    if seller and seller.get("pickup_pincode"):
+                        resolved_pickup_pincode = seller["pickup_pincode"]
+                    elif seller and seller.get("latitude") and seller.get("longitude"):
+                        # Use seller stored lat/lng to determine pincode origin
+                        pass  # Live geocoding would go here
+
+                # Pull live API credentials from DB
+                rows = await conn.fetch(
+                    "SELECT provider, email, password, api_token FROM shipping_settings WHERE is_active = TRUE"
+                )
+                for r in rows:
+                    db_credentials[r["provider"]] = {
+                        "email": r["email"],
+                        "password": r["password"],
+                        "api_token": r["api_token"]
+                    }
+
+        rates = await fetch_shipping_rates(
+            resolved_pickup_pincode,
+            delivery_pincode,
+            weight_kg,
+            db_credentials=db_credentials if db_credentials else None
+        )
+        return {
+            "success": True,
+            "pickup_pincode": resolved_pickup_pincode,
+            "delivery_pincode": delivery_pincode,
+            "weight_kg": weight_kg,
+            "rates": rates,
+            "total_options": len(rates)
+        }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # Return fallback rates even on error so Cart never breaks
+        return {
+            "success": False,
+            "pickup_pincode": pickup_pincode or "600001",
+            "delivery_pincode": delivery_pincode,
+            "weight_kg": weight_kg,
+            "rates": [
+                {"aggregator": "shiprocket", "courier_id": 1, "name": "Shiprocket Standard (Delhivery)", "cost": 55.0, "estimated_delivery_days": "3-5 days", "cod_charges": 0.0, "rating": 4.5},
+                {"aggregator": "nimbuspost", "courier_id": 101, "name": "NimbusPost BlueDart Express", "cost": 75.0, "estimated_delivery_days": "1-2 days", "cod_charges": 0.0, "rating": 4.8},
+                {"aggregator": "shiprocket", "courier_id": 2, "name": "Shiprocket DTDC Air", "cost": 65.0, "estimated_delivery_days": "2-3 days", "cod_charges": 0.0, "rating": 4.3}
+            ],
+            "total_options": 3,
+            "note": f"Live rates unavailable: {str(e)}"
+        }
 
 # Order & Checkout Management
 class WalletTopupRequest(BaseModel):
@@ -1872,8 +2021,8 @@ async def create_checkout(payload: OrderCreate):
             order_query = """
             INSERT INTO orders
             (id, user_id, seller_id, total_amount, status, order_source, shipping_partner, payment_gateway, trust_donation_amount, currency, exchange_rate,
-             cgst_amount, sgst_amount, igst_amount, shipping_gst, taxable_amount, customer_gstin, seller_gstin, seller_state, shipping_state)
-            VALUES ($1, $2, $3, $4, 'paid', $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+             cgst_amount, sgst_amount, igst_amount, shipping_gst, taxable_amount, platform_charge, gst_amount, customer_gstin, seller_gstin, seller_state, shipping_state)
+            VALUES ($1, $2, $3, $4, 'paid', $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
             """
             order_values = (
                 str(order_id),
@@ -1891,6 +2040,8 @@ async def create_checkout(payload: OrderCreate):
                 payload.igst_amount or 0.0,
                 payload.shipping_gst or 0.0,
                 payload.taxable_amount or 0.0,
+                payload.platform_charge or 5.0,
+                payload.gst_amount or 0.0,
                 payload.customer_gstin,
                 payload.seller_gstin,
                 payload.seller_state,
@@ -2719,7 +2870,7 @@ async def apply_seller(body: dict = Body(...)):
         if not user:
             user_id = uuid4()
             await conn.execute(
-                "INSERT INTO users (id, phone, email, signup_platform) VALUES ($1, $2, $3, 'WEB')",
+                "INSERT INTO users (id, phone, email, signup_platform, wallet_balance) VALUES ($1, $2, $3, 'WEB', 5.00)",
                 user_id, phone or f"+91000{str(uuid4())[:8]}", email
             )
         else:
@@ -2824,8 +2975,8 @@ async def register_seller(payload: SellerRegisterRequest):
             user_id = uuid4()
             await conn.execute(
                 """
-                INSERT INTO users (id, phone, email, signup_platform)
-                VALUES ($1, $2, $3, 'WEB')
+                INSERT INTO users (id, phone, email, signup_platform, wallet_balance)
+                VALUES ($1, $2, $3, 'WEB', 0.00)
                 """,
                 user_id, payload.phone, payload.email
             )
@@ -3058,11 +3209,11 @@ async def adjust_wallet(user_id: UUID, payload: WalletAdjustmentRequest):
 async def read_categories(approved_only: bool = Query(False), seller_id: Optional[str] = Query(None)):
     async with pool.acquire() as conn:
         if approved_only:
-            rows = await conn.fetch("SELECT c.*, s.business_name AS seller_store_name, s.business_name AS seller_name FROM categories c LEFT JOIN sellers s ON c.requested_by_seller_id = s.id WHERE c.status = 'APPROVED' OR c.status IS NULL ORDER BY c.name ASC")
+            rows = await conn.fetch("SELECT c.*, COALESCE(s.business_name, 'Admin') AS created_by, s.business_name AS seller_store_name, s.business_name AS seller_name FROM categories c LEFT JOIN sellers s ON c.requested_by_seller_id = s.id WHERE c.status = 'APPROVED' OR c.status IS NULL ORDER BY c.name ASC")
         elif seller_id:
-            rows = await conn.fetch("SELECT c.*, s.business_name AS seller_store_name, s.business_name AS seller_name FROM categories c LEFT JOIN sellers s ON c.requested_by_seller_id = s.id WHERE c.requested_by_seller_id::text = $1 OR c.status = 'APPROVED' ORDER BY c.created_at DESC, c.name ASC", str(seller_id))
+            rows = await conn.fetch("SELECT c.*, COALESCE(s.business_name, 'Admin') AS created_by, s.business_name AS seller_store_name, s.business_name AS seller_name FROM categories c LEFT JOIN sellers s ON c.requested_by_seller_id = s.id WHERE c.requested_by_seller_id::text = $1 OR c.status = 'APPROVED' ORDER BY c.created_at DESC, c.name ASC", str(seller_id))
         else:
-            rows = await conn.fetch("SELECT c.*, s.business_name AS seller_store_name, s.business_name AS seller_name FROM categories c LEFT JOIN sellers s ON c.requested_by_seller_id = s.id ORDER BY c.created_at DESC, c.name ASC")
+            rows = await conn.fetch("SELECT c.*, COALESCE(s.business_name, 'Admin') AS created_by, s.business_name AS seller_store_name, s.business_name AS seller_name FROM categories c LEFT JOIN sellers s ON c.requested_by_seller_id = s.id ORDER BY c.created_at DESC, c.name ASC")
         return [dict(row) for row in rows]
 
 @app.post("/api/categories/request")
@@ -3396,6 +3547,73 @@ async def get_media_file(filename: str):
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"File {filename} not found in MinIO storage: {str(e)}")
 
+# ─────────────────────────────────────────────────────────────────────────────
+# ORDER TRACKING ENDPOINT  — must be before /{order_id} routes to avoid conflict
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.get("/api/orders/tracking")
+async def get_orders_tracking_panel(
+    user_id: Optional[str] = None,
+    seller_id: Optional[str] = None,
+    limit: int = 50
+):
+    """Get orders with full tracking + GST info for customer / seller / admin panels."""
+    if not pool:
+        return {"orders": [], "total": 0}
+    try:
+        async with pool.acquire() as conn:
+            conditions: List[str] = []
+            params: list = []
+            idx = 1
+            if user_id:
+                try:
+                    conditions.append(f"o.user_id = ${idx}")
+                    params.append(UUID(user_id)); idx += 1
+                except Exception:
+                    pass
+            if seller_id:
+                try:
+                    conditions.append(f"o.seller_id = ${idx}")
+                    params.append(UUID(seller_id)); idx += 1
+                except Exception:
+                    pass
+            where = "WHERE " + " AND ".join(conditions) if conditions else ""
+            params.append(limit)
+            rows = await conn.fetch(f"""
+                SELECT
+                    o.id, o.status, o.total_amount, o.created_at,
+                    o.awb_code, o.courier_name, o.tracking_url,
+                    o.shipping_partner              AS aggregator,
+                    o.delivery_address, o.delivery_pincode,
+                    COALESCE(o.cgst_amount, 0)      AS cgst_amount,
+                    COALESCE(o.sgst_amount, 0)      AS sgst_amount,
+                    COALESCE(o.igst_amount, 0)      AS igst_amount,
+                    COALESCE(o.taxable_amount, 0)   AS taxable_amount,
+                    COALESCE(o.gst_amount, 0)       AS gst_amount,
+                    COALESCE(o.platform_charge, 5)  AS platform_charge,
+                    COALESCE(o.gst_rate, 18)        AS gst_rate,
+                    o.seller_gstin, o.customer_gstin,
+                    u.name                          AS customer_name,
+                    u.phone                         AS customer_phone,
+                    s.business_name                 AS seller_name,
+                    s.pickup_pincode                AS seller_pincode,
+                    s.pickup_address                AS seller_address,
+                    s.pickup_city                   AS seller_city,
+                    s.pickup_state                  AS seller_state,
+                    s.gstin                         AS seller_gstin_reg
+                FROM orders o
+                LEFT JOIN users   u ON u.id = o.user_id
+                LEFT JOIN sellers s ON s.id = o.seller_id
+                {where}
+                ORDER BY o.created_at DESC
+                LIMIT ${idx}
+            """, *params)
+            return {"orders": [dict(r) for r in rows], "total": len(rows)}
+    except Exception as e:
+        print(f"[Orders Tracking] Error: {e}")
+        return {"orders": [], "total": 0, "error": str(e)}
+
+
 # Get User Orders
 @app.get("/api/orders/user/{user_id}", response_model=List[OrderResponse])
 async def get_user_orders(user_id: str):
@@ -3633,8 +3851,24 @@ class InventoryCheckResponse(BaseModel):
     available_qty: int
     sufficient: bool
 
+class ShippingSettingPayload(BaseModel):
+    provider: str # 'shiprocket' or 'nimbuspost'
+    is_active: Optional[bool] = True
+    email: Optional[str] = ""
+    password: Optional[str] = ""
+    api_token: Optional[str] = ""
+    webhook_secret: Optional[str] = ""
+
+class RefundRequestPayload(BaseModel):
+    order_id: UUID
+    user_id: UUID
+    reason: str
+    images: Optional[List[str]] = []
+    return_type: Optional[str] = "wallet" # 'wallet' or 'bank'
+
 class ReadyForPickupRequest(BaseModel):
-    courier_id: Optional[int] = 1
+    aggregator: Optional[str] = "shiprocket" # 'shiprocket' or 'nimbuspost'
+    courier_id: Optional[Union[int, str]] = 1
     courier_name: Optional[str] = "Shiprocket Express"
     shipping_cost: Optional[float] = 50.0
     pickup_pincode: Optional[str] = None
@@ -3810,6 +4044,23 @@ async def mark_ready_for_pickup(order_id: UUID, req: ReadyForPickupRequest):
         pickup_result = await schedule_pickup([shipment_id])
         pickup_date = pickup_result.get("pickup_scheduled_date")
 
+        parsed_pickup_dt = None
+        if pickup_date:
+            if isinstance(pickup_date, datetime):
+                parsed_pickup_dt = pickup_date
+            elif isinstance(pickup_date, str):
+                for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"):
+                    try:
+                        parsed_pickup_dt = datetime.strptime(pickup_date, fmt)
+                        break
+                    except ValueError:
+                        pass
+                if not parsed_pickup_dt:
+                    try:
+                        parsed_pickup_dt = datetime.fromisoformat(pickup_date.replace("Z", "+00:00"))
+                    except Exception:
+                        parsed_pickup_dt = datetime.utcnow()
+
         # Update orders table
         await conn.execute("""
             UPDATE orders SET
@@ -3831,7 +4082,7 @@ async def mark_ready_for_pickup(order_id: UUID, req: ReadyForPickupRequest):
             req.courier_id,
             courier_name_resolved,
             tracking_url,
-            pickup_date
+            parsed_pickup_dt
         )
 
         # Log to shipping_logs
@@ -3845,7 +4096,7 @@ async def mark_ready_for_pickup(order_id: UUID, req: ReadyForPickupRequest):
         """,
             str(uuid4()), str(order_id), courier_name_resolved, shipping_cost,
             str(shipment_id), awb_code, courier_name_resolved, tracking_url,
-            pickup_date, str(shiprocket_order_id)
+            parsed_pickup_dt, str(shiprocket_order_id)
         )
 
         # Notify seller
@@ -4678,27 +4929,18 @@ async def create_message(msg: MessageCreate, user_id: Optional[str] = Query(None
             print("Create message error:", e)
             return {"success": True, "message": "Message dispatched"}
 
-
-@app.put("/api/messages/{message_id}/read")
-async def mark_message_read(message_id: UUID):
-    async with pool.acquire() as conn:
-        row = await conn.fetchrow("UPDATE messages SET is_read = TRUE WHERE id = $1 RETURNING id, is_read", message_id)
-        if not row:
-            raise HTTPException(status_code=404, detail="Message not found")
-        return dict(row)
-
 @app.put("/api/messages/mark-all-read")
 @app.post("/api/messages/mark-all-read")
 @app.get("/api/messages/mark-all-read")
 async def mark_all_messages_read(user_id: str = Query(...)):
     async with pool.acquire() as conn:
         try:
-            await conn.execute("UPDATE messages SET is_read = TRUE WHERE receiver_id = $1::uuid", user_id)
-        except Exception:
-            pass
-        return {"success": True, "marked_user": user_id}
+            await conn.execute("UPDATE messages SET is_read = TRUE WHERE (receiver_id::text = $1::text OR recipient_id::text = $1::text)", str(user_id))
+            return {"success": True, "message": "All messages marked as read"}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
-@app.get("/api/messages/unread-count")
+@app.api_route("/api/messages/unread-count", methods=["GET", "POST", "OPTIONS"])
 async def get_unread_message_count_query(user_id: Optional[str] = Query(None), uid: Optional[str] = Query(None)):
     target_uid = user_id or uid
     if not target_uid:
@@ -4706,21 +4948,21 @@ async def get_unread_message_count_query(user_id: Optional[str] = Query(None), u
     async with pool.acquire() as conn:
         try:
             cnt = await conn.fetchval(
-                "SELECT COUNT(*) FROM messages WHERE (receiver_id::text = $1::text OR recipient_id::text = $1::text) AND (is_read = FALSE OR is_read IS NULL OR read = FALSE OR read IS NULL)",
+                "SELECT COUNT(*) FROM messages WHERE (receiver_id::text = $1::text OR recipient_id::text = $1::text) AND (sender_id::text != $1::text OR sender_id IS NULL) AND (is_read = FALSE OR is_read IS NULL)",
                 str(target_uid)
             ) or 0
             return {"user_id": target_uid, "unread_count": int(cnt)}
         except Exception:
             return {"user_id": target_uid, "unread_count": 0}
 
-@app.get("/api/messages/unread-count/{user_id}")
+@app.api_route("/api/messages/unread-count/{user_id}", methods=["GET", "POST", "OPTIONS"])
 async def get_unread_message_count_path(user_id: str):
     if not user_id:
         return {"unread_count": 0}
     async with pool.acquire() as conn:
         try:
             cnt = await conn.fetchval(
-                "SELECT COUNT(*) FROM messages WHERE (receiver_id::text = $1::text OR recipient_id::text = $1::text) AND (is_read = FALSE OR is_read IS NULL OR read = FALSE OR read IS NULL)",
+                "SELECT COUNT(*) FROM messages WHERE (receiver_id::text = $1::text OR recipient_id::text = $1::text) AND (sender_id::text != $1::text OR sender_id IS NULL) AND (is_read = FALSE OR is_read IS NULL)",
                 str(user_id)
             ) or 0
             return {"user_id": user_id, "unread_count": int(cnt)}
@@ -5152,7 +5394,7 @@ async def update_user_location(user_id: str, req: UserLocationUpdate):
                 """
                 UPDATE users 
                 SET address = $1, address_lat = $2, address_lng = $3, pincode = COALESCE($4, pincode)
-                WHERE id = $10 OR id = $1
+                WHERE id = $5
                 RETURNING id, name, email, phone, address, address_lat, address_lng, pincode
                 """,
                 req.address, req.address_lat, req.address_lng, req.pincode, uid
@@ -5777,3 +6019,446 @@ async def suspend_user(user_id: str, payload: dict = {}):
             return {"success": True, "message": f"User {action} successfully", "is_suspended": suspend}
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# BUPZO MULTI-AGGREGATOR SHIPPING & REFUND MANAGEMENT API ENDPOINTS
+# ─────────────────────────────────────────────────────────────────────────
+
+@app.get("/api/shipping/settings/")
+async def get_shipping_settings():
+    """Get Admin Shipping Credentials & Status for Shiprocket and NimbusPost."""
+    async with pool.acquire() as conn:
+        rows = await conn.fetch("SELECT provider, is_active, email, api_token, webhook_secret, updated_at FROM shipping_settings")
+        settings = {r["provider"]: dict(r) for r in rows}
+        
+        # Fallback defaults if not set in DB
+        if "shiprocket" not in settings:
+            settings["shiprocket"] = {
+                "provider": "shiprocket",
+                "is_active": True,
+                "email": os.getenv("SHIPROCKET_EMAIL", ""),
+                "api_token": "Configured via Login API",
+                "webhook_secret": "",
+                "updated_at": datetime.utcnow().isoformat()
+            }
+        if "nimbuspost" not in settings:
+            settings["nimbuspost"] = {
+                "provider": "nimbuspost",
+                "is_active": True,
+                "email": os.getenv("NIMBUSPOST_EMAIL", ""),
+                "api_token": os.getenv("NIMBUSPOST_TOKEN", ""),
+                "webhook_secret": "",
+                "updated_at": datetime.utcnow().isoformat()
+            }
+        return list(settings.values())
+
+@app.put("/api/shipping/settings/")
+async def save_shipping_setting(payload: ShippingSettingPayload):
+    """Save or update Shiprocket/NimbusPost credentials in DB."""
+    async with pool.acquire() as conn:
+        await conn.execute("""
+            INSERT INTO shipping_settings (provider, is_active, email, password, api_token, webhook_secret, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, NOW())
+            ON CONFLICT (provider) DO UPDATE SET
+                is_active = EXCLUDED.is_active,
+                email = EXCLUDED.email,
+                password = COALESCE(NULLIF(EXCLUDED.password, ''), shipping_settings.password),
+                api_token = EXCLUDED.api_token,
+                webhook_secret = EXCLUDED.webhook_secret,
+                updated_at = NOW()
+        """, payload.provider.lower(), payload.is_active, payload.email, payload.password, payload.api_token, payload.webhook_secret)
+        return {"success": True, "provider": payload.provider, "message": f"{payload.provider} credentials saved successfully."}
+
+@app.get("/api/shipping/track/{order_id}")
+async def get_order_universal_tracking(order_id: str):
+    """
+    Universal Live Tracking endpoint for Customer, Seller, and Admin panels.
+    Normalizes real-time courier status for Shiprocket or NimbusPost.
+    """
+    async with pool.acquire() as conn:
+        order = await conn.fetchrow("""
+            SELECT id, status, awb_code, courier_name, shipping_partner, tracking_url, pickup_scheduled_date
+            FROM orders WHERE id::text = $1::text OR awb_code = $1
+        """, order_id)
+        
+        if not order:
+            # Fallback mock tracking for demo orders
+            return await get_universal_tracking(order_id, aggregator="shiprocket")
+        
+        awb = order["awb_code"] or f"AWB-{str(order['id'])[:8].upper()}"
+        aggregator = order["shipping_partner"] or "shiprocket"
+        
+        tracking_info = await get_universal_tracking(awb, aggregator=aggregator)
+        tracking_info["order_id"] = str(order["id"])
+        tracking_info["db_status"] = order["status"]
+        tracking_info["tracking_url"] = order["tracking_url"] or f"https://shiprocket.co/tracking/{awb}"
+        return tracking_info
+
+@app.post("/api/refunds/request")
+async def request_refund(payload: RefundRequestPayload):
+    """Customer submits return request for a delivered order."""
+    async with pool.acquire() as conn:
+        order = await conn.fetchrow("SELECT id, user_id, seller_id, status, total_amount FROM orders WHERE id = $1", payload.order_id)
+        if not order:
+            raise HTTPException(status_code=404, detail="Order not found")
+        
+        refund_id = uuid4()
+        images_json = json.dumps(payload.images or [])
+        await conn.execute("""
+            INSERT INTO refund_requests (id, order_id, user_id, seller_id, reason, images, return_type, status, refund_amount, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, 'requested', $8, NOW())
+        """, refund_id, payload.order_id, payload.user_id, order["seller_id"], payload.reason, images_json, payload.return_type, float(order["total_amount"]))
+        
+        await conn.execute("UPDATE orders SET status = 'return_requested', updated_at = NOW() WHERE id = $1", payload.order_id)
+        return {"success": True, "refund_id": str(refund_id), "status": "requested", "message": "Return request submitted successfully."}
+
+@app.get("/api/refunds/")
+async def list_refund_requests(seller_id: Optional[str] = None, user_id: Optional[str] = None):
+    """List all return & refund requests for Admin, Seller, or Customer."""
+    async with pool.acquire() as conn:
+        query = """
+            SELECT r.id, r.order_id, r.user_id, r.seller_id, r.reason, r.images, r.return_type,
+                   r.status, r.reverse_awb, r.reverse_shipping_partner, r.refund_amount, r.created_at,
+                   u.name as customer_name, u.email as customer_email, u.phone as customer_phone,
+                   s.business_name as store_name
+            FROM refund_requests r
+            LEFT JOIN users u ON u.id::text = r.user_id::text
+            LEFT JOIN sellers s ON s.id::text = r.seller_id::text
+            WHERE 1=1
+        """
+        params = []
+        if seller_id:
+            params.append(str(seller_id))
+            query += f" AND r.seller_id::text = ${len(params)}::text"
+        if user_id:
+            params.append(str(user_id))
+            query += f" AND r.user_id::text = ${len(params)}::text"
+            
+        query += " ORDER BY r.created_at DESC"
+        rows = await conn.fetch(query, *params)
+        
+        results = []
+        for r in rows:
+            r_dict = dict(r)
+            r_dict["id"] = str(r_dict["id"])
+            r_dict["order_id"] = str(r_dict["order_id"])
+            r_dict["created_at"] = r_dict["created_at"].isoformat() if r_dict["created_at"] else None
+            results.append(r_dict)
+        return results
+
+@app.post("/api/refunds/{refund_id}/approve")
+async def approve_refund_and_trigger_reverse_pickup(refund_id: UUID, aggregator: str = "shiprocket"):
+    """
+    Seller/Admin approves return request.
+    Triggers reverse pickup logistics via Shiprocket/NimbusPost API payload.
+    """
+    async with pool.acquire() as conn:
+        refund = await conn.fetchrow("SELECT * FROM refund_requests WHERE id = $1", refund_id)
+        if not refund:
+            raise HTTPException(status_code=404, detail="Refund request not found")
+        
+        order = await conn.fetchrow("SELECT * FROM orders WHERE id = $1", refund["order_id"])
+        customer = await conn.fetchrow("SELECT name, phone, email FROM users WHERE id::text = $1::text", str(refund["user_id"]))
+        seller = await conn.fetchrow("SELECT business_name, address, pickup_address, pickup_city, pickup_pincode FROM sellers WHERE id::text = $1::text", str(refund["seller_id"]))
+        
+        order_payload = {
+            "order_id": str(refund["order_id"]),
+            "customer_name": (customer and customer["name"]) or "Customer",
+            "customer_address": (order and order["delivery_address"]) or "Customer Address",
+            "customer_city": "Mumbai",
+            "customer_state": "Maharashtra",
+            "customer_pincode": (order and order["delivery_pincode"]) or "400001",
+            "customer_phone": (customer and customer["phone"]) or "9999999999",
+            "seller_name": (seller and seller["business_name"]) or "Seller Store",
+            "seller_address": (seller and (seller["pickup_address"] or seller["address"])) or "Seller Address",
+            "seller_city": (seller and seller["pickup_city"]) or "Mumbai",
+            "seller_pincode": (seller and seller["pickup_pincode"]) or "400001",
+            "sub_total": float(refund["refund_amount"] or 0),
+            "weight": 0.5
+        }
+        
+        rev_res = await create_reverse_pickup(order_payload, aggregator=aggregator)
+        reverse_awb = rev_res.get("reverse_awb") or f"REV-AWB-{str(refund_id)[:8].upper()}"
+        
+        await conn.execute("""
+            UPDATE refund_requests
+            SET status = 'approved', reverse_awb = $2, reverse_shipping_partner = $3, updated_at = NOW()
+            WHERE id = $1
+        """, refund_id, reverse_awb, aggregator)
+        
+        await conn.execute("UPDATE orders SET status = 'return_pickup_scheduled', updated_at = NOW() WHERE id = $1", refund["order_id"])
+        
+        return {
+            "success": True,
+            "refund_id": str(refund_id),
+            "status": "approved",
+            "reverse_awb": reverse_awb,
+            "aggregator": aggregator,
+            "message": "Return approved and reverse pickup logistics scheduled."
+        }
+
+@app.post("/api/refunds/{refund_id}/process-refund")
+async def complete_wallet_refund(refund_id: UUID):
+    """Completes return workflow and credits customer wallet."""
+    async with pool.acquire() as conn:
+        refund = await conn.fetchrow("SELECT * FROM refund_requests WHERE id = $1", refund_id)
+        if not refund:
+            raise HTTPException(status_code=404, detail="Refund request not found")
+        
+        user_id = refund["user_id"]
+        amount = float(refund["refund_amount"] or 0)
+        
+        u = await conn.fetchrow("SELECT wallet_balance FROM users WHERE id::text = $1::text", str(user_id))
+        if u:
+            new_bal = float(u["wallet_balance"] or 0) + amount
+            await conn.execute("UPDATE users SET wallet_balance = $1 WHERE id::text = $2::text", new_bal, str(user_id))
+            
+            tx_id = uuid4()
+            await conn.execute("""
+                INSERT INTO wallet_transactions (id, user_id, amount, type, description, created_at)
+                VALUES ($1, $2, $3, 'REFUND', $4, NOW())
+            """, tx_id, user_id, amount, f"Return Refund for Order {str(refund['order_id'])[:8]}")
+        
+        await conn.execute("UPDATE refund_requests SET status = 'refunded', updated_at = NOW() WHERE id = $1", refund_id)
+        await conn.execute("UPDATE orders SET status = 'refunded', updated_at = NOW() WHERE id = $1", refund["order_id"])
+        
+        return {"success": True, "refund_id": str(refund_id), "status": "refunded", "message": f"Refund of ₹{amount} credited to user wallet."}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# GST CALCULATION ENDPOINT
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.get("/api/gst/calculate")
+async def calculate_gst_endpoint(
+    amount: float,
+    gst_rate: float = 18.0,
+    seller_state: str = "Tamil Nadu",
+    customer_state: str = "Tamil Nadu"
+):
+    """Calculate GST breakdown — CGST+SGST for intra-state, IGST for inter-state."""
+    taxable_amount = round(amount, 2)
+    gst_amount_val = round(taxable_amount * gst_rate / 100, 2)
+    intra = seller_state.strip().lower() == customer_state.strip().lower()
+    if intra:
+        cgst = round(gst_amount_val / 2, 2)
+        sgst = round(gst_amount_val / 2, 2)
+        igst = 0.0
+        tax_type = "CGST + SGST"
+    else:
+        cgst = 0.0
+        sgst = 0.0
+        igst = gst_amount_val
+        tax_type = "IGST"
+    return {
+        "taxable_amount": taxable_amount,
+        "gst_rate": gst_rate,
+        "gst_amount": gst_amount_val,
+        "cgst_amount": cgst,
+        "sgst_amount": sgst,
+        "igst_amount": igst,
+        "tax_type": tax_type,
+        "total_with_gst": round(taxable_amount + gst_amount_val, 2)
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ORDER CANCELLATION ENDPOINTS
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.post("/api/orders/{order_id}/cancel")
+async def cancel_order_new(order_id: str, body: dict = Body(default={})):
+    """Cancel an order and record in cancelled_orders table."""
+    if not pool:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+    try:
+        async with pool.acquire() as conn:
+            try:
+                oid = UUID(order_id)
+            except Exception:
+                raise HTTPException(status_code=400, detail="Invalid order ID")
+            order = await conn.fetchrow("SELECT * FROM orders WHERE id = $1", oid)
+            if not order:
+                raise HTTPException(status_code=404, detail="Order not found")
+            await conn.execute(
+                "UPDATE orders SET status = 'CANCELLED', updated_at = NOW() WHERE id = $1", oid
+            )
+            reason = body.get("reason", "Customer requested cancellation")
+            cancelled_by = body.get("cancelled_by", "customer")
+            refund_amount = float(order.get("total_amount") or 0)
+            cancel_id = await conn.fetchval("""
+                INSERT INTO cancelled_orders
+                (order_id, user_id, seller_id, reason, cancelled_by, refund_amount, refund_status, aggregator)
+                VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7)
+                RETURNING id
+            """, oid, order.get("user_id"), order.get("seller_id"),
+                reason, cancelled_by, refund_amount,
+                order.get("shipping_partner", "shiprocket"))
+            awb = order.get("awb_code")
+            if awb:
+                await conn.execute("""
+                    INSERT INTO shipping_dispatches
+                    (order_id, aggregator, awb_code, dispatch_status, delivery_pincode)
+                    VALUES ($1, $2, $3, 'cancelled', $4)
+                    ON CONFLICT DO NOTHING
+                """, oid, order.get("shipping_partner", "shiprocket"), awb,
+                    order.get("delivery_pincode", ""))
+
+            # Automatically credit refund amount to customer wallet
+            customer_id = order.get("user_id")
+            if customer_id and refund_amount > 0:
+                await conn.execute(
+                    "UPDATE users SET wallet_balance = COALESCE(wallet_balance, 0) + $1 WHERE id = $2",
+                    refund_amount, customer_id
+                )
+                await conn.execute("""
+                    INSERT INTO wallet_transactions (id, user_id, amount, type, description, created_at)
+                    VALUES ($1, $2, $3, 'CANCEL_REFUND', $4, NOW())
+                """, uuid4(), customer_id, refund_amount, f"Wallet refund for cancelled order #{str(oid)[:8]}")
+                await conn.execute(
+                    "UPDATE cancelled_orders SET refund_status = 'credited_to_wallet' WHERE id = $1",
+                    cancel_id
+                )
+
+            return {
+                "success": True,
+                "cancel_id": str(cancel_id),
+                "refund_amount": refund_amount,
+                "refund_status": "credited_to_wallet",
+                "message": f"Order cancelled successfully! ₹{refund_amount} credited to customer wallet."
+            }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[Cancel Order] Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/cancelled-orders")
+async def get_cancelled_orders_list(
+    user_id: Optional[str] = None,
+    seller_id: Optional[str] = None,
+    limit: int = 50
+):
+    """Fetch cancelled orders for customer / seller / admin view."""
+    if not pool:
+        return {"items": [], "total": 0}
+    try:
+        async with pool.acquire() as conn:
+            conditions: List[str] = []
+            params: list = []
+            idx = 1
+            if user_id:
+                try:
+                    conditions.append(f"co.user_id = ${idx}")
+                    params.append(UUID(user_id)); idx += 1
+                except Exception:
+                    pass
+            if seller_id:
+                try:
+                    conditions.append(f"co.seller_id = ${idx}")
+                    params.append(UUID(seller_id)); idx += 1
+                except Exception:
+                    pass
+            where = "WHERE " + " AND ".join(conditions) if conditions else ""
+            params.append(limit)
+            rows = await conn.fetch(f"""
+                SELECT co.*,
+                       o.total_amount  as order_total,
+                       o.status        as order_status,
+                       o.awb_code,
+                       o.shipping_partner
+                FROM cancelled_orders co
+                LEFT JOIN orders o ON o.id = co.order_id
+                {where}
+                ORDER BY co.cancelled_at DESC
+                LIMIT ${idx}
+            """, *params)
+            return {"items": [dict(r) for r in rows], "total": len(rows)}
+    except Exception as e:
+        print(f"[Cancelled Orders] Error: {e}")
+        return {"items": [], "total": 0, "error": str(e)}
+
+
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# LIVE TRACKING ENDPOINT  (Shiprocket / NimbusPost AWB lookup)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.get("/api/tracking/{awb_code}")
+async def get_live_awb_tracking(awb_code: str, aggregator: str = "shiprocket"):
+    """Fetch live tracking status from Shiprocket or NimbusPost."""
+    from app.shipping_service import get_universal_tracking
+    try:
+        db_creds = None
+        if pool:
+            async with pool.acquire() as conn:
+                settings = await conn.fetch(
+                    "SELECT provider, email, password, api_token FROM shipping_settings WHERE is_active = true"
+                )
+                if settings:
+                    db_creds = {row["provider"]: dict(row) for row in settings}
+        result = await get_universal_tracking(awb_code, aggregator, db_creds)
+        return result
+    except Exception as e:
+        return {"success": False, "error": str(e), "awb_code": awb_code}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SELLER COMMISSION SUMMARY
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.get("/api/seller/commission-summary")
+async def get_seller_commission_summary(seller_id: str):
+    """Commission rate + total deductions + GST collected for a seller."""
+    if not pool:
+        return {"commission_rate": 10.0, "total_commission_deducted": 0.0}
+    try:
+        async with pool.acquire() as conn:
+            try:
+                sid = UUID(seller_id)
+            except Exception:
+                raise HTTPException(status_code=400, detail="Invalid seller ID")
+            seller = await conn.fetchrow(
+                "SELECT commission_rate, business_name, gstin FROM sellers WHERE id = $1", sid
+            )
+            if not seller:
+                raise HTTPException(status_code=404, detail="Seller not found")
+            commission_rate = float(seller.get("commission_rate") or 10.0)
+            stats = await conn.fetchrow("""
+                SELECT
+                    COUNT(*)                                                AS total_orders,
+                    COALESCE(SUM(total_amount), 0)                         AS total_revenue,
+                    COALESCE(SUM(total_amount * $2 / 100), 0)              AS total_commission,
+                    COALESCE(SUM(cgst_amount), 0)                          AS total_cgst,
+                    COALESCE(SUM(sgst_amount), 0)                          AS total_sgst,
+                    COALESCE(SUM(igst_amount), 0)                          AS total_igst,
+                    COALESCE(SUM(COALESCE(platform_charge, 5)), 0)         AS total_platform_charges,
+                    COALESCE(SUM(COALESCE(gst_amount, 0)), 0)              AS total_gst_amount
+                FROM orders
+                WHERE seller_id = $1 AND status NOT IN ('CANCELLED', 'REFUNDED')
+            """, sid, commission_rate)
+            s = dict(stats) if stats else {}
+            total_gst = (
+                float(s.get("total_cgst") or 0) +
+                float(s.get("total_sgst") or 0) +
+                float(s.get("total_igst") or 0)
+            )
+            return {
+                "commission_rate": commission_rate,
+                "business_name": seller.get("business_name"),
+                "gstin": seller.get("gstin"),
+                "total_orders": int(s.get("total_orders") or 0),
+                "total_revenue": round(float(s.get("total_revenue") or 0), 2),
+                "total_commission_deducted": round(float(s.get("total_commission") or 0), 2),
+                "total_gst_collected": round(total_gst, 2),
+                "total_platform_charges": round(float(s.get("total_platform_charges") or 0), 2)
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"[Commission Summary] Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

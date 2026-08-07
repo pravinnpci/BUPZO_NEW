@@ -70,7 +70,7 @@ export default function CheckoutPage() {
   }
 
   // A3: Verification gate — block checkout for unverified users
-  const isVerified = user?.email_verified || user?.phone_verified || user?.google_verified;
+  const isVerified = user?.is_verified || user?.email_verified || user?.phone_verified || user?.google_verified;
   if (!isVerified) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">

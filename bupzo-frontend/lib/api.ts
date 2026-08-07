@@ -432,6 +432,7 @@ export async function validateCoupon(code: string, orderValue: number): Promise<
   code: string;
   discount_amount: number;
   discount_percentage: number;
+  discount_type?: string;
 }> {
   const response = await authFetch('/api/coupons/validate', {
     method: 'POST',

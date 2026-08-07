@@ -23,6 +23,7 @@ import FAQPage from '@/app/faq/page';
 import SellerKYCModal from '@/components/SellerKYCModal';
 import ProductPreviewModal from '@/components/ProductPreviewModal';
 import Footer from '@/components/Footer';
+import ShipmentTracking from '@/components/ShipmentTracking';
 
 export default function Home() {
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
@@ -100,7 +101,7 @@ export default function Home() {
   const [promoError, setPromoError] = useState('');
 
   // Storefront & Customer States
-  const [customerTab, setCustomerTab] = useState<'home' | 'categories' | 'orders' | 'wallet' | 'wishlist' | 'kyc' | 'settings' | 'messages' | 'shops' | 'pricing' | 'invoices' | 'faq'>('home');
+  const [customerTab, setCustomerTab] = useState<'home' | 'categories' | 'orders' | 'tracking' | 'wallet' | 'wishlist' | 'kyc' | 'settings' | 'messages' | 'shops' | 'pricing' | 'invoices' | 'faq'>('home');
   const [previewProduct, setPreviewProduct] = useState<Product | null>(null);
   const [customerOrders, setCustomerOrders] = useState<any[]>([]);
   const [walletTransactions, setWalletTransactions] = useState<any[]>([]);
@@ -960,6 +961,13 @@ export default function Home() {
               {customerTab === 'orders' && (
                 <CustomerOrders
                   customerOrders={customerOrders}
+                  user={user}
+                />
+              )}
+              {/* TAB: SHIPMENT TRACKING */}
+              {customerTab === 'tracking' && (
+                <ShipmentTracking
+                  mode="customer"
                   user={user}
                 />
               )}

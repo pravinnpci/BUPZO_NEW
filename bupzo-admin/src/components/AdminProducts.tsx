@@ -1065,6 +1065,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({
                     <tr className="border-b border-zinc-200 dark:border-zinc-800 text-zinc-400 font-bold uppercase tracking-wider text-[10px] select-none">
                       <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleCategorySort('name')}>Category Name <CatSortIndicator k="name" /></th>
                       <th className="py-2.5">Description</th>
+                      <th className="py-2.5">Created By</th>
                       <th className="py-2.5 cursor-pointer hover:text-primary transition-colors" onClick={() => handleCategorySort('created_at')}>Date & Time <CatSortIndicator k="created_at" /></th>
                       <th className="py-2.5 text-right">Actions</th>
                     </tr>
@@ -1074,6 +1075,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({
                       <tr key={cat.id} className="border-b border-zinc-100 dark:border-zinc-900">
                         <td className="py-3 font-bold text-zinc-800 dark:text-zinc-200">{cat.name}</td>
                         <td className="py-3 text-zinc-500">{cat.description || "No description provided."}</td>
+                        <td className="py-3 font-semibold text-amber-600 dark:text-amber-400">{(cat as any).created_by || (cat as any).seller_store_name || (cat as any).seller_name || 'Admin'}</td>
                         <td className="py-3 font-mono text-[10px] text-zinc-500 whitespace-nowrap">{(cat as any).created_at ? new Date((cat as any).created_at).toLocaleString() : '2026-07-25 20:45'}</td>
                         <td className="py-3 text-right">
                           <div className="flex justify-end gap-1.5">
@@ -1104,7 +1106,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({
                     ))}
                     {sortedCategories.length === 0 && (
                       <tr>
-                        <td colSpan={3} className="py-6 text-center text-zinc-400">No categories found.</td>
+                        <td colSpan={5} className="py-6 text-center text-zinc-400">No categories found.</td>
                       </tr>
                     )}
                   </tbody>
